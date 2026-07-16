@@ -23,6 +23,9 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 **User guide** (worked example, diagrams, edge cases, assumptions):
 [docs/USAGE.en.md](docs/USAGE.en.md) · po polsku: [docs/USAGE.pl.md](docs/USAGE.pl.md)
 
+**Pre-project intake checklist** (12 areas to settle before `/gw-init`):
+[docs/INTAKE.en.md](docs/INTAKE.en.md) · po polsku: [docs/INTAKE.pl.md](docs/INTAKE.pl.md)
+
 ## Core commitments (inherited, non-negotiable)
 
 - **Goal-mandatory writes.** Every captured artifact serves a Goal node
