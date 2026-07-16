@@ -1,0 +1,56 @@
+<!-- BEGIN graph-workflow -->
+
+## graph-workflow — change lifecycle with graph memory
+
+This project uses the graph-workflow: the 10x change lifecycle fused with the
+agentic-memory-system graph (MCP server `agentic-memory`). One lifecycle, not two
+workflows — memory operations are steps inside it.
+
+```
+/gw-new → worktree → /gw-research → /gw-plan → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive
+```
+
+### Task router
+
+| Situation | Skill |
+| --- | --- |
+| Foundation docs written or amended (PRD, tech-stack, ADRs) | `/gw-foundation` (distill into lifetime-tier candidates) |
+| Starting any unit of work | `/gw-new` (folder + Goal node + seed recall — always first) |
+| Territory unknown | `/gw-research` (recall first, explore the gap, capture findings) |
+| Ready to design the work | `/gw-plan` (recall + impact_of + plan.md + plan-boundary capture) |
+| Multi-phase / needs judgment | `/gw-implement` (interactive, per-phase memory loop, human gates) |
+| Bounded, verifiable by command | `/gw-goal` or `claude -p` (headless; humans at PR only) |
+| Change reaches PR | `/gw-review` (code review + memory human gate) |
+| Merged | `/gw-archive` (final capture, deactivate+sweep, folder → archive) |
+
+### Standing rules (apply to every session)
+
+- **Recall before deciding.** At task start and before touching an unloaded
+  subsystem: `recall_context(query=..., goal_ref=<memory_goal from change.md>)`.
+  Keep the `[node:<id>]` handles — they are write-back ids.
+- **Goal-mandatory writes.** No `memory_goal` in change.md → run /gw-new's scope
+  steps before capturing anything.
+- **Capture residue, not narration** — decisions, constraints, issues, concepts,
+  invariants; one statement per artifact, readable cold, with edges.
+- **Journal every session** — one batched `append_events`
+  (USED/CONFIRMED/CONTRADICTED/REVIEWED/NOTED) before ending. Honest events only.
+- **Contradictions are recorded, never resolved** — CONTRADICTS edges and
+  CONTRADICTED events flag for human review; that is the system working.
+- **Never** mutate trust, clear flags, promote tiers, or archive nodes. Not
+  possible via the agent surface; do not work around it.
+- **`context/archive/` is immutable.** If a resolved target path starts with
+  `context/archive/`, abort with: "This change is archived. Open a new change
+  with /gw-new."
+
+### Paths
+
+- `context/changes/<change-id>/` — active change: change.md (incl. `memory_goal`),
+  plan.md, research.md. Thin lifecycle files only; knowledge lives in the graph.
+- `context/archive/<change-id>/` — immutable, append-only.
+- `context/foundation/` — PRD, roadmap, tech-stack: human source of truth, whose
+  normative content is mirrored into the graph at lifetime tier via
+  `/gw-foundation` (foundation.md carries that scope's `memory_goal`).
+- `context/memory-graph.db` — the store (gitignored; sync via dump/restore
+  scripts).
+
+<!-- END graph-workflow -->
