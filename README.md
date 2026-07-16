@@ -70,23 +70,69 @@ Skills decide *when* to call; tools never embed judgment.
 
 ## Installation
 
-1. Get the memory server running and registered (see
-   [agentic-memory-system](https://github.com/mt3o-dev/agentic-memory-system)):
+### 1. Add agentic memory to the repo
 
-   ```sh
-   claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
-   ```
+Install the memory system once (it serves any number of projects):
 
-2. Copy (or symlink) the skill directories into the target project or your user
-   scope:
+```sh
+git clone https://github.com/mt3o-dev/agentic-memory-system /path/to/agentic-memory-system
+cd /path/to/agentic-memory-system && uv sync
+```
 
-   ```sh
-   cp -r skills/gw-* ~/.claude/skills/          # user-wide
-   # or: cp -r skills/gw-* <project>/.claude/skills/
-   ```
+Register the MCP server. Either user-wide:
 
-3. Append `CLAUDE.md.txt` to the target project's `CLAUDE.md`, then run `/gw-init`
-   inside the project.
+```sh
+claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+```
+
+or per-project, committed so every contributor gets it — `.mcp.json` in the
+project root:
+
+```json
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/agentic-memory-system", "agentic-memory-mcp"]
+    }
+  }
+}
+```
+
+**The store is project-local.** The server defaults to `context/memory-graph.db`
+under the working directory it is launched in; set `MEMORY_DB_PATH` in the server
+`env` only if you need a non-default location. One store per project — pointing a
+shared store at two projects poisons both.
+
+**Git rules for the store.** The SQLite file stays out of git (this repo's
+`.gitignore` shows the pattern: `context/memory-graph.db*`); the legible text dump
+is the sync format when a team shares memory:
+
+```sh
+uv run python scripts/dump_db.py      # before push
+uv run python scripts/restore_db.py   # after pull
+```
+
+The human review GUI (staleness queue, tier promotion) runs from the same
+install: `uv run agentic-memory-gui` → http://127.0.0.1:8765.
+
+### 2. Install the skills
+
+Copy (or symlink) the skill directories into the target project or your user
+scope:
+
+```sh
+cp -r skills/gw-* ~/.claude/skills/          # user-wide
+# or: cp -r skills/gw-* <project>/.claude/skills/
+```
+
+### 3. Wire the project
+
+Append `CLAUDE.md.txt` to the target project's `CLAUDE.md`, then run `/gw-init`
+inside the project — it scaffolds `context/`, verifies the MCP surface answers,
+and checks the gitignore rules. If the project already has foundation docs
+(PRD, ADRs, tech-stack), run `/gw-foundation` next so the first change's recall
+has something to serve.
 
 ## Execution-mode routing
 

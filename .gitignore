@@ -1,0 +1,23 @@
+# Local agent/tooling state
+.serena/
+.claude/settings.local.json
+graphify-out/
+
+# agentic-memory store — binary is local; sync via scripts/dump_db.py / restore_db.py
+context/memory-graph.db
+context/memory-graph.db-*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
