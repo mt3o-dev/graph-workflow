@@ -27,10 +27,19 @@ Standard 10x-impl-review discipline against `context/changes/<change-id>/`:
    recall bundles, every node the change's own CONTRADICTS links/events flagged,
    plus the store-wide `stale_nodes()` read for anything this change touched.
 
+   Also read the **store-wide** health signal — the total unresolved flag/stale
+   count and the age of the oldest one — and report it in the checklist. Recall
+   only serves the live set, so a queue nobody works rots silently between gates;
+   this is the one gate that reliably runs, so it is where queue rot must become
+   visible. This is a read-and-report only: the reviewer never clears flags here
+   (that is the GUI's human-only action).
+
 2. **Write the checklist into the PR description / review notes:**
 
    ```markdown
    ## Memory review (human gate)
+   Store health: 14 unresolved flags (oldest 23 days). ⚠️ growing — work the queue.
+
    Disputed nodes touched by this change:
    - [node:<id>] <one-line content> — contradicted by <id/evidence>
 
@@ -39,6 +48,9 @@ Standard 10x-impl-review discipline against `context/changes/<change-id>/`:
 
    Open the review queue: `uv run agentic-memory-gui` → Review tab.
    ```
+
+   The `Store health` line is store-wide, not change-scoped: it makes the standing
+   backlog visible at every PR even when this change's own queue is empty.
 
 3. **Tell the human what the GUI offers:** severity plus the rules-resolver
    verdict as a hint, one-click clear for false alarms, tier controls for

@@ -38,6 +38,17 @@ sweep, ranked into every relevant recall.
      ("Postgres over SQLite: multi-writer requirement from PRD §3").
    - Roadmap → sparingly: only `constraint`s that sequence work ("payments cannot
      ship before KYC"). Roadmaps churn; the graph should not.
+   - Existing `lessons.md` and normative `CLAUDE.md`/`AGENTS.md` rules (brownfield
+     adoption, esp. migrating off plain 10x) → each settled lesson or rule is
+     already a cold-readable `constraint` ("the payment webhook retries; handlers
+     must be idempotent"); these are among the highest-value distillation targets
+     because they encode mistakes the project already paid for. Skip tooling
+     boilerplate and anything specific to one file's narrative.
+   - The **pre-project intake answers** (`docs/INTAKE`, recorded into
+     `context/foundation/` or `CLAUDE.md`) → the normative ones are foundation
+     content: facet policy and capture-line as `constraint`s, execution-mode
+     routing and promotion authority as `decision`s. Distil them like any other
+     foundation doc.
 
    Capture discipline as everywhere: one statement per artifact, readable cold,
    facets from the controlled vocabulary, edges among the foundation nodes

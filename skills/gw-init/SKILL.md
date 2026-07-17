@@ -50,7 +50,9 @@ lifecycle files, and a live memory store for everything else.
 5. **Foundation hand-off.** If `context/foundation/` already holds documents (PRD,
    tech-stack, ADRs — a brownfield adoption), route to `/gw-foundation` next: the
    graph starts empty, and foundation distillation is what makes the very first
-   change's recall useful.
+   change's recall useful. Point `/gw-foundation` at any existing `lessons.md` and
+   normative `CLAUDE.md`/`AGENTS.md` rules too — a project migrating off plain 10x
+   usually carries hard-won lessons that distil straight into constraint nodes.
 
 6. Report what was created, what already existed, and whether the MCP surface is
    live. If the server is unreachable, say so plainly — the workflow degrades to

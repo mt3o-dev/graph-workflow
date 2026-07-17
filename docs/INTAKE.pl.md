@@ -15,6 +15,12 @@ routing trybów) oraz `context/foundation/` (wszystko, co normatywne, co
 dotyczą twojej konfiguracji (deweloperzy solo mogą prześlizgnąć się po obszarach
 5 i 8), ale pomijaj je świadomie.
 
+Zapisane odpowiedzi normatywne same są **dokumentem fundamentowym**: gdy `/gw-init`
+już przebiegł, podaj je `/gw-foundation` obok PRD, tech-stacku i ADR-ów — intake
+ustala ograniczenia i decyzje (polityka facetów, linia capture, routing trybów,
+autorytet promocji), które należą do lifetime root set, a nie tylko do prozy,
+której nikt nie recall'uje.
+
 ---
 
 ## 1. Gotowość fundamentów

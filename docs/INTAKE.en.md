@@ -14,6 +14,12 @@ the project's `CLAUDE.md` (capture policy, facet rules, mode routing) and
 distill). Skip questions that clearly don't apply to your setup (solo developers
 can skim areas 5 and 8), but skip them deliberately.
 
+The normative answers you record are themselves a **foundation document**: once
+`/gw-init` has run, feed them to `/gw-foundation` alongside the PRD, tech-stack,
+and ADRs — the intake settles constraints and decisions (facet policy, capture
+line, mode routing, promotion authority) that belong in the lifetime root set, not
+just in prose nobody recalls.
+
 ---
 
 ## 1. Foundation readiness
