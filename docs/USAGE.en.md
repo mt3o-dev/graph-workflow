@@ -202,8 +202,13 @@ don't inflate. The `CONTRADICTED` event flags `node_0790` for the review queue.
 
 ### 3.4 Review — `/gw-review`
 
-Two parts. Code review against `plan.md` and repo standards — and the **memory
-human gate**, written into the PR description:
+`/gw-review` runs as a fresh session, so it first recalls the goal's settled
+`constraint`/`invariant` nodes for the changed subsystems and reviews the diff
+against them — a violated settled constraint is a request-changes finding. When
+the code contradicts a constraint, the direction is a judgment call at review
+time: either the code is wrong (fix it) or the constraint is now stale (record
+`CONTRADICTED`, let it flag). Then two parts — code review against `plan.md` and
+repo standards, and the **memory human gate**, written into the PR description:
 
 ```markdown
 ## Memory review (human gate)

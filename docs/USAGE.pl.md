@@ -208,8 +208,13 @@ do kolejki review.
 
 ### 3.4 Review — `/gw-review`
 
-Dwie części. Code review względem `plan.md` i standardów repo — oraz **ludzka
-bramka pamięci**, wpisana do opisu PR:
+`/gw-review` działa jako świeża sesja, więc najpierw recall'uje ustalone węzły
+`constraint`/`invariant` celu dla dotkniętych podsystemów i recenzuje diff
+względem nich — naruszony ustalony constraint to finding typu request-changes.
+Gdy kod zaprzecza constraintowi, kierunek jest decyzją w momencie review: albo kod
+jest błędny (popraw go), albo constraint jest już nieaktualny (zapisz
+`CONTRADICTED`, pozwól mu oflagować). Następnie dwie części — code review względem
+`plan.md` i standardów repo, oraz **ludzka bramka pamięci**, wpisana do opisu PR:
 
 ```markdown
 ## Memory review (bramka ludzka)

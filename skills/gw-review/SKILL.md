@@ -1,6 +1,6 @@
 ---
 name: gw-review
-description: Review an implemented change at the PR gate — code review against plan and standards, PLUS the memory human gate; assemble the disputed-node checklist, staleness queue, and promotion candidates the human must rule on. Use when a change reaches PR / review time, after /gw-implement or /gw-goal. Trigger phrases: "review the change", "PR review", "/gw-review".
+description: Review an implemented change at the PR gate — code review against plan, standards, and the goal's recalled constraints/invariants, PLUS the memory human gate; assemble the disputed-node checklist, staleness queue, and promotion candidates the human must rule on. Use when a change reaches PR / review time, after /gw-implement or /gw-goal. Trigger phrases: "review the change", "PR review", "/gw-review".
 ---
 
 # gw-review
@@ -12,14 +12,46 @@ resolves. That split is the safety model.
 
 ## Part 1 — Code review
 
+`/gw-review` runs as a **fresh agent session with a clean context** — it does not
+inherit the implementer's memory of what the constraints were. Recall is therefore
+not a formality here; it is the only channel through which the change's acceptance
+criteria reach the reviewer. Unlike every other recall in the lifecycle (which
+loads context to *produce* work), this one loads the criteria to *check finished
+work against them*.
+
 Standard 10x-impl-review discipline against `context/changes/<change-id>/`:
 
-1. Diff vs `plan.md`: drift from planned phases, unplanned files touched,
+1. **Recall the acceptance criteria — mandatory.**
+
+   ```
+   recall_context(query="<goal text + the subsystems the diff touches>",
+                  goal_ref=<goal_node_id from change.md>)
+   ```
+
+   Review the diff against the **settled** `constraint` and `invariant` blocks it
+   returns (`tier=lifetime`/`long-term`) — these are the spec the code must
+   satisfy. A violated settled constraint is a finding of the same weight as a
+   dangerous-decision, not a stylistic note.
+
+   Keep `disputed` blocks out of Part 1: adjudicating a contested constraint
+   against the code is re-litigation, which the safety model forbids the agent.
+   Note the disputed handles and carry them to Part 2, where the human rules.
+
+2. Diff vs `plan.md`: drift from planned phases, unplanned files touched,
    verification steps skipped. Drift is not automatically wrong — but undisclosed
    drift is.
-2. Dangerous-decision scan and repo-standards compliance.
-3. Check the plan's `[node:<id>]` references against what was actually built —
+3. Dangerous-decision scan and repo-standards compliance.
+4. Check the plan's `[node:<id>]` references against what was actually built —
    a plan decision silently not honored in code is a finding.
+
+**When the code contradicts a settled constraint — it depends.** Do not resolve
+this upfront; the direction is the developer's judgment at the moment it happens:
+- the code is wrong and the constraint stands → a code finding (request changes);
+- the code is right and the constraint is now obsolete → record `CONTRADICTED`
+  (or capture the correcting artifact with a CONTRADICTS edge) and let it flag for
+  the Part 2 human gate.
+
+Surface the conflict with both readings and the evidence; never silently pick one.
 
 ## Part 2 — Memory review (the human gate)
 
@@ -91,9 +123,14 @@ Close with one of:
 
 - Never clear flags, adjust trust/weights, or change tiers — the MCP surface
   cannot, and working around it via the GUI or scripts breaks the model.
-- Journal the review itself: `append_events` with `REVIEWED` for nodes you
-  re-assessed during Part 2 (no new evidence either way) — honest reads feed
-  ranking too.
+- Journal the review itself — one batch covering both parts:
+  - `CONFIRMED` **only** for a constraint/invariant the review actively exercised
+    (ran its test, traced the path to ground). Review is the strongest source of
+    CONFIRMED in the lifecycle; "I read it and it looks right" is not that — that
+    is `REVIEWED`. Inflating CONFIRMED at the one gate that fires every PR quietly
+    corrupts trust-folding.
+  - `REVIEWED` for nodes re-assessed with no new evidence either way (most of
+    Part 2). Honest reads feed ranking too.
 - Review capacity is the parallelism cap. If the queue of changes awaiting this
   gate grows, stop opening new ones — that is the throughput limit working as
   designed.
