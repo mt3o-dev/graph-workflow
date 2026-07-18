@@ -36,3 +36,4 @@ vite.config.ts.timestamp-*
 # tooling, not authored by hand.
 /src-tauri/target
 /src-tauri/gen
+/src/lib/vitest-examples

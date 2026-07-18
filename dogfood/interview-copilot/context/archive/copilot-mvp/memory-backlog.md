@@ -252,3 +252,58 @@ Replay these against the MCP surface after /gw-init + /gw-foundation run for rea
   via `curl` against a dev server. NOT verified against the actual e2e
   specs (no Rust/tauri-driver on this machine — same constraint Phase 6
   documented).
+
+## capture_artifact (review)
+- constraint: "screen name" in a plan is not the same commitment as "route
+  path" — plan.md Phase 5 named routes `/kb` (Knowledge Base) and `/log`
+  (Session Log); the shipped routes are `/knowledge` and `/sessions`
+  (`src/routes/knowledge`, `src/routes/sessions`; nav testids still
+  `nav-kb`/`nav-log`, so the *screen* identity was honored, the *URL* was
+  not). No backlog entry called this out as a plan deviation — Phase 5's
+  entries mention `/knowledge`/`/sessions` only in passing, as if that were
+  the plan. Generalizable rule: when a plan pins concrete route paths (or
+  any externally-observable string identifier), the implementer must either
+  match it exactly or capture the rename as an explicit, flagged decision —
+  "I built the thing" is not the same disclosure as "I built it at a
+  different address than specified." DEPENDS_ON plan.md Phase 5.
+- issue: two untracked scaffold leftovers are still present in the working
+  tree at review time — `src/lib/vitest-examples/{greet.ts,greet.spec.ts}`
+  is NOT gitignored (unlike `.scaffold-tmp/`, which is), so it will be
+  silently picked up by a future `git add -A`/`git add .` unless someone
+  remembers the backlog's "delete both manually" note from the phase-1-4
+  capture. Same underlying cause (rm denied by permission policy) recorded
+  earlier in this file, still unresolved at PR time. DEPENDS_ON the earlier
+  phase 1-4 capture_artifact issue entry.
+
+## proposed change-summary (Part 2, degraded mode — human promotes in real graph)
+- type: concept, tier: mid-term
+  content: "copilot-mvp shipped the full 7-phase MVP plan for Interview
+  Copilot: hexagonal TS core (turn detection, context window, retriever,
+  answer service) built and tested first against fakes/fixtures; all 9
+  adapters (2×STT, 2×embeddings, sqlite-vec index, Haiku answer, sqlite
+  session log, markdown KB, layered config) behind ports with a shared
+  contract-test suite; a 100-question markdown KB (25/category) gated by
+  validate-kb.ts; a 4-screen Svelte UI (demo-mode Live Session + 3
+  server-composition-root screens) with a design system; a thin Tauri
+  shell + WebdriverIO e2e scaffold deferred to a Rust-capable machine.
+  Outcome at review: pnpm typecheck / pnpm test (156 passed, 4 skipped,
+  26 files) / pnpm validate:kb all green on this machine; hexagonal
+  boundary-lint test exists and independently spot-checked clean; config
+  precedence, index model-binding refusal, context-window sizing, and KB
+  schema all match tech-stack.md decisions 2/3/7/9/10 as built, not just
+  as documented. Why it matters for future changes: the pattern of
+  'core+ports built and vitest-verified before any adapter exists, network
+  paths verified only via mocked-transport contract tests' is this
+  project's reusable delivery shape, and the two open gaps (route-path
+  drift from plan.md, uncommitted scaffold leftovers) are the kind of
+  small, disclosed-late items this gate exists to catch before merge."
+  edges: DEPENDS_ON [dec:2] hexagonal architecture, [dec:3] embeddings/index
+  binding, [dec:7] context window, [dec:9] config precedence, [dec:10] KB
+  schema, plan.md (all 7 phases), the phase 1-4/5/6 capture_artifact blocks
+  above.
+
+## capture_artifact (review rework — drift disclosure)
+- type: decision — "Routes shipped as /knowledge and /sessions instead of plan's
+  /kb and /log; screen identity and data-testids (nav-kb, nav-log) unchanged.
+  Drift was benign but undisclosed until the review gate flagged it; disclosed
+  here retroactively." edges: DEPENDS_ON plan.md Phase 5.
