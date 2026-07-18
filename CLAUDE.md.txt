@@ -7,7 +7,7 @@ agentic-memory-system graph (MCP server `agentic-memory`). One lifecycle, not tw
 workflows — memory operations are steps inside it.
 
 ```
-/gw-new → worktree → /gw-research → /gw-plan → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive
+/gw-new → worktree → /gw-research → /gw-plan → /gw-plan-review → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive
 ```
 
 ### Task router
@@ -18,6 +18,7 @@ workflows — memory operations are steps inside it.
 | Starting any unit of work | `/gw-new` (folder + Goal node + seed recall — always first) |
 | Territory unknown | `/gw-research` (recall first, explore the gap, capture findings) |
 | Ready to design the work | `/gw-plan` (recall + impact_of + plan.md + plan-boundary capture) |
+| Plan written, before implementation | `/gw-plan-review` (fresh session, independent recall, plan vs settled constraints) |
 | Multi-phase / needs judgment | `/gw-implement` (interactive, per-phase memory loop, human gates) |
 | Bounded, verifiable by command | `/gw-goal` or `claude -p` (headless; humans at PR only) |
 | Change reaches PR | `/gw-review` (code review + memory human gate) |
@@ -32,6 +33,12 @@ workflows — memory operations are steps inside it.
   steps before capturing anything.
 - **Capture residue, not narration** — decisions, constraints, issues, concepts,
   invariants; one statement per artifact, readable cold, with edges.
+- **Speak the graph's vocabulary.** List the controlled facet vocabulary before
+  the session's first capture (MCP vocabulary read if available, else GUI or the
+  committed dump); query recalls with the graph's own terms, not paraphrases.
+- **Navigate code through the graphify MCP** when the project has a code
+  knowledge graph (`graphify-out/` present) — graph queries for architecture and
+  file relationships first; raw grep/read is the fallback, not the default.
 - **Journal every session** — one batched `append_events`
   (USED/CONFIRMED/CONTRADICTED/REVIEWED/NOTED) before ending. Honest events only.
 - **Contradictions are recorded, never resolved** — CONTRADICTS edges and

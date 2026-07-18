@@ -27,7 +27,9 @@ flowchart TD
     Q -- "nie" --> RES["/gw-research<br/>najpierw recall, eksploracja tylko luk,<br/>capture ustaleń"]
     Q -- "tak" --> PLAN
     RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>plan.md, capture decyzji"]
-    PLAN --> MODE{Ograniczone i weryfikowalne<br/>komendą?}
+    PLAN --> PLANREV["/gw-plan-review<br/>świeża sesja, niezależny recall,<br/>plan vs ustalone constrainty"]
+    PLANREV -- "request changes" --> PLAN
+    PLANREV -- "approve" --> MODE{Ograniczone i weryfikowalne<br/>komendą?}
     MODE -- "nie" --> IMPL["/gw-implement<br/>interaktywnie, pętla pamięci per faza,<br/>bramki ludzkie"]
     MODE -- "tak" --> GOAL["/gw-goal<br/>pętla headless,<br/>człowiek dopiero przy PR"]
     IMPL --> REV["/gw-review<br/>code review + ludzka bramka pamięci<br/>+ konsolidacja epizodyczna→semantyczna"]
@@ -173,6 +175,13 @@ capture_artifact(content="VAT zaokrąglany half-up per pozycja; suma faktury to 
 Krawędź CONTRADICTS *rejestruje* konflikt i flaguje starą decyzję do ludzkiego
 review. Agent nigdy nie „kasuje" starej wiedzy — na tym polega model
 bezpieczeństwa.
+
+Przed implementacją plan przechodzi bramkę `/gw-plan-review`: **świeża sesja**
+niezależnie recall'uje ustalone constrainty celu (nie ufając cytowaniom samego
+planu jako pełnemu obrazowi) i sprawdza plan względem nich — po cichu naruszony
+constraint albo supersesja bez `impact_of` odsyła plan do `/gw-plan`. Tutaj
+przechodzi: capture CONTRADICTS dla `node_0451` istnieje, a ryzyko ścieżki
+raportów niesie wynik `impact_of`.
 
 ### 3.3 Implementacja — `/gw-implement`
 

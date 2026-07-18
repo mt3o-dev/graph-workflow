@@ -70,8 +70,10 @@ goes in the file.
    CONTRADICTED for the recalled nodes the plan actually leaned on.
 
 7. **Hand off.** State the phase count, the captured `[node:<id>]` list, any
-   disputed nodes the plan takes a side on, and route: `/gw-implement` for
-   multi-phase or judgment-heavy changes, `/gw-goal` for bounded mechanical ones.
+   disputed nodes the plan takes a side on, and route to `/gw-plan-review` — the
+   independent plan gate (fresh session) that must pass before implementation.
+   It approves onward to `/gw-implement` (multi-phase or judgment-heavy) or
+   `/gw-goal` (bounded mechanical), or sends the plan back here.
 
 ## Rules
 

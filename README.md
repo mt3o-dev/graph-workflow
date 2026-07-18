@@ -14,6 +14,9 @@ the 10x change lifecycle, never a parallel bookkeeping chore:
 worktree    → checkout = change activation = liveness root ON
 /gw-research→ recall BEFORE exploring; codebase research grounded in settled memory
 /gw-plan    → recall + trace-impact of anything the plan supersedes; capture decisions
+/gw-plan-review
+            → independent plan gate: fresh session recalls the goal's settled
+              constraints and checks plan.md against them before implementation
 /gw-implement / /gw-goal
             → per-phase recall → work → capture at phase boundaries → batched feedback
 /gw-review  → impl review + the human memory gate (staleness queue, promotions)
@@ -63,6 +66,7 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 | `gw-new` | `10x-new` | `create_change`, goal-id recording, seed `recall_context` |
 | `gw-research` | `10x-research` | recall-first research, contradiction surfacing, feedback |
 | `gw-plan` | `10x-plan` | recall, `impact_of` pre-checks, plan-boundary capture |
+| `gw-plan-review` | `10x-plan-review` | fresh-session independent recall, plan vs settled constraints, dispute-side check |
 | `gw-implement` | `10x-implement` | per-phase recall, phase-boundary capture, batched feedback, `link` CONTRADICTS |
 | `gw-goal` | `/goal` / `claude -p` | same discipline compressed for headless runs; rules-path validity, no human gates until PR |
 | `gw-review` | `10x-impl-review` | staleness queue, disputed-node checklist, episodic→semantic consolidation, promotion candidates (human gate) |

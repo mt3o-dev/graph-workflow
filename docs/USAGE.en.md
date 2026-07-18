@@ -25,7 +25,9 @@ flowchart TD
     Q -- "no" --> RES["/gw-research<br/>recall first, explore only the gap,<br/>capture findings"]
     Q -- "yes" --> PLAN
     RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
-    PLAN --> MODE{Bounded and<br/>verifiable by command?}
+    PLAN --> PLANREV["/gw-plan-review<br/>fresh session, independent recall,<br/>plan vs settled constraints"]
+    PLANREV -- "request changes" --> PLAN
+    PLANREV -- "approve" --> MODE{Bounded and<br/>verifiable by command?}
     MODE -- "no" --> IMPL["/gw-implement<br/>interactive, per-phase memory loop,<br/>human gates"]
     MODE -- "yes" --> GOAL["/gw-goal<br/>headless loop,<br/>humans only at PR"]
     IMPL --> REV["/gw-review<br/>code review + memory human gate<br/>+ episodic→semantic consolidation"]
@@ -168,6 +170,13 @@ capture_artifact(content="VAT is rounded half-up per line item; the invoice tota
 
 The CONTRADICTS edge *records* the conflict and flags the old decision for human
 review. The agent never "deletes" the old knowledge — that is the safety model.
+
+Before implementation, `/gw-plan-review` gates the plan: a **fresh session**
+recalls the goal's settled constraints independently (not trusting the plan's own
+citations as the universe of relevant knowledge) and checks the plan against
+them — a silently violated constraint or an untraced supersession sends the plan
+back to `/gw-plan`. Here it passes: the CONTRADICTS capture for `node_0451`
+exists and the reports-path risk carries the `impact_of` result.
 
 ### 3.3 Implement — `/gw-implement`
 
