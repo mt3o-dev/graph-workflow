@@ -1,0 +1,9 @@
+{
+	"name": "recorded interview slice: statements only, no question",
+	"segments": [
+		{ "text": "So a bit about the team.", "startMs": 0, "endMs": 1400, "final": true },
+		{ "text": "We ship a payments platform in TypeScript.", "startMs": 1500, "endMs": 3600, "final": true },
+		{ "text": "The backend talks to Postgres and Kafka.", "startMs": 4800, "endMs": 6900, "final": true },
+		{ "text": "Deployment is fully automated.", "startMs": 8100, "endMs": 9500, "final": true }
+	]
+}

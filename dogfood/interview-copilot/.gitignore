@@ -1,0 +1,32 @@
+node_modules
+dist
+target
+*.db
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# leftover scaffold staging dir (could not be removed: rm blocked by sandbox policy)
+/.scaffold-tmp/
+
+# local user config (never committed; layered config precedence, dec:9)
+/config/local.json

@@ -1,0 +1,8 @@
+{
+	"db": {
+		"file": ":memory:"
+	},
+	"vad": {
+		"silenceMs": 700
+	}
+}

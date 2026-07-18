@@ -1,0 +1,33 @@
+{
+	"name": "interview-copilot",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "pnpm run typecheck",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test:unit": "vitest",
+		"test": "vitest run",
+		"validate:kb": "tsx scripts/validate-kb.ts"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "7.0.1",
+		"@sveltejs/kit": "2.70.0",
+		"@sveltejs/vite-plugin-svelte": "7.2.0",
+		"@types/better-sqlite3": "7.6.13",
+		"better-sqlite3": "12.11.1",
+		"gray-matter": "4.0.3",
+		"sqlite-vec": "0.1.9",
+		"svelte": "5.56.6",
+		"svelte-check": "4.7.3",
+		"tsx": "4.23.1",
+		"typescript": "6.0.3",
+		"vite": "8.1.5",
+		"vitest": "4.1.10"
+	}
+}

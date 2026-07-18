@@ -1,0 +1,52 @@
+{
+	"stt": {
+		"adapter": "whisper-local",
+		"whisper": {
+			"url": "ws://localhost:9090",
+			"language": "en",
+			"model": "small"
+		},
+		"openai": {
+			"url": "wss://api.openai.com/v1/realtime?intent=transcription",
+			"model": "gpt-4o-mini-transcribe"
+		}
+	},
+	"embeddings": {
+		"adapter": "local",
+		"openai": {
+			"model": "text-embedding-3-small",
+			"baseUrl": "https://api.openai.com/v1"
+		}
+	},
+	"answer": {
+		"adapter": "anthropic",
+		"anthropic": {
+			"model": "claude-haiku-4-5",
+			"baseUrl": "https://api.anthropic.com",
+			"maxTokens": 512
+		}
+	},
+	"contextWindow": {
+		"maxSeconds": 30,
+		"maxUtterances": 6
+	},
+	"vad": {
+		"silenceMs": 700
+	},
+	"retrieval": {
+		"topK": 4
+	},
+	"index": {
+		"adapter": "sqlite-vec"
+	},
+	"sessionLog": {
+		"adapter": "sqlite"
+	},
+	"kb": {
+		"adapter": "markdown",
+		"dir": "kb"
+	},
+	"db": {
+		"file": "interview-copilot.db"
+	}
+}

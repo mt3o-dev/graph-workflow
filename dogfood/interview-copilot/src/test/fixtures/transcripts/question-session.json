@@ -1,0 +1,10 @@
+{
+	"name": "recorded interview slice: small talk, then one database question",
+	"segments": [
+		{ "text": "Hi, thanks for joining today.", "startMs": 0, "endMs": 1500, "final": true },
+		{ "text": "We are excited to talk with you.", "startMs": 1600, "endMs": 3000, "final": true },
+		{ "text": "Let's start with some database fundamentals.", "startMs": 4200, "endMs": 5900, "final": true },
+		{ "text": "Can you explain the ACID", "startMs": 7100, "endMs": 8200, "final": false },
+		{ "text": "Can you explain the ACID properties of a database transaction?", "startMs": 7100, "endMs": 10400, "final": true }
+	]
+}
