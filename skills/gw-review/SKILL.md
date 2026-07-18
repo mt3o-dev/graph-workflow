@@ -44,6 +44,15 @@ Standard 10x-impl-review discipline against `context/changes/<change-id>/`:
 4. Check the plan's `[node:<id>]` references against what was actually built —
    a plan decision silently not honored in code is a finding.
 
+5. **Capture findings that generalize — the lesson channel.** A finding that
+   names a class of mistake rather than this diff's instance of it ("services
+   must not import from billing", "handlers behind the retrying webhook must be
+   idempotent") is lesson material, and the graph is this workflow's lessons.md:
+   capture it as a `constraint` or `issue` with `goal_ref`, facets, and an edge
+   to what it contradicts or depends on — so the *next* implementation recalls
+   it before repeating the mistake. Findings specific to this diff stay in the
+   PR text; do not capture instances.
+
 **When the code contradicts a settled constraint — it depends.** Do not resolve
 this upfront; the direction is the developer's judgment at the moment it happens:
 - the code is wrong and the constraint stands → a code finding (request changes);
@@ -119,7 +128,12 @@ Close with one of:
 - **Approve** — code matches plan/standards, memory queue is presented (empty or
   handed over) → route to merge + `/gw-archive`.
 - **Request changes** — findings listed most-severe first, each with the evidence.
-  Rework happens under the same change-id; the memory scope stays active.
+  Rework happens under the same change-id; the memory scope stays active. When
+  the human's PR feedback reverses or adds a decision during rework, capture it
+  (a `decision`, with a CONTRADICTS edge if it overturns a captured one) — human
+  feedback is the highest-authority knowledge source in the lifecycle, and a
+  rework that changes course without a captured why loses exactly the knowledge
+  the next change needs.
 
 ## Rules
 

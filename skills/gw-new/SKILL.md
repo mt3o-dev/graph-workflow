@@ -38,8 +38,18 @@ event.
    create_change(change_id="<change-id>", goal="<the one sentence>", parent_refs=[...])
    ```
 
-   `parent_refs` — node ids of existing memory this change knowingly builds on (from
-   a prior recall), if any. Returns `{change_node_id, goal_node_id, activated: true}`.
+   `parent_refs` — node ids of existing memory this change knowingly builds on,
+   if any. They come from one of two places, because the change's own goal does
+   not exist yet at this point:
+   - the hand-off of a prior change (`/gw-archive` routes follow-up work here
+     with the old change's surviving node ids), or
+   - a **pre-create discovery recall** through the foundation scope:
+     `recall_context(query=<the goal sentence>, goal_ref=<foundation memory_goal
+     from context/foundation/foundation.md>)` — the `[node:<id>]` handles it
+     surfaces are the candidates. Skip if the project has no foundation scope;
+     empty parent_refs on a first change is correct, not a failure.
+
+   Returns `{change_node_id, goal_node_id, activated: true}`.
 
 4. **Record the handle** — append to `change.md`:
 

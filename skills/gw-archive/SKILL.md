@@ -27,7 +27,17 @@ dormant while promoted knowledge survives. Neither half is optional.
    flag it to the human before sweeping — a dormant summary defeats its purpose
    (dormancy is recoverable, but recall will no longer surface it unprompted).
 
-3. **Deactivate and sweep** — privileged lifecycle operation, deliberately NOT on
+3. **Check the blast radius outside this change** — before the sweep, not after.
+   Run `impact_of` over the change's un-promoted (short/mid-term) nodes. A
+   dependent that belongs to another **active** change means live work is leaning
+   on knowledge about to go dormant: surface it to the human — usually the fix is
+   promoting the node (review-gate promotion discipline applies), sometimes it is
+   sequencing the archives. Do not assume the sweep's own liveness marking covers
+   this — if the memory system's mark-sweep provably keeps nodes reachable from
+   other active liveness roots, note that and move on; if you cannot confirm it,
+   the check stands.
+
+4. **Deactivate and sweep** — privileged lifecycle operation, deliberately NOT on
    the MCP agent surface; it runs through the memory repo's lifecycle script:
 
    ```sh
@@ -38,12 +48,12 @@ dormant while promoted knowledge survives. Neither half is optional.
    archived. Long-term and lifetime nodes survive by design; artifacts promoted
    during review survive with them.
 
-4. **Sanity-check the sweep output.** If something you expected to survive was
+5. **Sanity-check the sweep output.** If something you expected to survive was
    archived, it was never promoted past short-term: reactivate
    (`... activate <change-id>`), have the human promote it in the GUI, deactivate
    again. Do not edit the store by hand.
 
-5. **Move the folder:**
+6. **Move the folder:**
 
    ```sh
    git mv context/changes/<change-id> context/archive/<change-id>
@@ -53,7 +63,7 @@ dormant while promoted knowledge survives. Neither half is optional.
    the folder is immutable — no skill or tool writes under `context/archive/`,
    ever.
 
-6. **One commit for one event.** Commit the folder move and note the memory
+7. **One commit for one event.** Commit the folder move and note the memory
    deactivation (and the sweep's node count) in the message — future readers should
    see that the file archive and the graph dormancy happened together.
 

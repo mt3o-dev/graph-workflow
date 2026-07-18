@@ -62,6 +62,7 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 | Skill | 10x ancestor | Memory operations bound in |
 |---|---|---|
 | `gw-init` | `10x-init` | MCP registration, store bootstrap |
+| `gw-ask` | — (new) | recall-only Q&A outside any change: foundation-scope recall, grounded answers with node cites, usage journaling |
 | `gw-foundation` | `10x-prd` / ADRs (downstream of) | distill foundation docs into lifetime-tier candidates in the root set |
 | `gw-new` | `10x-new` | `create_change`, goal-id recording, seed `recall_context` |
 | `gw-research` | `10x-research` | recall-first research, contradiction surfacing, feedback |
