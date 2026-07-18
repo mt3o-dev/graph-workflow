@@ -28,7 +28,9 @@ change.md):
 
 2. **Implement the phase.** Follow the plan; standard 10x-implement discipline
    (small verifiable steps, run the checks the phase names, stop at the gate).
-   While working:
+   Navigate unfamiliar code through the **graphify MCP** when the project has a
+   code knowledge graph (`graphify-out/` present) — graph queries before raw
+   grep/read. While working:
    - Reality contradicts a recalled node → record it now, not at the end:
      `link(source=<new-or-existing-id>, target=<id>, type="CONTRADICTS")` if the
      correcting knowledge is already a node, else capture the correcting artifact

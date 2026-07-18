@@ -49,6 +49,13 @@ sweep, ranked into every relevant recall.
      content: facet policy and capture-line as `constraint`s, execution-mode
      routing and promotion authority as `decision`s. Distil them like any other
      foundation doc.
+   - The **git workflow** — branching model, PR flow, merge strategy, commit
+     conventions — is one of the **first lessons** this pass must capture:
+     `decision` per choice, `constraint` for the rules every change must obey
+     ("all work lands via PR from a change-id branch; no direct pushes to main").
+     Every worktree, headless run, and archive commit acts on these rules; if the
+     project has not settled them, stop and settle them with the humans before
+     distilling anything else.
 
    Capture discipline as everywhere: one statement per artifact, readable cold,
    facets from the controlled vocabulary, edges among the foundation nodes

@@ -42,6 +42,10 @@ lifecycle files, and a live memory store for everything else.
    - the memory repo's `scripts/dump_db.py` / `restore_db.py` round-trip is noted in
      the project docs (dump before push, restore after pull, when the team shares
      memory via git).
+   - **Team mode:** offer to install the git hooks that automate the round-trip —
+     a `pre-push` hook running `dump_db.py` and a `post-merge` hook running
+     `restore_db.py`. Ask before writing into `.git/hooks/` (or the repo's
+     configured hooks path); solo projects can skip.
 
 4. **Wire CLAUDE.md.** Append the graph-workflow snippet (`CLAUDE.md.txt` from this
    pack) to the project's `CLAUDE.md` if not already present, so every future agent
@@ -53,6 +57,12 @@ lifecycle files, and a live memory store for everything else.
    change's recall useful. Point `/gw-foundation` at any existing `lessons.md` and
    normative `CLAUDE.md`/`AGENTS.md` rules too — a project migrating off plain 10x
    usually carries hard-won lessons that distil straight into constraint nodes.
+
+   **One of the first lessons the graph must hold is the project's git workflow**:
+   branching model, PR flow, merge strategy (merge/squash/rebase), commit
+   conventions. If it is not settled yet, settle it with the humans now and have
+   `/gw-foundation` capture it — every change, worktree, and headless run acts on
+   these rules, so they must be recallable before the first `/gw-new`.
 
 6. Report what was created, what already existed, and whether the MCP surface is
    live. If the server is unreachable, say so plainly — the workflow degrades to
