@@ -60,7 +60,9 @@ Surface the conflict with both readings and the evidence; never silently pick on
    plus the store-wide `stale_nodes()` read for anything this change touched.
 
    Also read the **store-wide** health signal — the total unresolved flag/stale
-   count and the age of the oldest one — and report it in the checklist. Recall
+   count and the age of the oldest one — and report it in the checklist. Call out
+   disputes with `NOTED` events showing they **blocked a headless run** — those
+   outrank the rest of the queue: work is stalled on them right now. Recall
    only serves the live set, so a queue nobody works rots silently between gates;
    this is the one gate that reliably runs, so it is where queue rot must become
    visible. This is a read-and-report only: the reviewer never clears flags here

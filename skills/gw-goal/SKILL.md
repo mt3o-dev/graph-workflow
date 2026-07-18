@@ -31,6 +31,11 @@ recall → attempt → verify → (fail: diagnose, retry ≤ N) → capture+jour
    mode has no human to catch a violated constraint later. A `disputed` node that
    materially affects the phase is a **stop condition**: do not gamble on either
    side unattended — note it, skip or fail the phase, leave it for the PR gate.
+   Journal the stop into the graph, not just the run report: a `NOTED` event on
+   the disputed node with the blocking evidence in `reason` ("blocked headless
+   phase 2 of <change-id>"). A dispute that blocks work is the strongest
+   prioritization signal the review-queue owner can get — left only in a file it
+   is invisible to the store.
 
 2. **Attempt + verify.** Run the phase's verification command after every attempt.
    Bounded retries (default 3); on exhaustion, record an `issue` artifact with the

@@ -35,10 +35,14 @@ knowledge is the failure mode this skill exists to prevent.
    change title — is the research agenda. If recall answered everything, say so
    and route to `/gw-plan`; research theater helps nobody.
 
-4. **Explore the codebase** for the gap items. Fan out read-only subagents for
-   independent questions (structure, dependencies, conventions, history) and keep
-   the conclusions, not the file dumps. Standard 10x-research discipline applies:
-   cite `file:line`, distinguish observed fact from inference.
+4. **Explore the codebase** for the gap items. **Navigate through the graphify
+   MCP first** when the project has a code knowledge graph (`graphify-out/`
+   present): architecture, file relationships, and community structure come from
+   graph queries; raw grep/read is the fallback for what the code graph doesn't
+   cover, not the default. Fan out read-only subagents for independent questions
+   (structure, dependencies, conventions, history) and keep the conclusions, not
+   the file dumps. Standard 10x-research discipline applies: cite `file:line`,
+   distinguish observed fact from inference.
 
 5. **Reconcile memory against reality.** For each recalled node your exploration
    touched:
@@ -47,6 +51,9 @@ knowledge is the failure mode this skill exists to prevent.
      fact with a CONTRADICTS edge back to the node, or record
      `CONTRADICTED` with the evidence in `reason`. The flag this raises is the
      system working, not a mess you made.
+   - reality reveals a dependency the graph lacks (between existing nodes) → add
+     the edge (`link`, DEPENDS_ON) so the next `impact_of` trace is complete.
+     Research is where missing edges are most often discovered.
 
 6. **Capture durable findings** (memory-capture discipline — the quality ceiling):
    - `concept` for settled models ("the invoice aggregate owns line items"),
@@ -56,6 +63,11 @@ knowledge is the failure mode this skill exists to prevent.
      beat one blob.
    - Every capture carries `goal_ref`, facets from the controlled vocabulary, and
      edges to the recalled nodes it builds on — node+edges commit atomically.
+     **List the vocabulary before your first capture of the session** — via the
+     MCP surface's vocabulary read if it offers one, else the facets visible in
+     the GUI or the committed dump — instead of guessing labels and farming
+     `facet_warnings`. The same list is the fix for empty recalls: query with the
+     graph's own vocabulary, not your paraphrase of it.
    - Do NOT capture narration of what you did, churning file paths, or anything
      the repo states verbatim.
    - Answer `facet_warnings` deliberately: reuse the suggested value or keep yours;
