@@ -79,6 +79,13 @@ sweep, ranked into every relevant recall.
 
 ## Amendments
 
+**Concurrency rule:** amend foundation docs only *between* a change's gates —
+never while a planner or implementer is mid-read of them. If an amendment cannot
+wait, announce it in every active change's folder (a line in change.md) so the
+next gate knows the constraint set moved under the work. The fresh-session gates
+(/gw-plan-review, /gw-review) re-read foundation independently and are the
+designed safety net for exactly this race — but a net is not a license.
+
 A foundation doc edit is a change like any other: recall the foundation subgraph,
 `impact_of` the nodes the edit invalidates (foundation nodes have the widest blast
 radius in the store — treat a deep result as a project-level decision), capture

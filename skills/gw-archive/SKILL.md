@@ -67,12 +67,24 @@ dormant while promoted knowledge survives. Neither half is optional.
    deactivation (and the sweep's node count) in the message — future readers should
    see that the file archive and the graph dormancy happened together.
 
+8. **Epic bookkeeping.** If change.md carries `epic:`, update the epic's entry in
+   `context/foundation/roadmap.md`: mark this slice done, and hand the change's
+   surviving node ids to the next slice's `parent_refs` (note them in the
+   registry). Archiving the LAST slice closes the epic entry — stamp it with the
+   date and the final change-summary node id.
+
 ## Rules
 
 - This is the ONLY sanctioned archival path — never archive nodes ad hoc
   mid-change, and never `mv` a change folder without the deactivate+sweep.
 - Reactivating later is cheap and journaled — the graph is a cache with liveness,
   not a trash can. The folder move, however, is one-way.
+- **Degraded mode (no store):** the folder move proceeds — merge already
+  happened and the archive must reflect it — but deactivate+sweep is deferred:
+  stamp change.md with an archive note naming the replay steps (create_change +
+  memory-backlog.md captures + promotions, then deactivate --sweep). An archived
+  folder with an unreplayed backlog is a debt the next /gw-init health report
+  should surface.
 - If the resolved target already exists under `context/archive/`, abort — an
   archived change is never re-opened in place; new work gets a new change via
   /gw-new with `parent_refs` pointing at the old change's surviving nodes.

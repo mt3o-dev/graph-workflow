@@ -66,7 +66,9 @@ lifecycle files, and a live memory store for everything else.
 
 6. Report what was created, what already existed, and whether the MCP surface is
    live. If the server is unreachable, say so plainly — the workflow degrades to
-   plain 10x (files only) until it is fixed, and captures are lost, not queued.
+   files until it is fixed, and every would-be memory operation queues in
+   `context/changes/<id>/memory-backlog.md` for replay (see the standing degraded-
+   mode rule); a capture that skips the backlog is the one that is truly lost.
 
 ## Rules
 

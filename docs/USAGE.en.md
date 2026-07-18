@@ -314,10 +314,14 @@ folded from the journal by privileged maintenance — no agent call can set it.
 
 ## 6. Edge cases
 
-**Memory server down / not registered.** The workflow degrades to plain 10x —
-files only. Captures are *lost, not queued*: don't run knowledge-heavy phases
-(research, plan boundaries) until it's back. `gw-init` tells you the surface is
-dead; believe it.
+**Memory server down / not registered.** The workflow degrades to plain 10x
+files — but the memory discipline queues instead of stopping: append every
+would-be operation (create_change parameters, captures with type/edges/facets,
+events, promotion candidates) to `context/changes/<id>/memory-backlog.md`, and
+replay the backlog against the MCP surface when it returns. Gates read the
+backlog as the stand-in graph; foundation docs serve as the recalled constraint
+set. A capture made only against a dead server never happened — the backlog is
+what makes it recoverable.
 
 **`change.md` has no `memory_goal`.** Someone opened the change by hand. Run
 `/gw-new`'s scope steps (`create_change` + record the id) before capturing

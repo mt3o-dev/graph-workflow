@@ -46,6 +46,11 @@ workflows — memory operations are steps inside it.
   CONTRADICTED events flag for human review; that is the system working.
 - **Never** mutate trust, clear flags, promote tiers, or archive nodes. Not
   possible via the agent surface; do not work around it.
+- **Degraded mode (memory server down): queue, don't skip.** Append every
+  would-be operation to `context/changes/<id>/memory-backlog.md` — create_change
+  parameters, captures (content, type, edges, facets), events, promotion
+  candidates — and replay them when the surface returns. Gates consume the
+  backlog as the stand-in graph. The discipline never pauses; only the store does.
 - **`context/archive/` is immutable.** If a resolved target path starts with
   `context/archive/`, abort with: "This change is archived. Open a new change
   with /gw-new."
@@ -58,6 +63,11 @@ workflows — memory operations are steps inside it.
 - `context/foundation/` — PRD, roadmap, tech-stack: human source of truth, whose
   normative content is mirrored into the graph at lifetime tier via
   `/gw-foundation` (foundation.md carries that scope's `memory_goal`).
+  `roadmap.md` doubles as the **epic registry**: epic-sized goals are sliced
+  there into ordered change-ids; slices carry `epic: <id>` in change.md, the
+  epic id as a capture facet, and sibling slices' surviving nodes as
+  parent_refs. One change = one plan, one review sitting — epics are grouped,
+  never merged into one change.
 - `context/memory-graph.db` — the store (gitignored; sync via dump/restore
   scripts).
 

@@ -17,6 +17,15 @@ event.
    sentence stating what this change is trying to achieve — for exploratory work,
    the exploration IS the goal ("explore X to decide Y").
 
+   **Size check — is this a change or an epic?** A change is what one agent can
+   implement against one plan.md and one human can review in one sitting. If the
+   goal spans multiple subsystems, implies more than ~5 phases, or reads like a
+   product ("build the app", "rebuild reporting"), it is an **epic**: register it
+   in `context/foundation/roadmap.md` (epic id, outcome sentence, ordered slice
+   list — each slice a future change-id delivering something end-to-end
+   verifiable), then open the FIRST slice as this change. Slices are grouped by
+   the `epic:` line below, not by folders.
+
 2. **Create the folder** `context/changes/<change-id>/change.md`:
 
    ```markdown
@@ -24,6 +33,7 @@ event.
 
    status: open
    created: <YYYY-MM-DD>
+   epic: <epic-id>          # only when the change is a slice of a registered epic
 
    ## Goal
    <the one sentence>
@@ -48,6 +58,11 @@ event.
      from context/foundation/foundation.md>)` — the `[node:<id>]` handles it
      surfaces are the candidates. Skip if the project has no foundation scope;
      empty parent_refs on a first change is correct, not a failure.
+
+   For an epic slice: always pass the surviving nodes of the previously archived
+   sibling slices (their change-summary node at minimum), and include the epic id
+   in the capture facets throughout the change — that facet is what lets a later
+   slice's recall pull the whole epic's settled knowledge.
 
    Returns `{change_node_id, goal_node_id, activated: true}`.
 

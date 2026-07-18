@@ -65,4 +65,6 @@ recall → attempt → verify → (fail: diagnose, retry ≤ N) → capture+jour
   command, that phase does not belong in headless mode — split it out for
   /gw-implement.
 - All /gw-implement rules apply: no trust/flag/tier/archive mutation, honest
-  events only, `context/archive/` is untouchable.
+  events only, `context/archive/` is untouchable — including the phase-parallel
+  execution conditions (disjoint ownership, contracts captured before the
+  consumer starts) when phases fan out to subagents.

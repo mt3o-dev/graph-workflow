@@ -70,6 +70,24 @@ change.md):
 - Route to `/gw-review` — it collects every disputed node this change touched into
   the PR's human gate.
 
+## Phase-parallel execution (orchestrator + subagents)
+
+Phases may run as parallel subagents under one orchestrating session, sharing
+the change's single memory scope — under these conditions, learned the hard way:
+
+- **Disjoint file ownership, declared up front.** Each phase agent gets an
+  explicit owns/must-not-touch list; shared files (package.json, build config,
+  lockfiles) belong to the orchestrator or exactly one agent per round.
+- **Cross-phase contracts are captured before the consumer starts.** If phase B
+  will assume something phase A produces (a selector convention, an API shape,
+  a schema), that contract is a `constraint` artifact (or backlog entry) BEFORE
+  B launches — two agents "agreeing by luck" is a review finding waiting to
+  happen.
+- **Per-phase capture/journal headings**, so interleaved appendices stay
+  attributable; the orchestrator re-verifies the merged state itself before
+  calling the change implemented — each agent's green is necessary, not
+  sufficient.
+
 ## Rules
 
 - The loop is per-phase, not per-change. One giant recall at the start and one

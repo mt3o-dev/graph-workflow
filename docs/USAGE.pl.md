@@ -322,9 +322,13 @@ wywołanie agenta nie może go ustawić.
 ## 6. Przypadki brzegowe
 
 **Serwer pamięci nie działa / niezarejestrowany.** Workflow degraduje się do
-czystego 10x — same pliki. Capture'y są *tracone, nie kolejkowane*: nie
-uruchamiaj faz wiedzochłonnych (research, granice planu), dopóki nie wróci.
-`gw-init` mówi, że powierzchnia jest martwa; uwierz mu.
+plików 10x — ale dyscyplina pamięci kolejkuje zamiast się zatrzymywać: dopisuj
+każdą niedoszłą operację (parametry create_change, capture'y z typem/krawędziami/
+facetami, eventy, kandydatów do promocji) do
+`context/changes/<id>/memory-backlog.md` i odtwórz backlog na powierzchni MCP,
+gdy wróci. Bramki czytają backlog jako zastępczy graf; dokumenty fundamentowe
+służą jako recall'owany zestaw constraintów. Capture zrobiony tylko przeciw
+martwemu serwerowi nigdy się nie wydarzył — backlog czyni go odzyskiwalnym.
 
 **`change.md` bez `memory_goal`.** Ktoś otworzył zmianę ręcznie. Wykonaj kroki
 zakresu z `/gw-new` (`create_change` + zapis id), zanim cokolwiek
