@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities granted to the main window. Kept minimal per tech-stack.md decision 1 (thin Rust shell): only the core defaults plus the two app-specific commands defined in src/lib.rs. Microphone capture itself goes through the webview's standard `navigator.mediaDevices.getUserMedia` (browser API, OS-permission-gated) — no Tauri plugin permission is required for that on desktop; this capability file exists so the seam is documented and so a future mic-related plugin (if one becomes necessary) has an obvious place to be added.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:path:default"
+  ]
+}

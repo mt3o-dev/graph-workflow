@@ -1,0 +1,309 @@
+/**
+ * Interview Copilot design tokens.
+ *
+ * Theme resolution order (later wins):
+ *   1. `:root` defaults (light values)
+ *   2. `prefers-color-scheme: dark` media query
+ *   3. `:root[data-theme="light"]` / `:root[data-theme="dark"]` — explicit
+ *      user choice, stamped by the theme toggle in the app layout. This
+ *      always wins over the media query, in both directions.
+ */
+
+:root {
+	color-scheme: light dark;
+
+	/* ---- Color scale: neutral (backgrounds, text, borders) ---- */
+	--color-neutral-0: #ffffff;
+	--color-neutral-50: #f7f8fa;
+	--color-neutral-100: #eef0f3;
+	--color-neutral-200: #dde1e7;
+	--color-neutral-300: #c3c9d2;
+	--color-neutral-400: #9aa3b2;
+	--color-neutral-500: #6f7889;
+	--color-neutral-600: #545c6c;
+	--color-neutral-700: #3c4250;
+	--color-neutral-800: #262a34;
+	--color-neutral-900: #14161c;
+	--color-neutral-950: #0a0b0f;
+
+	/* ---- Color scale: brand (primary actions, focus) ---- */
+	--color-brand-50: #eef1ff;
+	--color-brand-100: #dde3ff;
+	--color-brand-300: #a6b4ff;
+	--color-brand-500: #5468f0;
+	--color-brand-600: #4353d4;
+	--color-brand-700: #3542ab;
+	--color-brand-900: #1d2461;
+
+	/* ---- Color scale: semantic ---- */
+	--color-success-500: #1f9d63;
+	--color-success-600: #187e4f;
+	--color-success-100: #d9f2e5;
+	--color-warning-500: #c47f0a;
+	--color-warning-600: #9c6408;
+	--color-warning-100: #fbeacb;
+	--color-danger-500: #d64545;
+	--color-danger-600: #b23434;
+	--color-danger-100: #fbdcdc;
+	--color-info-500: #2a7fd6;
+	--color-info-600: #1f66ac;
+	--color-info-100: #dcebfb;
+
+	/* ---- Category palette (MetaTag: category) — distinct hues ---- */
+	--color-cat-frontend: #2a7fd6;
+	--color-cat-frontend-bg: #dcebfb;
+	--color-cat-backend: #1f9d63;
+	--color-cat-backend-bg: #d9f2e5;
+	--color-cat-theory: #7a4fd6;
+	--color-cat-theory-bg: #ece3fb;
+	--color-cat-behavioral: #c47f0a;
+	--color-cat-behavioral-bg: #fbeacb;
+
+	/* ---- Difficulty palette (MetaTag: difficulty) ---- */
+	--color-diff-easy: #1f9d63;
+	--color-diff-easy-bg: #d9f2e5;
+	--color-diff-medium: #c47f0a;
+	--color-diff-medium-bg: #fbeacb;
+	--color-diff-hard: #d64545;
+	--color-diff-hard-bg: #fbdcdc;
+
+	/* ---- Expertise palette (MetaTag: expertise) ---- */
+	--color-exp-junior: #2a7fd6;
+	--color-exp-junior-bg: #dcebfb;
+	--color-exp-mid: #7a4fd6;
+	--color-exp-mid-bg: #ece3fb;
+	--color-exp-senior: #b2306a;
+	--color-exp-senior-bg: #fbdcec;
+
+	/* ---- Semantic aliases: surface / text / border (light theme) ---- */
+	--color-bg: var(--color-neutral-50);
+	--color-bg-raised: var(--color-neutral-0);
+	--color-bg-sunken: var(--color-neutral-100);
+	--color-bg-overlay: rgb(10 11 15 / 45%);
+	--color-text: var(--color-neutral-900);
+	--color-text-muted: var(--color-neutral-600);
+	--color-text-faint: var(--color-neutral-500);
+	--color-text-on-brand: var(--color-neutral-0);
+	--color-border: var(--color-neutral-200);
+	--color-border-strong: var(--color-neutral-300);
+	--color-focus-ring: var(--color-brand-500);
+
+	--color-brand: var(--color-brand-500);
+	--color-brand-hover: var(--color-brand-600);
+	--color-brand-active: var(--color-brand-700);
+	--color-brand-subtle: var(--color-brand-50);
+
+	--color-success: var(--color-success-500);
+	--color-success-subtle: var(--color-success-100);
+	--color-warning: var(--color-warning-500);
+	--color-warning-subtle: var(--color-warning-100);
+	--color-danger: var(--color-danger-500);
+	--color-danger-subtle: var(--color-danger-100);
+	--color-info: var(--color-info-500);
+	--color-info-subtle: var(--color-info-100);
+
+	/* ---- Speaker colors (TranscriptBubble) ---- */
+	--color-speaker-interviewer: var(--color-info-600);
+	--color-speaker-interviewer-bg: var(--color-info-100);
+	--color-speaker-interviewee: var(--color-brand-700);
+	--color-speaker-interviewee-bg: var(--color-brand-100);
+
+	/* ---- Spacing scale (4px base) ---- */
+	--space-0: 0;
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.25rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-10: 2.5rem;
+	--space-12: 3rem;
+	--space-16: 4rem;
+
+	/* ---- Type scale ---- */
+	--font-sans:
+		system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+	--font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+	--text-xs: 0.75rem;
+	--text-sm: 0.8125rem;
+	--text-base: 0.9375rem;
+	--text-md: 1.0625rem;
+	--text-lg: 1.25rem;
+	--text-xl: 1.5rem;
+	--text-2xl: 1.875rem;
+	--leading-tight: 1.25;
+	--leading-normal: 1.5;
+	--leading-relaxed: 1.7;
+	--weight-normal: 400;
+	--weight-medium: 500;
+	--weight-semibold: 600;
+	--weight-bold: 700;
+
+	/* ---- Radii ---- */
+	--radius-sm: 0.25rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.875rem;
+	--radius-full: 999px;
+
+	/* ---- Shadows (light theme: soft, low-contrast) ---- */
+	--shadow-sm: 0 1px 2px rgb(10 11 15 / 6%);
+	--shadow-md: 0 4px 10px rgb(10 11 15 / 8%), 0 1px 2px rgb(10 11 15 / 6%);
+	--shadow-lg: 0 12px 28px rgb(10 11 15 / 12%), 0 2px 6px rgb(10 11 15 / 8%);
+
+	/* ---- Motion ---- */
+	--duration-fast: 100ms;
+	--duration-base: 180ms;
+	--duration-slow: 320ms;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+	/* ---- Focus ring ---- */
+	--focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-focus-ring) 40%, transparent);
+}
+
+/* ---- Dark theme via OS preference ---- */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: var(--color-neutral-950);
+		--color-bg-raised: var(--color-neutral-900);
+		--color-bg-sunken: var(--color-neutral-800);
+		--color-bg-overlay: rgb(0 0 0 / 60%);
+		--color-text: var(--color-neutral-50);
+		--color-text-muted: var(--color-neutral-300);
+		--color-text-faint: var(--color-neutral-400);
+		--color-text-on-brand: var(--color-neutral-0);
+		--color-border: var(--color-neutral-700);
+		--color-border-strong: var(--color-neutral-600);
+
+		--color-brand: var(--color-brand-500);
+		--color-brand-hover: var(--color-brand-300);
+		--color-brand-active: var(--color-brand-100);
+		--color-brand-subtle: var(--color-neutral-800);
+
+		--color-success-subtle: color-mix(in srgb, var(--color-success-500) 22%, var(--color-neutral-900));
+		--color-warning-subtle: color-mix(in srgb, var(--color-warning-500) 22%, var(--color-neutral-900));
+		--color-danger-subtle: color-mix(in srgb, var(--color-danger-500) 22%, var(--color-neutral-900));
+		--color-info-subtle: color-mix(in srgb, var(--color-info-500) 22%, var(--color-neutral-900));
+
+		--color-cat-frontend-bg: color-mix(in srgb, var(--color-cat-frontend) 24%, var(--color-neutral-900));
+		--color-cat-backend-bg: color-mix(in srgb, var(--color-cat-backend) 24%, var(--color-neutral-900));
+		--color-cat-theory-bg: color-mix(in srgb, var(--color-cat-theory) 24%, var(--color-neutral-900));
+		--color-cat-behavioral-bg: color-mix(in srgb, var(--color-cat-behavioral) 24%, var(--color-neutral-900));
+		--color-diff-easy-bg: color-mix(in srgb, var(--color-diff-easy) 24%, var(--color-neutral-900));
+		--color-diff-medium-bg: color-mix(in srgb, var(--color-diff-medium) 24%, var(--color-neutral-900));
+		--color-diff-hard-bg: color-mix(in srgb, var(--color-diff-hard) 24%, var(--color-neutral-900));
+		--color-exp-junior-bg: color-mix(in srgb, var(--color-exp-junior) 24%, var(--color-neutral-900));
+		--color-exp-mid-bg: color-mix(in srgb, var(--color-exp-mid) 24%, var(--color-neutral-900));
+		--color-exp-senior-bg: color-mix(in srgb, var(--color-exp-senior) 24%, var(--color-neutral-900));
+		--color-speaker-interviewer-bg: color-mix(in srgb, var(--color-speaker-interviewer) 24%, var(--color-neutral-900));
+		--color-speaker-interviewee-bg: color-mix(in srgb, var(--color-speaker-interviewee) 24%, var(--color-neutral-900));
+
+		--shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+		--shadow-md: 0 4px 10px rgb(0 0 0 / 36%), 0 1px 2px rgb(0 0 0 / 30%);
+		--shadow-lg: 0 12px 28px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 32%);
+	}
+}
+
+/* ---- Explicit override: always wins over the media query, both ways ---- */
+:root[data-theme='light'] {
+	--color-bg: var(--color-neutral-50);
+	--color-bg-raised: var(--color-neutral-0);
+	--color-bg-sunken: var(--color-neutral-100);
+	--color-bg-overlay: rgb(10 11 15 / 45%);
+	--color-text: var(--color-neutral-900);
+	--color-text-muted: var(--color-neutral-600);
+	--color-text-faint: var(--color-neutral-500);
+	--color-border: var(--color-neutral-200);
+	--color-border-strong: var(--color-neutral-300);
+	--color-brand-hover: var(--color-brand-600);
+	--color-brand-active: var(--color-brand-700);
+	--color-brand-subtle: var(--color-brand-50);
+	--color-success-subtle: var(--color-success-100);
+	--color-warning-subtle: var(--color-warning-100);
+	--color-danger-subtle: var(--color-danger-100);
+	--color-info-subtle: var(--color-info-100);
+	--color-cat-frontend-bg: #dcebfb;
+	--color-cat-backend-bg: #d9f2e5;
+	--color-cat-theory-bg: #ece3fb;
+	--color-cat-behavioral-bg: #fbeacb;
+	--color-diff-easy-bg: #d9f2e5;
+	--color-diff-medium-bg: #fbeacb;
+	--color-diff-hard-bg: #fbdcdc;
+	--color-exp-junior-bg: #dcebfb;
+	--color-exp-mid-bg: #ece3fb;
+	--color-exp-senior-bg: #fbdcec;
+	--color-speaker-interviewer-bg: var(--color-info-100);
+	--color-speaker-interviewee-bg: var(--color-brand-100);
+	--shadow-sm: 0 1px 2px rgb(10 11 15 / 6%);
+	--shadow-md: 0 4px 10px rgb(10 11 15 / 8%), 0 1px 2px rgb(10 11 15 / 6%);
+	--shadow-lg: 0 12px 28px rgb(10 11 15 / 12%), 0 2px 6px rgb(10 11 15 / 8%);
+}
+
+:root[data-theme='dark'] {
+	--color-bg: var(--color-neutral-950);
+	--color-bg-raised: var(--color-neutral-900);
+	--color-bg-sunken: var(--color-neutral-800);
+	--color-bg-overlay: rgb(0 0 0 / 60%);
+	--color-text: var(--color-neutral-50);
+	--color-text-muted: var(--color-neutral-300);
+	--color-text-faint: var(--color-neutral-400);
+	--color-border: var(--color-neutral-700);
+	--color-border-strong: var(--color-neutral-600);
+	--color-brand-hover: var(--color-brand-300);
+	--color-brand-active: var(--color-brand-100);
+	--color-brand-subtle: var(--color-neutral-800);
+	--color-success-subtle: color-mix(in srgb, var(--color-success-500) 22%, var(--color-neutral-900));
+	--color-warning-subtle: color-mix(in srgb, var(--color-warning-500) 22%, var(--color-neutral-900));
+	--color-danger-subtle: color-mix(in srgb, var(--color-danger-500) 22%, var(--color-neutral-900));
+	--color-info-subtle: color-mix(in srgb, var(--color-info-500) 22%, var(--color-neutral-900));
+	--color-cat-frontend-bg: color-mix(in srgb, var(--color-cat-frontend) 24%, var(--color-neutral-900));
+	--color-cat-backend-bg: color-mix(in srgb, var(--color-cat-backend) 24%, var(--color-neutral-900));
+	--color-cat-theory-bg: color-mix(in srgb, var(--color-cat-theory) 24%, var(--color-neutral-900));
+	--color-cat-behavioral-bg: color-mix(in srgb, var(--color-cat-behavioral) 24%, var(--color-neutral-900));
+	--color-diff-easy-bg: color-mix(in srgb, var(--color-diff-easy) 24%, var(--color-neutral-900));
+	--color-diff-medium-bg: color-mix(in srgb, var(--color-diff-medium) 24%, var(--color-neutral-900));
+	--color-diff-hard-bg: color-mix(in srgb, var(--color-diff-hard) 24%, var(--color-neutral-900));
+	--color-exp-junior-bg: color-mix(in srgb, var(--color-exp-junior) 24%, var(--color-neutral-900));
+	--color-exp-mid-bg: color-mix(in srgb, var(--color-exp-mid) 24%, var(--color-neutral-900));
+	--color-exp-senior-bg: color-mix(in srgb, var(--color-exp-senior) 24%, var(--color-neutral-900));
+	--color-speaker-interviewer-bg: color-mix(in srgb, var(--color-speaker-interviewer) 24%, var(--color-neutral-900));
+	--color-speaker-interviewee-bg: color-mix(in srgb, var(--color-speaker-interviewee) 24%, var(--color-neutral-900));
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+	--shadow-md: 0 4px 10px rgb(0 0 0 / 36%), 0 1px 2px rgb(0 0 0 / 30%);
+	--shadow-lg: 0 12px 28px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 32%);
+}
+
+/* ---- Base reset + typography, scoped to the app root ---- */
+body {
+	margin: 0;
+	background: var(--color-bg);
+	color: var(--color-text);
+	font-family: var(--font-sans);
+	font-size: var(--text-base);
+	line-height: var(--leading-normal);
+	-webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Visible focus ring everywhere; suppressed only for mouse users via :focus-visible. */
+:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring);
+	border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

@@ -30,3 +30,9 @@ vite.config.ts.timestamp-*
 
 # local user config (never committed; layered config precedence, dec:9)
 /config/local.json
+
+# Tauri: cargo build output (also covered by the generic `target` rule
+# above) and CLI-generated schemas/permissions used only by IDE/build
+# tooling, not authored by hand.
+/src-tauri/target
+/src-tauri/gen

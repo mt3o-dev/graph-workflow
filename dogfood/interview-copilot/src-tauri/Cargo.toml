@@ -1,0 +1,29 @@
+[package]
+name = "interview-copilot"
+version = "0.0.1"
+description = "Interview Copilot — Tauri shell (thin: window + narrow commands only; domain logic lives in TypeScript, see /src/lib)"
+authors = ["mt3o"]
+edition = "2021"
+# rust-version intentionally left unset here: pinned by whichever toolchain
+# performs the deferred `cargo check` (see /docs/deferred-verification.md).
+
+[lib]
+# Tauri mobile targets need a cdylib; keep both so the desktop bin and any
+# future mobile shell can share src/lib.rs.
+name = "interview_copilot_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Pinned to the 2.x minor line per tech-stack.md decision 1. Do not bump the
+# minor version without re-running the deferred verification (cargo check +
+# tauri build) on a machine with the Rust toolchain.
+tauri = { version = "2.2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "interview-copilot"
+path = "src/main.rs"
