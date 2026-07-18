@@ -1,6 +1,6 @@
 # copilot-mvp
 
-status: open
+status: implemented
 created: 2026-07-18
 
 ## Goal
