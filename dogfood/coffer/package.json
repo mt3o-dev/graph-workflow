@@ -1,0 +1,33 @@
+{
+  "name": "coffer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "unpdf": "1.6.2"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "5.5.7",
+    "@sveltejs/kit": "2.70.1",
+    "@sveltejs/vite-plugin-svelte": "7.2.0",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "26.1.1",
+    "svelte": "5.56.6",
+    "svelte-check": "4.7.3",
+    "typescript": "6.0.3",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
+  }
+}
+

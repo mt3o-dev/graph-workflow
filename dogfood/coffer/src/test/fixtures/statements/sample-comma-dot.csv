@@ -1,0 +1,5 @@
+Date,Description,Counterparty,Amount,Currency
+2026-07-01,Grocery shopping,Supermart,-45.67,USD
+2026-07-02,"Refund, partial",Supermart,12.00,USD
+2026-07-03,Zero fee,Bank,0.00,USD
+2026-07-04,Salary,Employer Inc,2500.00,USD

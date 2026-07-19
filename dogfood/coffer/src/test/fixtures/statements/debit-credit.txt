@@ -1,0 +1,9 @@
+BANK STATEMENT EXPORT
+IBAN: PL61 1090 1014 0000 0712 1981 2874
+
+Date        Counterparty              Description             Debit       Credit
+02.06.2026  GROCERY STORE WARSAW      Card payment            54.32       -
+05.06.2026  ACME CORP                 Salary                  -           3500.00
+10.06.2026  ELECTRIC UTILITY CO       Utility bill            120.00      -
+
+Balance carried forward: 4580.00

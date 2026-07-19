@@ -1,0 +1,8 @@
+{
+	"db": {
+		"path": ":memory:"
+	},
+	"assist": {
+		"enabled": false
+	}
+}

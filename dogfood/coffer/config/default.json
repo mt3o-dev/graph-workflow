@@ -1,0 +1,15 @@
+{
+	"db": {
+		"path": "./data/coffer.db"
+	},
+	"locale": {
+		"default": "en"
+	},
+	"import": {
+		"enabledParsers": ["csv", "ofx", "generic-tabular-pdf"]
+	},
+	"assist": {
+		"adapter": "heuristic",
+		"enabled": false
+	}
+}
