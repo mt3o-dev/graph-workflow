@@ -77,7 +77,20 @@ the change's single memory scope — under these conditions, learned the hard wa
 
 - **Disjoint file ownership, declared up front.** Each phase agent gets an
   explicit owns/must-not-touch list; shared files (package.json, build config,
-  lockfiles) belong to the orchestrator or exactly one agent per round.
+  lockfiles, workspace/monorepo manifests) are **orchestrator-owned** — a
+  parallel phase that needs a dependency requests it rather than editing the
+  manifest, because two agents editing package.json concurrently produce
+  duplicate keys and lockfile churn (observed in dogfood #2).
+- **Shared contracts are authored before the consumers launch.** When several
+  parallel phases implement against one interface (a port, a schema), the
+  orchestrator writes that contract file first and marks it read-only for the
+  implementers — pure implementers never race a shared file (dogfood #2 ran
+  three concurrent adapter agents against three pre-authored ports with zero
+  collisions).
+- **No scratch artifacts in `src/`.** Agents cannot `rm` (permission policy), so
+  a proof/probe file written into the tree lives forever and gets re-verified
+  every phase. Throwaway artifacts go under a gitignored scratch dir
+  (`.gw-scratch/`), never into source.
 - **Cross-phase contracts are captured before the consumer starts.** If phase B
   will assume something phase A produces (a selector convention, an API shape,
   a schema), that contract is a `constraint` artifact (or backlog entry) BEFORE

@@ -1,4 +1,17 @@
-# Dogfooding report — building Interview Copilot with the graph-workflow
+# Dogfooding report — building real apps with the graph-workflow
+
+Two greenfield builds exercised the workflow end-to-end:
+
+- **Dogfood #1 — Interview Copilot** (`dogfood/interview-copilot/`): a Tauri 2 +
+  Svelte 5 realtime interview-RAG app, built as a single (over-large) change.
+  Section below.
+- **Dogfood #2 — Coffer** (`dogfood/coffer/`): a self-hosted, BG-themed
+  bank-history analytics app, built at **epic scale** to exercise the epic layer
+  that dogfood #1 motivated. See "Dogfood #2" at the end.
+
+---
+
+# Dogfood #1 — Interview Copilot
 
 2026-07-18. The workflow was exercised end-to-end on a real greenfield build:
 **Interview Copilot** (`dogfood/interview-copilot/`), a Tauri 2 + Svelte 5
@@ -90,3 +103,76 @@ The archived change (`context/archive/copilot-mvp/`) carries an unreplayed
 `memory-backlog.md`. When agentic-memory is registered for this repo: run
 /gw-init + /gw-foundation, replay the backlog (create_change, captures,
 events, promotions), then `memory_lifecycle.py deactivate copilot-mvp --sweep`.
+
+---
+
+# Dogfood #2 — Coffer (epic-scale)
+
+2026-07-18. `dogfood/coffer/` — a self-hosted, Baldur's-Gate-themed bank-history
+analytics app (import PDF/CSV/OFX, many-group classification, income/outcome
+diagrams, multilingual, Docker-deployable). Chosen to stress the parts dogfood
+#1 could not: the **epic layer** (#19) and **phase-parallel execution** (#20),
+both fixed after #1. Opus planned and drove with minimal oversight; Sonnet
+agents implemented.
+
+## How it ran
+
+Foundation (PRD + 14-decision tech-stack) → `roadmap.md` as the **epic
+registry**, slicing `coffer-mvp` into 5 vertical slices. Opus opened slice 1
+(`coffer-core-import`, `epic: coffer-mvp`), wrote its 7-phase plan and thin
+stubs for slices 2–5, and recommended driving slice 1 alone to green. The
+plan-review gate approved slice 1 clean (no findings). Implementation ran
+phase-parallel: P1 solo (scaffold + boundary-lint), **the orchestrator authored
+the three shared port files as fixed contracts** (StorePort, PdfTextPort,
+StatementParserPort), then P2/P3 and P4/P5/P6 ran as parallel Sonnet agents on
+disjoint paths, P7 integrated. The review gate re-ran all four checks itself and
+approved.
+
+**Result:** slice 1 archived, green, reviewed — pure-TS hexagonal import
+subsystem (bigint Money, stable content-hash dedup, layered config, sqlite store
++ in-memory fake sharing one contract, unpdf text extraction separated from
+CSV/OFX/tabular parsers, pipeline + composition root). 125 tests; the headline
+idempotency e2e re-imports 5 real fixtures through real sqlite and asserts zero
+new rows. Slices 2–5 left honestly `pending` with plans written — a partial
+epic the registry records.
+
+## What the epic layer + phase-parallel fixes bought
+
+- **The epic layer worked as designed.** A feature-rich product that would have
+  been another over-large single change (dogfood #1's mistake) decomposed into
+  five reviewable slices; slice 1 stayed one plan / one review sitting; the
+  registry carries the parent_refs ledger handing slice 1's surviving nodes to
+  slice 2. The #19 fix earned its keep on first use.
+- **Authoring shared contracts before consumers (the #20 rule) removed the
+  collision class.** In #1, two parallel agents raced a data-testid contract and
+  "agreed by luck." In #2, the orchestrator wrote the port files first, so
+  P4/P5/P6 were pure implementers — zero contract races across three concurrent
+  agents.
+
+## New signals this run surfaced
+
+1. **Shared `package.json` is still a live collision point** (new issue #21).
+   The #20 rule fences source files by ownership, but P4 and P5 both added deps
+   concurrently and produced a **duplicate `dependencies` key** in package.json;
+   P4 caught and merged it. Manifest/lockfile edits need the same single-owner
+   treatment as source — the orchestrator (or a serialized dep step) should own
+   them. Fixed in gw-implement's phase-parallel note.
+2. **Inert-leftover litter compounds under phase parallelism** (new issue #22).
+   The `_probe.ts` boundary-lint-proof file (rm policy-denied in #1's pattern)
+   survived five phases, each *independently re-verifying* it — wasted work the
+   review gate flagged. When agents can't delete, a phase's proof artifacts
+   should be written under a gitignored scratch path, not into `src/`.
+
+## Cross-cutting confirmation
+
+Degraded mode (no MCP) again held: every phase queued its captures in
+`memory-backlog.md`, both gates consumed it as the stand-in graph, and the
+archive deferred the sweep with a replay note — now the documented norm, not an
+improvisation. Native better-sqlite3 built fine here (arm64), so the store
+contract ran for real rather than only against the fake.
+
+## Replay debt
+
+`context/archive/coffer-core-import/memory-backlog.md` is unreplayed. On MCP
+registration: /gw-init + /gw-foundation, replay the backlog, promote slice 1's
+surviving nodes, wire them as slice 2's parent_refs, then deactivate --sweep.

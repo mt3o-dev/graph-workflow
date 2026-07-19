@@ -1,6 +1,7 @@
 # coffer-core-import
 
-status: open
+status: archived
+archived: 2026-07-18
 created: 2026-07-18
 epic: coffer-mvp
 
@@ -17,3 +18,11 @@ in memory-backlog.md for replay once the server exists. The foundation docs
 (prd.md, tech-stack.md, roadmap.md) stand in as the recalled constraint set:
 tech-stack decisions 1,2,3,4,5,11 are the settled constraints this slice
 implements.
+
+## Archive note (degraded mode, epic slice)
+Slice 1 of epic coffer-mvp. Memory deactivate+sweep DEFERRED (no store). On
+replay: create_change + memory-backlog.md captures/events/promotions, then
+`memory_lifecycle.py deactivate coffer-core-import --sweep`. Surviving nodes
+(Transaction/Money model, content-hash+normalize constraint, StorePort contract
++ single-owner dedup, ConfigPort/AppConfig shape, change-summary) become
+parent_refs for slice 2 (coffer-classification) — recorded in roadmap.md.

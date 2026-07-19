@@ -22,7 +22,9 @@ lifecycle files, and a live memory store for everything else.
 
    Add a `context/README.md` stating the split: *files = lifecycle artifacts,
    graph = knowledge*. Do not create per-change notes/, research/, decisions/
-   subfolders — that is what the graph replaces.
+   subfolders — that is what the graph replaces. Add `.gw-scratch/` to
+   `.gitignore` — the throwaway path for agent proof/probe artifacts (agents
+   cannot `rm`, so scratch never belongs in `src/`).
 
 2. **Verify the memory server.** Check that the `agentic-memory` MCP server is
    registered and its tools respond (any cheap read, e.g. `stale_nodes()`).

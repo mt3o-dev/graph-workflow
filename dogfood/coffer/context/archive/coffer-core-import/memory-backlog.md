@@ -652,3 +652,101 @@ cold, with edges to the tech-stack decisions they implement)
   first-import inserted counts [3,3,4,4,4] matching duplicate counts on
   re-import, zero net row-count drift. build: vite SSR + client build
   succeeded, adapter-node output generated.
+
+## capture_artifact (review)
+
+- type: issue (non-blocking, cleanup) — "`src/lib/core/_probe.ts` (inert
+  `export {};`, a Phase-1 boundary-lint negative-test leftover) is STILL
+  present at review time across Phases 2–7 without being deleted — five
+  separate phases each independently re-confirmed it was inert rather than
+  removing it. Independently re-verified at review: file is exactly
+  `export {};` plus a comment, zero imports, does not affect boundary-lint or
+  any test. Generalizable lesson: when an agent environment blocks `rm`
+  without interactive confirmation, a leftover artifact should be flagged
+  ONCE with an actionable owner (the review gate, or a human, deleting it) —
+  not re-verified-as-harmless by every subsequent phase, which is wasted
+  tokens repeating the same check five times. `/gw-implement` phase
+  hand-offs should carry forward 'known harmless leftover, already verified'
+  instead of re-deriving it."
+  facets: [coffer-mvp, tooling, cleanup, process]
+  edges: DEPENDS_ON Phase 1/2 backlog entries (same root cause), review's own
+  independent re-check (grep + Read confirmed inert).
+
+- type: constraint — "Generalizable across future slices/epics: `StorePort`
+  (or any port with dedup responsibility) should own idempotency ENTIRELY —
+  the pure-core pipeline/orchestrator must have zero dedup logic of its own
+  (no `hasHashes`/within-batch pre-filter in the orchestrator). Phase 7
+  correctly deviated from plan.md's prose ('dedup within-batch + StorePort.
+  hasHashes') to a strictly narrower, single-owner design (`store.save()`
+  does ALL dedup via a UNIQUE constraint / Map key, orchestrator only
+  shapes+delegates) — verified independently at review by reading
+  `import-pipeline.ts` (zero hash/dedup code) and `sqlite-store.adapter.ts`
+  (`INSERT OR IGNORE` + `info.changes` counting). This is a better pattern
+  than the plan specified and should be the default assumption in future
+  StorePort-shaped designs: single-owner idempotency, not split across two
+  layers that could drift out of sync."
+  facets: [coffer-mvp, import, dedup, architecture]
+  edges: DEPENDS_ON [dec:3], [dec:5], Phase 4 + Phase 7 backlog entries
+  (StorePort contract, orchestrator narrowing).
+
+- type: decision — "Plan.md's Phase 3/6/7 file-list prose went stale
+  relative to actual implementation (config.port.ts vs config-port.ts,
+  csv.parser.ts vs csv-parser.ts, import-pipeline.ts+no-format-detect.ts vs
+  pipeline.ts+format-detect.ts) in three separate phases, each phase
+  correctly favored the more-specific `/gw-implement` task-prompt naming
+  over the plan's prose and recorded the deviation in the backlog for the
+  next phase. Generalizable lesson for `/gw-plan`/`/gw-implement`: when a
+  plan's phase-list filenames and the phase task-prompt disagree, either the
+  plan should be the single source of truth (task prompts generated FROM it,
+  not independently worded) or plan.md should be patched in-place as each
+  phase lands, so a cold read of plan.md by a later phase or reviewer isn't
+  silently wrong on ~40% of its file paths (3 of 7 phases here)."
+  facets: [coffer-mvp, process, planning]
+  edges: DEPENDS_ON plan.md Phase 3/6/7 vs backlog capture_artifact
+  divergence entries.
+
+## proposed change-summary
+
+- type: concept (tier: mid-term) — "coffer-core-import (slice 1 of
+  coffer-mvp) delivered a hexagonal import pipeline: PDF(unpdf
+  text-extraction)/CSV/OFX → `StatementParserPort` adapters → pure-core
+  normalize+content-hash → `StorePort` (SQLite via better-sqlite3, migration-
+  runner-owned schema, UNIQUE-constraint dedup; in-memory fake shares the
+  same contract) → composition root (`src/lib/server/container.ts`).
+  Outcome: `pnpm typecheck && pnpm test && pnpm build` all green (426
+  typecheck files/0 errors, 125 tests passed/1 intentionally-skipped
+  no-fixture-PDF test, build produces adapter-node output); a real e2e
+  (`src/test/e2e/import-idempotency.test.ts`) proves idempotent import
+  against a REAL sqlite temp-file store for all 5 committed fixtures
+  (PDF-text×2, CSV×2, OFX×1): first import inserts N rows, re-import of the
+  identical payload inserts 0 / dedups N, row count unchanged. Scope was
+  held clean — zero classification/analytics/UI/i18n/Docker leakage,
+  confirmed by boundary-lint (core/ports import nothing outside
+  core+ports+relative) and a repo-wide grep for those subsystems' markers.
+  Why durable: this is the settled shape (ports, hexagonal boundary,
+  dedup-owned-by-store, composition-root entrypoint signature
+  `importStatement`/`importPdf`) that slice 2 (coffer-classification) builds
+  directly on top of — its rule engine consumes `StorePort.all()`-shaped
+  `Transaction[]` and must not reopen these decisions."
+  facets: [coffer-mvp, import, architecture, persistence]
+  edges: DEPENDS_ON [dec:2] hexagonal core, [dec:3] StorePort/SQLite,
+  [dec:4] PdfTextPort/StatementParserPort separation, [dec:5] content-hash
+  dedup, [dec:11] config layers; DEPENDS_ON all seven phase capture_artifact
+  entries above (this is their distillation).
+
+- **parent_refs for slice 2 (coffer-classification)** — the surviving nodes
+  that should seed slice 2's pre-create discovery recall once the memory
+  server exists: the change-summary concept above, plus these
+  capture_artifact entries verbatim: (a) the `Transaction`/`Money` domain
+  decision (Phase 2, bigint minor units + derived direction) — slice 2's
+  rule engine matches against these fields; (b) the content-hash/
+  normalize-for-hash constraint (Phase 2) — classification must not
+  re-derive or duplicate this; (c) the StorePort contract + single-owner
+  dedup decision (Phase 4/7, this review's dedup-architecture finding) —
+  slice 2 adds queries, must not add a second dedup path; (d) the
+  ConfigPort/`AppConfig` shape decision (Phase 3) — slice 2 extends the same
+  `config.assist.*` fields already stubbed in the type; (e) this review's
+  three generalizable findings (review capture_artifact block above) — the
+  `_probe.ts` cleanup-ownership lesson, the single-owner-idempotency
+  pattern, and the plan/task-prompt filename-drift lesson all apply again to
+  slice 2's own plan/implement/review cycle.
