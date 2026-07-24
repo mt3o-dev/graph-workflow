@@ -44,19 +44,28 @@ Docker daemon, no GPU, no network keys on any slice's critical path. Docker
 
 **parent_refs ledger** (filled as slices archive):
 - coffer-core-import (archived 2026-07-18) → surviving nodes for slice 2's
-  parent_refs: Transaction/Money model, content-hash + normalize-for-hash
-  constraint, StorePort contract + single-owner dedup decision, ConfigPort/
-  AppConfig shape, and the coffer-core-import change-summary. (Node ids assigned
-  on backlog replay; until then, named handles from
-  context/archive/coffer-core-import/memory-backlog.md.)
+  parent_refs, replayed into `context/memory-graph.db` (see
+  `context/replay-log.md` for the full replay record):
+  - change-summary (concept, mid-term): `d0e830bf-b58d-4812-9ad5-bb6b9262dd74`
+  - Transaction/Money domain model (Phase 2 decision): `235e0742-ca6a-4394-b4ed-a36ea1ab33c2`
+  - content-hash + normalize-for-hash constraint (Phase 2): `303587fe-6097-4307-b6d4-d301593eb4e5`
+  - StorePort contract + single-owner dedup decision (review finding): `1b48605f-59a0-4032-b122-8ce591976e1a`
+  - ConfigPort/AppConfig shape (Phase 3 decision): `2f81ab92-4bd9-4e85-826c-9ea6fd279c0f`
+  - also applicable: rm-blocked flag-once lesson `1298a51f-2c98-4868-b373-a8f9d7f82890`,
+    plan/task-prompt filename-drift lesson `8a129961-3b1c-4f40-b58a-50fb11573d32`
 
-### Degraded-mode note (memory server down this epic)
+### Memory status (updated 2026-07-22)
 
-agentic-memory MCP is UNAVAILABLE. The foundation docs (prd.md, tech-stack.md,
-this file) ARE the recalled constraint set: every numbered decision in
-tech-stack.md is a settled constraint each plan must respect or explicitly
-contest. Would-be graph operations (create_change, capture_artifact,
-append_events) are queued in each change's `memory-backlog.md` for replay.
+The degraded-mode phase is OVER: the store is live at
+`context/memory-graph.db`, the slice-1 backlog and foundation distillation are
+REPLAYED (see `context/replay-log.md`), and `.mcp.json` at the repo root
+registers the `agentic-memory` server for future sessions. Slices 2+ run the
+real memory loop: recall_context before deciding, capture at boundaries,
+append_events batches. Foundation `memory_goal` lives in
+`context/foundation/foundation.md`. Pending human action: promotion of the
+foundation nodes (lifetime candidates) and slice-1 survivors in the GUI
+(`uv run agentic-memory-gui`); until then both liveness roots stay active and
+NO deactivate/sweep runs for coffer-core-import.
 
 ## Scope note
 

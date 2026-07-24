@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agentic-memory": {
+      "command": "uv",
+      "args": ["run", "--directory", "/mnt/vol1/mt3o/Documents/agentic-memory-system", "agentic-memory-mcp"],
+      "env": {
+        "MEMORY_DB_PATH": "/mnt/vol1/mt3o/Documents/graph-workflow/dogfood/coffer/context/memory-graph.db"
+      }
+    }
+  }
+}

@@ -10,3 +10,6 @@ package/
 !.env.example
 vite.config.ts.timestamp-*
 vite.config.js.timestamp-*
+
+# agentic-memory store (sync via dump/restore)
+context/memory-graph.db*
