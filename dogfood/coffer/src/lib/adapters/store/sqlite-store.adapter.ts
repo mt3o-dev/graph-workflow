@@ -47,6 +47,14 @@ export class SqliteStoreAdapter implements StorePort {
 	/** `dbPath` defaults to `:memory:`; the real container passes a file path from ConfigPort. */
 	constructor(dbPath: string = ':memory:') {
 		this.db = new DatabaseCtor(dbPath);
+		// R2 (coffer-classification plan-review gate): better-sqlite3 leaves FK
+		// enforcement OFF by default, so migration 002's `assignments` FKs to
+		// `transactions(content_hash)` would be decorative without this; a busy
+		// timeout is also required now that a second connection
+		// (SqliteClassificationStoreAdapter) opens the same db file, so
+		// near-simultaneous writes wait instead of throwing SQLITE_BUSY.
+		this.db.pragma('foreign_keys = ON');
+		this.db.pragma('busy_timeout = 5000');
 	}
 
 	async migrate(): Promise<void> {
