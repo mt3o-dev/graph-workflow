@@ -41,12 +41,23 @@ export interface ByGroupOptions {
 }
 
 /**
+ * Synthetic series id for transactions with zero group assignments. Being
+ * unclassified is a NORMAL state (the review queue is exactly that set), so
+ * partition reconciliation must account for it explicitly rather than let the
+ * series silently stop summing to the grand total.
+ */
+export const UNCLASSIFIED_GROUP_ID = '__unclassified__';
+
+/**
  * Assemble by-group SeriesSets (one per currency): each `Series` is a
  * single-point-per-currency-per-group total, labeled by group id, `mode`,
  * and `variant`. `grandTotalMinor` is the sum of every transaction's amount
- * for that currency (independent of mode/variant), so a `partition`
- * `SeriesSet`'s series sum EXACTLY to `grandTotalMinor`, while an `overlap`
- * one may exceed it (expected, per the mode label on each series).
+ * for that currency (independent of mode/variant). Transactions with zero
+ * assignments appear under the synthetic {@link UNCLASSIFIED_GROUP_ID} series
+ * in BOTH modes — so a `partition` `SeriesSet`'s series sum EXACTLY to
+ * `grandTotalMinor` even when unclassified transactions exist, while an
+ * `overlap` one may exceed it (expected, per the mode label on each series).
+ * [review rework: resolves the reconciliation gap flagged as node bdfeb7e7.]
  */
 export function byGroupSeriesSets(
 	txns: readonly Transaction[],
@@ -66,6 +77,19 @@ export function byGroupSeriesSets(
 		);
 	}
 
+	// Unclassified residue per currency: attribute() yields zero rows for a tx
+	// with no assignments, so sum those transactions directly.
+	const assignedHashes = new Set(assignments.map((a) => a.txContentHash));
+	const unclassifiedByCurrency = new Map<string, bigint>();
+	for (const tx of txns) {
+		if (!assignedHashes.has(tx.contentHash)) {
+			unclassifiedByCurrency.set(
+				tx.amount.currency,
+				(unclassifiedByCurrency.get(tx.amount.currency) ?? 0n) + tx.amount.minor
+			);
+		}
+	}
+
 	const currencies = new Set<string>([...totals.map((t) => t.currency), ...grandTotalByCurrency.keys()]);
 	const groupNameById = new Map(groups.map((g) => [g.id, g.name] as const));
 
@@ -80,6 +104,16 @@ export function byGroupSeriesSets(
 				currency: t.currency,
 				points: [{ bucket: 'total', value: t.amountMinor }]
 			}));
+		const unclassified = unclassifiedByCurrency.get(currency);
+		if (unclassified !== undefined) {
+			series.push({
+				id: UNCLASSIFIED_GROUP_ID,
+				label: 'Unclassified',
+				mode: opts.mode,
+				currency,
+				points: [{ bucket: 'total', value: unclassified }]
+			});
+		}
 		result.push({ series, grandTotalMinor: grandTotalByCurrency.get(currency) ?? 0n, currency });
 	}
 	return result;

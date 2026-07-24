@@ -38,11 +38,16 @@ Docker daemon, no GPU, no network keys on any slice's critical path. Docker
 |---|---|---|---|---|
 | 1 | `coffer-core-import` | Given fixture statement text (extracted-PDF text + tiny CSV/OFX), the import pipeline parses → normalizes → content-hash-dedups → persists `Transaction` rows in a real SQLite file with an `import_batch` row; re-importing the same fixture adds zero rows. Proven by vitest through the composition root; no UI. | 1,2,3,4,5,11 | **archived 2026-07-18** ✓ green, reviewed |
 | 2 | `coffer-classification` | Given stored transactions + user-defined groups (nestable tree + cross-cutting tags), the ordered additive rule engine assigns each tx the union of matched groups (many-to-many), routes unmatched to a review queue, and turns a manual correction into a reusable rule. AssistPort present with a local-heuristic adapter; LLM adapter stubbed + off. Proven by vitest. | 2,6,7,11 | **archived 2026-07-24** ✓ green, reviewed |
-| 3 | `coffer-analytics` | Given classified transactions, core analytics produces income/outcome-over-time and by-group series, each series tagged **overlap** vs **partition** mode with split/primary/even attribution; totals reconcile per mode (partition sums to grand total, overlap may exceed). Prepared chart-series shapes returned, no rendering. Proven by vitest. | 2,8,9 | pending (plan-stubbed) |
+| 3 | `coffer-analytics` | Given classified transactions, core analytics produces income/outcome-over-time and by-group series, each series tagged **overlap** vs **partition** mode with split/primary/even attribution; totals reconcile per mode (partition sums to grand total, overlap may exceed). Prepared chart-series shapes returned, no rendering. Proven by vitest. | 2,8,9 | **archived 2026-07-24** ✓ green, reviewed+reworked |
 | 4 | `coffer-ui-i18n` | BG/Forgotten-Realms design system + four screens (dashboard, import, review, settings) consuming slices 1–3 via a server composition root, layerchart income/outcome + group charts, paraglide (or typed-catalog) i18n en+pl with Intl number/currency/date formatting, no hardcoded UI strings (lint-guarded). Proven by vitest + @testing-library/svelte. | 1,9,10,12,13 | pending (plan-stubbed) |
 | 5 | `coffer-packaging` | adapter-node server build, `Dockerfile` (multi-stage) + `docker-compose.yml` with a named SQLite volume + `COFFER_` env block, Playwright e2e scaffold, `docs/deferred-verification.md`, `docs/architecture.md` with mermaid. `pnpm build` green here; `docker build` + e2e deferred/documented. | 1,13,14 | pending (plan-stubbed) |
 
 **parent_refs ledger** (filled as slices archive):
+- coffer-analytics (archived 2026-07-24) → surviving nodes for slice 4's
+  parent_refs: change-summary `1640b1ee`, ChartSeries DTO `eed7cc3c`,
+  unclassified-bucket reconciliation decision `0b08fbef`, remainder algorithm
+  `8cb49c78`, date-bucketing pattern `ab042c10`, splits-deferred (disputed)
+  `ac2535ce`/`bc0ab42f`; plus slice-2 survivors per this change's parent_refs.
 - coffer-classification (archived 2026-07-24) → surviving nodes for slice 3's
   parent_refs: change-summary `e1e72328`, many-to-many analytics constraint
   `534f6ff8`, assignment-provenance + derived-review-queue decision `efd6891c`,

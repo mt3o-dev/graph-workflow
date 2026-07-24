@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { money, type Transaction } from '../model/transaction.js';
 import type { Assignment } from '../model/assignment.js';
 import type { Group } from '../model/group.js';
-import { byGroupSeriesSets, cashflowSeriesSets } from './series.js';
+import { byGroupSeriesSets, cashflowSeriesSets, UNCLASSIFIED_GROUP_ID } from './series.js';
 
 function tx(overrides: Partial<Transaction>): Transaction {
 	const amount = overrides.amount ?? money(1000n, 'PLN');
@@ -86,5 +86,40 @@ describe('byGroupSeriesSets', () => {
 		expect(set.series).toEqual([
 			{ id: 'g1', label: 'Groceries', mode: 'partition', currency: 'PLN', points: [{ bucket: 'total', value: 500n }] }
 		]);
+	});
+
+	it('partition reconciles EXACTLY when unclassified transactions exist (review-queue state is normal)', () => {
+		const txns = [
+			tx({ contentHash: 'tx1', amount: money(900n, 'PLN') }),
+			tx({ contentHash: 'tx2', amount: money(-350n, 'PLN') }), // unclassified
+			tx({ contentHash: 'tx3', amount: money(101n, 'PLN') }) // unclassified
+		];
+		const assignments = [assign('tx1', 'g1'), assign('tx1', 'g2')];
+
+		const [set] = byGroupSeriesSets(txns, assignments, groups, { mode: 'partition', variant: 'self' });
+
+		const seriesTotal = set.series.reduce((acc, s) => acc + s.points.reduce((a, p) => a + p.value, 0n), 0n);
+		expect(seriesTotal).toBe(set.grandTotalMinor);
+		expect(set.grandTotalMinor).toBe(651n);
+
+		const unclassified = set.series.find((s) => s.id === UNCLASSIFIED_GROUP_ID);
+		expect(unclassified).toBeDefined();
+		expect(unclassified!.label).toBe('Unclassified');
+		expect(unclassified!.points).toEqual([{ bucket: 'total', value: -249n }]);
+	});
+
+	it('overlap also surfaces the unclassified series, and per-variant rollup keeps it out of group totals', () => {
+		const txns = [
+			tx({ contentHash: 'tx1', amount: money(500n, 'PLN') }),
+			tx({ contentHash: 'tx2', amount: money(200n, 'PLN') }) // unclassified
+		];
+		const assignments = [assign('tx1', 'g1')];
+
+		const [set] = byGroupSeriesSets(txns, assignments, groups, { mode: 'overlap', variant: 'rollup' });
+
+		const unclassified = set.series.find((s) => s.id === UNCLASSIFIED_GROUP_ID);
+		expect(unclassified?.points).toEqual([{ bucket: 'total', value: 200n }]);
+		const g1Series = set.series.find((s) => s.id === 'g1');
+		expect(g1Series?.points).toEqual([{ bucket: 'total', value: 500n }]);
 	});
 });

@@ -1,6 +1,7 @@
 # coffer-analytics
 
-status: open
+status: archived
+archived: 2026-07-24
 created: 2026-07-24
 epic: coffer-mvp
 
@@ -19,3 +20,11 @@ provenance-asymmetry issue 1ea505ed) + slice-1 summary d0e830bf and
 Transaction/Money model 235e0742. Seed recall top-served: overlap/partition
 foundation decision [node:bc0ab42f], many-to-many constraint [node:534f6ff8],
 provenance model [node:efd6891c].
+
+## Archive note
+Review: Request changes → reworked in-change: synthetic __unclassified__ series
+resolves the partition-reconciliation gap [node:bdfeb7e7] (resolving decision
+[node:0b08fbef], CONFIRMED 336cd92d); 295 tests green after rework.
+Change-summary: [node:1640b1ee]. Disputes pending human GUI: bc0ab42f
+(splits-deferred narrowing), bdfeb7e7 (now superseded by 0b08fbef — clear it).
+Deactivate+sweep deferred until the promotion pass; liveness roots stay ON.
