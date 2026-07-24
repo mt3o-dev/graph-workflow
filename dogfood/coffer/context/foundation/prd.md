@@ -83,7 +83,12 @@ flowchart TD
 ## Accepted gaps (v1)
 
 - No bank API / open-banking live sync — import only.
-- No multi-user accounts / auth beyond a single-tenant self-hosted deployment
-  (a deployment is one household); reverse-proxy auth is the user's concern.
+- No multi-user accounts (a deployment is one household). **Amended 2026-07-24
+  (supersedes "reverse-proxy auth is the user's concern"):** the app ships a
+  minimal single-passphrase gate — passphrase from the config layer
+  (`COFFER_AUTH__PASSWORD`), verified server-side, signed session cookie, all
+  routes gated, login screen part of the design system and i18n'd. Required
+  because the dogfood deployment is public (coffer.rashell.pl); hosting-level
+  PoW/WAF complements but does not replace it.
 - Currency conversion is display-only using user-supplied rates; no live FX.
 - OCR of scanned (image-only) PDFs is out of scope — text-layer PDFs only in v1.
