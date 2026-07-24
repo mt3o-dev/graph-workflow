@@ -19,6 +19,10 @@ import type { Rule } from '../core/model/rule.js';
 import { runImportPipeline, selectParser } from '../core/pipeline/import-pipeline.js';
 import { runClassification, reviewQueue as coreReviewQueue, type ClassificationRunResult } from '../core/classify/run.js';
 import { recordManualCorrection, promoteCorrectionToRule } from '../core/classify/correction.js';
+import type { Granularity, SeriesSet } from '../core/analytics/model.js';
+import type { CashflowFilter } from '../core/analytics/cashflow.js';
+import type { ByGroupOptions } from '../core/analytics/series.js';
+import { byGroupSeriesSets, cashflowSeriesSets } from '../core/analytics/series.js';
 import { LayeredConfigAdapter } from '../adapters/config/layered-config.adapter.js';
 import { SqliteStoreAdapter } from '../adapters/store/sqlite-store.adapter.js';
 import { SqliteClassificationStoreAdapter } from '../adapters/store/sqlite-classification-store.adapter.js';
@@ -210,6 +214,30 @@ export class Container {
 			}
 		}
 		return this.assist.suggest(tx, { classified });
+	}
+
+	/**
+	 * Analytics join site (coffer-analytics slice 3, P4, [dec:2]): loads
+	 * `store.all()` + `classificationStore.allAssignments()` (bulk read, NOT
+	 * the per-tx N+1 `assignmentsFor` loop `suggest()` uses) + `listGroups()`,
+	 * then hands the plain arrays to the PURE `core/analytics/**` functions —
+	 * this is the only place the join happens; `core/analytics/**` itself
+	 * never imports a port. `byGroup` is optional: pass it to also compute
+	 * the by-group attribution SeriesSets in the same join (they share the
+	 * same loaded `txns`/`assignments`/`groups`).
+	 */
+	async analytics(
+		cashflowOpts: { granularity: Granularity; filter?: CashflowFilter },
+		byGroupOpts?: ByGroupOptions
+	): Promise<{ cashflow: SeriesSet[]; byGroup?: SeriesSet[] }> {
+		const [txns, assignments, groups] = await Promise.all([
+			this.store.all(),
+			this.classificationStore.allAssignments(),
+			this.classificationStore.listGroups()
+		]);
+		const cashflow = cashflowSeriesSets(txns, cashflowOpts.granularity, cashflowOpts.filter);
+		const byGroup = byGroupOpts ? byGroupSeriesSets(txns, assignments, groups, byGroupOpts) : undefined;
+		return { cashflow, byGroup };
 	}
 
 	async close(): Promise<void> {

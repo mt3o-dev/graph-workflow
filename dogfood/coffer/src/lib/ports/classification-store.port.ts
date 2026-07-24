@@ -66,6 +66,15 @@ export interface ClassificationStorePort {
 	assignmentsFor(contentHash: string): Promise<Assignment[]>;
 
 	/**
+	 * Every assignment in the store, in no particular order — the bulk read
+	 * analytics needs for the full tx<->group join (coffer-analytics P4,
+	 * `Container.analytics()`), avoiding an N+1 `assignmentsFor` loop over
+	 * every transaction at dataset scale. Read-only; does not affect the
+	 * sticky-manual / idempotent write invariants above.
+	 */
+	allAssignments(): Promise<Assignment[]>;
+
+	/**
 	 * Given a candidate set of transaction content hashes, return the subset
 	 * with zero recorded assignments — the derived review queue
 	 * ([dec:efd6891c]: unmatched is a read, never a separately persisted

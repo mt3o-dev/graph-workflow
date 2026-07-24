@@ -215,6 +215,13 @@ export class SqliteClassificationStoreAdapter implements ClassificationStorePort
 		return rows.map(rowToAssignment);
 	}
 
+	async allAssignments(): Promise<Assignment[]> {
+		const rows = this.db
+			.prepare('SELECT tx_content_hash, group_id, source, rule_id FROM assignments')
+			.all() as AssignmentRow[];
+		return rows.map(rowToAssignment);
+	}
+
 	async unmatched(contentHashes: readonly string[]): Promise<string[]> {
 		if (contentHashes.length === 0) {
 			return [];

@@ -242,6 +242,27 @@ export function runClassificationStoreContract(options: ClassificationStoreContr
 			expect(await store.assignmentsFor('never-assigned')).toEqual([]);
 		});
 
+		it('allAssignments() returns every stored assignment across all transactions (bulk read, coffer-analytics P4)', async () => {
+			await store.upsertGroup(makeGroup());
+			await store.upsertGroup(makeGroup({ id: 'g2', name: 'Rent' }));
+			await options.seedTransactions?.(store, ['tx1', 'tx2']);
+			const a: Assignment = { txContentHash: 'tx1', groupId: 'g1', source: 'manual' };
+			const b: Assignment = { txContentHash: 'tx1', groupId: 'g2', source: 'manual' };
+			const c: Assignment = { txContentHash: 'tx2', groupId: 'g1', source: 'manual' };
+			await store.saveAssignments([a, b, c]);
+
+			const all = await store.allAssignments();
+
+			expect(all).toHaveLength(3);
+			expect(
+				all.map((row) => `${row.txContentHash}:${row.groupId}`).sort()
+			).toEqual(['tx1:g1', 'tx1:g2', 'tx2:g1']);
+		});
+
+		it('allAssignments() returns an empty array when nothing is stored', async () => {
+			expect(await store.allAssignments()).toEqual([]);
+		});
+
 		it('unmatched() returns exactly the candidate hashes with zero assignments', async () => {
 			await store.upsertGroup(makeGroup());
 			await options.seedTransactions?.(store, ['tx1', 'tx2', 'tx3']);
