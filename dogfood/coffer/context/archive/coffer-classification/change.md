@@ -1,6 +1,7 @@
 # coffer-classification
 
-status: open
+status: archived
+archived: 2026-07-24
 created: 2026-07-22
 epic: coffer-mvp
 
@@ -19,3 +20,10 @@ server in fresh sessions). parent_refs: slice-1 survivors per roadmap.md ledger.
 Seed recall served: rule-engine decision [node:5da27e33], slice-1 change-summary
 [node:d0e830bf], store-owns-dedup constraint [node:1b48605f], config decision
 [node:c9b15b68].
+
+## Archive note
+Review verdict: Approve (one non-blocking issue [node:1ea505ed] provenance
+asymmetry, left standing for slice 3+). Live store: captures/events/summary all
+real — no backlog. Deactivate+sweep DEFERRED until the human promotion pass in
+the GUI (foundation + slice-1 + slice-2 candidates); liveness roots stay ON.
+Change-summary: [node:e1e72328].
