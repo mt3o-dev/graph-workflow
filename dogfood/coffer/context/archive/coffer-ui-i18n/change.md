@@ -1,6 +1,7 @@
 # coffer-ui-i18n
 
-status: open
+status: archived
+archived: 2026-07-24
 created: 2026-07-24
 epic: coffer-mvp
 
@@ -20,3 +21,9 @@ human ruling pending) — the UI takes the primary-else-even side openly and
 labels modes; charts must render __unclassified__ distinctly (0b08fbef).
 Foundation amendment this cycle: single-passphrase auth gate (74be155e,
 CONTRADICTS 22863b66 — flagged for GUI).
+
+## Archive note
+Review: Approve. One process finding (tripwire honesty, b3748315) queued.
+Change-summary: [node:40d8d9a4]. Review-queue agenda for the human GUI session
+is in the review report (5 disputes + promotions). Deactivate+sweep deferred
+until that session; liveness roots stay ON.
