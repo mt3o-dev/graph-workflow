@@ -74,6 +74,12 @@ export function parseEnvValue(raw: string): unknown {
  * `envSource`. The remainder of the key (after stripping the prefix) is
  * split on `__` to form the nested path, preserving case, e.g.
  * `COFFER_db__path` -> `{ db: { path: <value> } }`.
+ *
+ * Case is preserved here; the adapter later normalizes each env segment
+ * against the canonical key casing established by the file layers (see
+ * {@link normalizeEnvCase}), so the conventional `COFFER_AUTH__SECRET`
+ * reaches `auth.secret` and camelCase keys like `enabledParsers` still match
+ * their `COFFER_IMPORT__ENABLEDPARSERS` form.
  */
 export function envToObject(envSource: EnvSource, envPrefix: string): ConfigObject {
 	const result: ConfigObject = {};
@@ -129,6 +135,31 @@ function getByPath(source: ConfigObject, path: string): unknown {
 	return cursor;
 }
 
+/**
+ * Re-key an env-derived config object so each segment adopts the casing of a
+ * case-insensitively-matching key in `canonical` (the merged file layers).
+ * Env vars are conventionally UPPERCASE (`COFFER_AUTH__SECRET`), while config
+ * keys are lower/camelCase (`auth.secret`, `import.enabledParsers`) — without
+ * this, the env layer silently creates parallel keys and never overrides.
+ * Unmatched segments fall back to lowercase (the documented convention for
+ * keys that don't exist in any file layer).
+ */
+export function normalizeEnvCase(env: ConfigObject, canonical: ConfigObject): ConfigObject {
+	const result: ConfigObject = {};
+	const canonicalByLower = new Map(Object.keys(canonical).map((k) => [k.toLowerCase(), k]));
+	for (const [key, value] of Object.entries(env)) {
+		const target = canonicalByLower.get(key.toLowerCase()) ?? key.toLowerCase();
+		const canonicalChild = canonical[target];
+		result[target] =
+			isPlainObject(value) && isPlainObject(canonicalChild)
+				? normalizeEnvCase(value, canonicalChild)
+				: isPlainObject(value)
+					? normalizeEnvCase(value, {})
+					: value;
+	}
+	return result;
+}
+
 const DEFAULT_ENV = 'development';
 const DEFAULT_ENV_PREFIX = 'COFFER_';
 
@@ -145,7 +176,8 @@ export class LayeredConfigAdapter implements ConfigPort {
 		const envFile = readJsonFileIfExists(join(configDir, `${env}.json`));
 		const envVars = envToObject(envSource, envPrefix);
 
-		this.merged = deepMerge(deepMerge(defaults, envFile), envVars);
+		const fileLayers = deepMerge(defaults, envFile);
+		this.merged = deepMerge(fileLayers, normalizeEnvCase(envVars, fileLayers));
 	}
 
 	get<T>(path: string, defaultValue?: T): T {

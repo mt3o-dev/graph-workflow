@@ -1,0 +1,253 @@
+/**
+ * Coffer design tokens — BG/Forgotten-Realms register.
+ * [dec:12][node:57af6589] parchment (light) / candlelit (dark) via
+ * prefers-color-scheme, with a [data-theme] override on <html> that wins
+ * both ways (SSR stamps this from the coffer_theme cookie, P6 wiring).
+ *
+ * Theme is CHROME ONLY. The --color-data-* / --color-chart-* tokens are
+ * deliberately NOT re-themed for "ornament" — they stay sober, high
+ * contrast, identical intent in both palettes ([node:39129c08], dec:12).
+ *
+ * Every text/data token pair below is contrast-checked (WCAG AA: >=4.5:1
+ * for body text, >=3:1 for large text / non-text UI). See
+ * design-system.md for the computed ratios.
+ */
+
+:root {
+	/* ---- Light (parchment) palette — default ---- */
+	--cf-color-bg: #f4ecd8;
+	--cf-color-surface: #efe4c8;
+	--cf-color-surface-raised: #fbf7ec;
+	--cf-color-border: #8a7454;
+	--cf-color-border-subtle: #cdbb95;
+
+	--cf-color-text: #2a1c10;
+	--cf-color-text-muted: #5a4632;
+	--cf-color-text-on-accent: #f8ecd4;
+
+	--cf-color-accent: #6b1f1f;
+	--cf-color-accent-hover: #7c2626;
+	--cf-color-accent-active: #591919;
+
+	--cf-color-success: #1f5c2e;
+	--cf-color-danger: #8a1f1f;
+	--cf-color-warning: #7a4b06;
+	--cf-color-info: #1f4a6b;
+
+	--cf-color-focus-ring: #1f4a6b;
+
+	/* ---- Data / numeric surfaces — sober, never ornamented ---- */
+	--cf-color-data-bg: #fbf7ec;
+	--cf-color-data-text: #1c130a;
+	--cf-color-data-grid: #d9cba7;
+	--cf-color-data-positive: #1f5c2e;
+	--cf-color-data-negative: #8a1f1f;
+	--cf-color-data-unclassified: #6b6153;
+	--cf-color-data-unclassified-pattern: #d9cba7;
+
+	/* Chart series palette (distinct from unclassified, distinct hues) */
+	--cf-color-chart-1: #6b1f1f;
+	--cf-color-chart-2: #1f4a6b;
+	--cf-color-chart-3: #1f5c2e;
+	--cf-color-chart-4: #7a4b06;
+	--cf-color-chart-5: #4a2e6b;
+	--cf-color-chart-6: #2e6b63;
+
+	/* ---- Type ---- */
+	--cf-font-display: Cormorant, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+	--cf-font-body: Cormorant, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+	--cf-font-ui: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+	--cf-font-data: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+	--cf-font-size-xs: 0.75rem;
+	--cf-font-size-sm: 0.875rem;
+	--cf-font-size-md: 1rem;
+	--cf-font-size-lg: 1.25rem;
+	--cf-font-size-xl: 1.5rem;
+	--cf-font-size-2xl: 2rem;
+	--cf-font-size-display: 2.75rem;
+
+	--cf-line-height-tight: 1.2;
+	--cf-line-height-normal: 1.5;
+
+	--cf-font-weight-normal: 400;
+	--cf-font-weight-medium: 500;
+	--cf-font-weight-bold: 700;
+
+	/* Numeric/tabular text always uses tabular figures so columns align */
+	--cf-font-variant-numeric: tabular-nums;
+
+	/* ---- Spacing (4px base scale) ---- */
+	--cf-space-1: 0.25rem;
+	--cf-space-2: 0.5rem;
+	--cf-space-3: 0.75rem;
+	--cf-space-4: 1rem;
+	--cf-space-5: 1.5rem;
+	--cf-space-6: 2rem;
+	--cf-space-7: 3rem;
+	--cf-space-8: 4rem;
+
+	/* ---- Radii ---- */
+	--cf-radius-sm: 0.1875rem;
+	--cf-radius-md: 0.375rem;
+	--cf-radius-lg: 0.75rem;
+	--cf-radius-full: 999px;
+
+	/* ---- Shadows (parchment: warm, soft) ---- */
+	--cf-shadow-sm: 0 1px 2px rgba(42, 28, 16, 0.12);
+	--cf-shadow-md: 0 4px 10px rgba(42, 28, 16, 0.18);
+	--cf-shadow-lg: 0 10px 24px rgba(42, 28, 16, 0.24);
+	--cf-shadow-ornament: 0 0 0 1px var(--cf-color-border), 0 6px 16px rgba(42, 28, 16, 0.2);
+
+	/* ---- Motion ---- */
+	--cf-motion-fast: 120ms;
+	--cf-motion-normal: 200ms;
+	--cf-motion-slow: 320ms;
+	--cf-motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---- Dark (candlelit) — prefers-color-scheme default ---- */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--cf-color-bg: #1c140c;
+		--cf-color-surface: #241a10;
+		--cf-color-surface-raised: #140d07;
+		--cf-color-border: #84714f;
+		--cf-color-border-subtle: #43371f;
+
+		--cf-color-text: #f0e6cf;
+		--cf-color-text-muted: #c9b899;
+		--cf-color-text-on-accent: #20140a;
+
+		--cf-color-accent: #e8a33d;
+		--cf-color-accent-hover: #f0b158;
+		--cf-color-accent-active: #d69326;
+
+		--cf-color-success: #5fbf72;
+		--cf-color-danger: #e2685f;
+		--cf-color-warning: #e0a83d;
+		--cf-color-info: #6fa8d6;
+
+		--cf-color-focus-ring: #e8a33d;
+
+		--cf-color-data-bg: #140d07;
+		--cf-color-data-text: #f5ecd8;
+		--cf-color-data-grid: #3a3018;
+		--cf-color-data-positive: #6fd184;
+		--cf-color-data-negative: #ef7a71;
+		--cf-color-data-unclassified: #9c8f78;
+		--cf-color-data-unclassified-pattern: #3a3018;
+
+		--cf-color-chart-1: #e8a33d;
+		--cf-color-chart-2: #6fa8d6;
+		--cf-color-chart-3: #6fd184;
+		--cf-color-chart-4: #e2685f;
+		--cf-color-chart-5: #b48ee8;
+		--cf-color-chart-6: #6fd1c4;
+
+		--cf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+		--cf-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.5);
+		--cf-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.6);
+		--cf-shadow-ornament:
+			0 0 0 1px var(--cf-color-border), 0 0 18px rgba(232, 163, 61, 0.15),
+			0 6px 16px rgba(0, 0, 0, 0.5);
+	}
+}
+
+/* ---- Explicit override — wins in BOTH directions over the media query ---- */
+:root[data-theme='light'] {
+	--cf-color-bg: #f4ecd8;
+	--cf-color-surface: #efe4c8;
+	--cf-color-surface-raised: #fbf7ec;
+	--cf-color-border: #8a7454;
+	--cf-color-border-subtle: #cdbb95;
+	--cf-color-text: #2a1c10;
+	--cf-color-text-muted: #5a4632;
+	--cf-color-text-on-accent: #f8ecd4;
+	--cf-color-accent: #6b1f1f;
+	--cf-color-accent-hover: #7c2626;
+	--cf-color-accent-active: #591919;
+	--cf-color-success: #1f5c2e;
+	--cf-color-danger: #8a1f1f;
+	--cf-color-warning: #7a4b06;
+	--cf-color-info: #1f4a6b;
+	--cf-color-focus-ring: #1f4a6b;
+	--cf-color-data-bg: #fbf7ec;
+	--cf-color-data-text: #1c130a;
+	--cf-color-data-grid: #d9cba7;
+	--cf-color-data-positive: #1f5c2e;
+	--cf-color-data-negative: #8a1f1f;
+	--cf-color-data-unclassified: #6b6153;
+	--cf-color-data-unclassified-pattern: #d9cba7;
+	--cf-color-chart-1: #6b1f1f;
+	--cf-color-chart-2: #1f4a6b;
+	--cf-color-chart-3: #1f5c2e;
+	--cf-color-chart-4: #7a4b06;
+	--cf-color-chart-5: #4a2e6b;
+	--cf-color-chart-6: #2e6b63;
+	--cf-shadow-sm: 0 1px 2px rgba(42, 28, 16, 0.12);
+	--cf-shadow-md: 0 4px 10px rgba(42, 28, 16, 0.18);
+	--cf-shadow-lg: 0 10px 24px rgba(42, 28, 16, 0.24);
+	--cf-shadow-ornament: 0 0 0 1px var(--cf-color-border), 0 6px 16px rgba(42, 28, 16, 0.2);
+}
+
+:root[data-theme='dark'] {
+	--cf-color-bg: #1c140c;
+	--cf-color-surface: #241a10;
+	--cf-color-surface-raised: #140d07;
+	--cf-color-border: #84714f;
+	--cf-color-border-subtle: #43371f;
+	--cf-color-text: #f0e6cf;
+	--cf-color-text-muted: #c9b899;
+	--cf-color-text-on-accent: #20140a;
+	--cf-color-accent: #e8a33d;
+	--cf-color-accent-hover: #f0b158;
+	--cf-color-accent-active: #d69326;
+	--cf-color-success: #5fbf72;
+	--cf-color-danger: #e2685f;
+	--cf-color-warning: #e0a83d;
+	--cf-color-info: #6fa8d6;
+	--cf-color-focus-ring: #e8a33d;
+	--cf-color-data-bg: #140d07;
+	--cf-color-data-text: #f5ecd8;
+	--cf-color-data-grid: #3a3018;
+	--cf-color-data-positive: #6fd184;
+	--cf-color-data-negative: #ef7a71;
+	--cf-color-data-unclassified: #9c8f78;
+	--cf-color-data-unclassified-pattern: #3a3018;
+	--cf-color-chart-1: #e8a33d;
+	--cf-color-chart-2: #6fa8d6;
+	--cf-color-chart-3: #6fd184;
+	--cf-color-chart-4: #e2685f;
+	--cf-color-chart-5: #b48ee8;
+	--cf-color-chart-6: #6fd1c4;
+	--cf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--cf-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.5);
+	--cf-shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.6);
+	--cf-shadow-ornament:
+		0 0 0 1px var(--cf-color-border), 0 0 18px rgba(232, 163, 61, 0.15),
+		0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--cf-motion-fast: 0ms;
+		--cf-motion-normal: 0ms;
+		--cf-motion-slow: 0ms;
+	}
+}
+
+/* ---- Base element wiring ---- */
+body {
+	background: var(--cf-color-bg);
+	color: var(--cf-color-text);
+	font-family: var(--cf-font-body);
+	font-size: var(--cf-font-size-md);
+	line-height: var(--cf-line-height-normal);
+}
+
+.cf-focus-ring:focus-visible {
+	outline: 2px solid var(--cf-color-focus-ring);
+	outline-offset: 2px;
+}

@@ -232,3 +232,40 @@ describe('LayeredConfigAdapter — real config/ files', () => {
 		expect(config.assist).toEqual({ adapter: 'heuristic', enabled: false });
 	});
 });
+
+describe('normalizeEnvCase (P6 rework: uppercase env vars reach canonical keys)', () => {
+	const files = {
+		'default.json': {
+			auth: { password: 'default-pass' },
+			import: { enabledParsers: ['csv', 'ofx'] }
+		}
+	};
+
+	it('COFFER_AUTH__SECRET overrides auth.secret despite case mismatch', () => {
+		const adapter = new LayeredConfigAdapter({
+			configDir: trackedConfigDir(files),
+			env: 'test',
+			envSource: { COFFER_AUTH__SECRET: 's3cret', COFFER_AUTH__PASSWORD: 'pass' }
+		});
+		expect(adapter.get<string>('auth.secret')).toBe('s3cret');
+		expect(adapter.get<string>('auth.password')).toBe('pass');
+	});
+
+	it('matches camelCase canonical keys case-insensitively', () => {
+		const adapter = new LayeredConfigAdapter({
+			configDir: trackedConfigDir(files),
+			env: 'test',
+			envSource: { COFFER_IMPORT__ENABLEDPARSERS: '["csv"]' }
+		});
+		expect(adapter.get<string[]>('import.enabledParsers')).toEqual(['csv']);
+	});
+
+	it('unmatched segments fall back to lowercase', () => {
+		const adapter = new LayeredConfigAdapter({
+			configDir: trackedConfigDir(files),
+			env: 'test',
+			envSource: { COFFER_BRANDNEW__KEY: 'x' }
+		});
+		expect(adapter.get<string>('brandnew.key')).toBe('x');
+	});
+});

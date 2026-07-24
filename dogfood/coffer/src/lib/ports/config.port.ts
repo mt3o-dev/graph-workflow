@@ -36,12 +36,26 @@ export interface AssistConfig {
 	enabled: boolean;
 }
 
+/**
+ * Auth config ([node:74be155e]/[node:d8caed23]/[node:512a3d11]): both fields
+ * are optional and fail-closed when absent — no password configured means
+ * every login attempt is rejected; no secret configured means dev generates
+ * a random per-boot secret while production refuses to boot.
+ */
+export interface AuthConfig {
+	/** The single passphrase (env `COFFER_AUTH__PASSWORD`). Absent = fail-closed (no login possible). */
+	password?: string;
+	/** HMAC session-signing secret (env `COFFER_AUTH__SECRET`). Required in production. */
+	secret?: string;
+}
+
 /** The full, typed application configuration shape. */
 export interface AppConfig {
 	db: DbConfig;
 	locale: LocaleConfig;
 	import: ImportConfig;
 	assist: AssistConfig;
+	auth: AuthConfig;
 }
 
 /**

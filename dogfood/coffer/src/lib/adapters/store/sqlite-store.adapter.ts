@@ -8,6 +8,8 @@
  * `save()` uses `INSERT OR IGNORE` per row and counts changes to report
  * `{ inserted, duplicates }` without ever throwing on a duplicate.
  */
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import DatabaseCtor from 'better-sqlite3';
 import type Database from 'better-sqlite3';
 import type { Direction, Transaction } from '../../core/model/transaction.js';
@@ -46,6 +48,11 @@ export class SqliteStoreAdapter implements StorePort {
 
 	/** `dbPath` defaults to `:memory:`; the real container passes a file path from ConfigPort. */
 	constructor(dbPath: string = ':memory:') {
+		// First boot on a fresh deployment: better-sqlite3 refuses to create the
+		// db file if its parent directory is missing — create it (P6 finding).
+		if (dbPath !== ':memory:') {
+			mkdirSync(dirname(dbPath), { recursive: true });
+		}
 		this.db = new DatabaseCtor(dbPath);
 		// R2 (coffer-classification plan-review gate): better-sqlite3 leaves FK
 		// enforcement OFF by default, so migration 002's `assignments` FKs to

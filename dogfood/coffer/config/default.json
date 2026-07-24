@@ -11,5 +11,6 @@
 	"assist": {
 		"adapter": "heuristic",
 		"enabled": false
-	}
+	},
+	"auth": {}
 }
