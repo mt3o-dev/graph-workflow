@@ -1,5 +1,7 @@
 # Learning a new codebase with the graph-workflow
 
+*(Polska wersja: [LEARNING-A-CODEBASE.pl.md](LEARNING-A-CODEBASE.pl.md))*
+
 The graph-workflow has no "go read the whole codebase" phase — deliberately.
 Front-loaded exploration produces understanding that lives in one person's (or
 one session's) head and evaporates. Here, understanding is **accumulated through
