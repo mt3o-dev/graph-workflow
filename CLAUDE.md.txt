@@ -24,6 +24,7 @@ workflows — memory operations are steps inside it.
 | Bounded, verifiable by command | `/gw-goal` or `claude -p` (headless; humans at PR only) |
 | Change reaches PR | `/gw-review` (code review + memory human gate) |
 | Merged | `/gw-archive` (final capture, deactivate+sweep, folder → archive) |
+| Disputes/promotions accumulated, human present | `/gw-resolve` (joint queue session: agent presents+recommends, human rules, applied via guided GUI API) |
 
 ### Standing rules (apply to every session)
 

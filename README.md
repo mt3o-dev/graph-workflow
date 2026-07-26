@@ -72,6 +72,7 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 | `gw-goal` | `/goal` / `claude -p` | same discipline compressed for headless runs; rules-path validity, no human gates until PR |
 | `gw-review` | `10x-impl-review` | staleness queue, disputed-node checklist, episodic→semantic consolidation, promotion candidates (human gate) |
 | `gw-archive` | `10x-archive` | completeness check, deactivate + sweep, immutable folder move |
+| `gw-resolve` | — (new) | joint human+agent resolution session over the disputed-node queue: evidence + recommendation per item, human rules, applied via the guided GUI API; promotion pass + deferred sweeps |
 
 Skills are **judgment and sequencing**; MCP tools are **deterministic operations**.
 Skills decide *when* to call; tools never embed judgment.
