@@ -69,7 +69,18 @@ Docker daemon, no GPU, no network keys on any slice's critical path. Docker
   - also applicable: rm-blocked flag-once lesson `1298a51f-2c98-4868-b373-a8f9d7f82890`,
     plan/task-prompt filename-drift lesson `8a129961-3b1c-4f40-b58a-50fb11573d32`
 
-### Memory status (updated 2026-07-22)
+### Memory status (updated 2026-07-27)
+
+**First /gw-resolve session complete.** Review queue 6 → 0 (all disputes ruled
+by the human, journaled gui-guided with recommended-vs-chose). Promotions: 29
+lifetime (25 foundation + 4 change summaries), 22 long-term (cross-slice
+constraints, lessons, the reconciliation invariants — un-archived post-sweep on
+human ruling). Sweeps run for coffer-core-import / coffer-classification /
+coffer-analytics (55 working-detail nodes dormant); `foundation` and
+`coffer-ui-i18n` liveness roots remain ACTIVE (human ruled ui-i18n still
+relevant pending slice 5).
+
+### Memory status (historical, 2026-07-22)
 
 The degraded-mode phase is OVER: the store is live at
 `context/memory-graph.db`, the slice-1 backlog and foundation distillation are

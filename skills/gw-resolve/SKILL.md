@@ -58,6 +58,11 @@ For each disputed node:
 4. **Take the ruling in chat.** The human picks an action (and optionally a
    tier move — lifetime requires them to say "lifetime" explicitly; the API
    enforces `tier_confirmed`). Silence or ambiguity → ask once, else defer.
+   **`still_valid` on a short/mid-term node is a trap when a sweep is coming:**
+   the ruling clears the flag but does not save the node — if it reads durable,
+   offer the tier move in the same breath, or put it on the promotion-pass
+   list explicitly. (Learned the hard way: a validity-ruled invariant got swept
+   twenty minutes after its ruling because it missed the promotion list.)
 5. **Apply as scribe:** `POST /api/review/{id}/resolve` with the human's
    action, `recommended_action` (yours, honestly), `reason` quoting the
    human's words, `new_body`/`replacement_id`/`tier` as ruled. Report the
