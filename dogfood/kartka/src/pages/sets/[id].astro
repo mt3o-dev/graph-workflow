@@ -145,6 +145,39 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
     </form>
   </details>
 
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("llm.panel.title", locale)}</summary>
+    <div class="stack" style="margin-top: var(--space-4)">
+      <p>{t("llm.panel.intro", locale)}</p>
+      <form
+        id="llm-generate-form"
+        hx-post={`/api/sets/${setId}/generate?lang=${locale}`}
+        hx-target="#llm-drafts"
+        hx-swap="outerHTML"
+        hx-indicator="#llm-spinner"
+        hx-encoding="multipart/form-data"
+        class="stack"
+      >
+        <div class="field">
+          <label for="llm-sourceText">{t("llm.form.sourceText", locale)}</label>
+          <textarea id="llm-sourceText" name="sourceText" rows="6"></textarea>
+        </div>
+        <div class="field">
+          <label for="llm-attachment">{t("llm.form.attachment", locale)}</label>
+          <input type="file" id="llm-attachment" name="attachment" accept=".txt,.md,text/plain,text/markdown" />
+        </div>
+        <div class="row">
+          <button type="submit" class="btn-primary">{t("llm.form.generate", locale)}</button>
+          <span id="llm-spinner" class="htmx-indicator row" style="gap: var(--space-2)">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>{t("llm.generating", locale)}</span>
+          </span>
+        </div>
+      </form>
+      <div id="llm-drafts"></div>
+    </div>
+  </details>
+
   <Fragment set:html={tableHtml} />
 </BaseLayout>
 

@@ -290,7 +290,19 @@ Slice 1 now approved.
     "done" without at least one independent review pass, regardless of
     slice size.
 
+## Slice 2 result — kartka-llm-assist
+
+OpenRouter-backed `LlmGeneratorPort` adapter proposing cards from pasted
+text/`.txt`/`.md` uploads, review/accept before persistence, `llm_call_log`
+with real usage-derived tokens + a tested cost formula on both success and
+error paths. Reviewed **clean on the first pass** — 40/40 tests, build green,
+no findings. The review agent specifically re-checked the exact IDOR class
+that broke slice 1 (ownership before any LLM call) and found it correctly
+guarded, with a test asserting the port is never invoked for a non-owner.
+First evidence that the review-gate discipline (#29) generalizes: once it's
+standard practice rather than skipped, a slice can genuinely pass clean.
+
 ## Replay debt
 
-Not yet applicable — slice 1 has not archived (deliberately: pending a
-review pass per #29 before archiving).
+Not yet applicable — no slice has archived yet (deliberately: pending a full
+review pass per #29 before any archive).

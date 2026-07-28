@@ -123,5 +123,20 @@
   "common.error.notFound": "Nie znaleziono.",
   "common.requiredField": "To pole jest wymagane.",
 
-  "pwa.installPrompt": "Zainstaluj Kartkę, aby powtarzać materiał offline."
+  "pwa.installPrompt": "Zainstaluj Kartkę, aby powtarzać materiał offline.",
+
+  "llm.panel.title": "Fiszki wspomagane AI",
+  "llm.panel.intro": "Wklej tekst lub prześlij mały plik .txt/.md, a zaproponujemy na jego podstawie fiszki.",
+  "llm.form.sourceText": "Tekst, na podstawie którego wygenerować fiszki",
+  "llm.form.attachment": "Lub prześlij plik .txt/.md",
+  "llm.form.generate": "Generuj fiszki",
+  "llm.generating": "Generowanie…",
+  "llm.notConfigured": "Generowanie fiszek przez AI nie jest skonfigurowane na tym serwerze (brak OPENROUTER_API_KEY).",
+  "llm.noDrafts": "Model nie zaproponował żadnych sensownych fiszek z tego tekstu. Spróbuj wkleić więcej treści.",
+  "llm.error.generic": "Generowanie fiszek nie powiodło się. Spróbuj ponownie.",
+  "llm.error.onlyTextFiles": "Obsługiwane są tylko pliki .txt lub .md.",
+  "llm.error.sourceRequired": "Najpierw wklej tekst lub prześlij plik.",
+  "llm.confidence": "Pewność: {pct}%",
+  "llm.accept": "Akceptuj",
+  "llm.reject": "Odrzuć"
 }

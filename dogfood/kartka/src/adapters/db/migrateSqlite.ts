@@ -52,8 +52,23 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       PRIMARY KEY (card_id, user_id)
     );
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS llm_call_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      requested_at INTEGER NOT NULL,
+      model TEXT NOT NULL,
+      prompt_tokens INTEGER,
+      completion_tokens INTEGER,
+      total_tokens INTEGER,
+      estimated_cost_usd REAL,
+      status TEXT NOT NULL,
+      error_message TEXT
+    );
+  `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
 }

@@ -123,5 +123,20 @@
   "common.error.notFound": "Not found.",
   "common.requiredField": "This field is required.",
 
-  "pwa.installPrompt": "Install Kartka for offline review."
+  "pwa.installPrompt": "Install Kartka for offline review.",
+
+  "llm.panel.title": "AI-assisted cards",
+  "llm.panel.intro": "Paste some text or upload a small .txt/.md file, and propose flashcards from it.",
+  "llm.form.sourceText": "Text to generate cards from",
+  "llm.form.attachment": "Or upload a .txt/.md file",
+  "llm.form.generate": "Generate cards",
+  "llm.generating": "Generating…",
+  "llm.notConfigured": "AI-assisted card generation isn't configured on this server (missing OPENROUTER_API_KEY).",
+  "llm.noDrafts": "The model didn't propose any usable cards from that text. Try pasting more content.",
+  "llm.error.generic": "Card generation failed. Please try again.",
+  "llm.error.onlyTextFiles": "Only .txt or .md files are supported for uploads.",
+  "llm.error.sourceRequired": "Paste some text or upload a file first.",
+  "llm.confidence": "Confidence: {pct}%",
+  "llm.accept": "Accept",
+  "llm.reject": "Reject"
 }

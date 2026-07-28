@@ -52,8 +52,23 @@ export async function migratePg(db: PgDb): Promise<void> {
       PRIMARY KEY (card_id, user_id)
     );
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS llm_call_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      requested_at TIMESTAMP NOT NULL,
+      model TEXT NOT NULL,
+      prompt_tokens INTEGER,
+      completion_tokens INTEGER,
+      total_tokens INTEGER,
+      estimated_cost_usd REAL,
+      status TEXT NOT NULL,
+      error_message TEXT
+    );
+  `);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
 }

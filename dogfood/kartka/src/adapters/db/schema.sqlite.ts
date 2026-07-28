@@ -54,3 +54,18 @@ export const reviewStates = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.cardId, t.userId] })],
 );
+
+// Slice 2: cost/usage log for every OpenRouter call (success or failure).
+// Read by slice 4's admin analytics — see docs/architecture.md.
+export const llmCallLog = sqliteTable("llm_call_log", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
+  model: text("model").notNull(),
+  promptTokens: integer("prompt_tokens"),
+  completionTokens: integer("completion_tokens"),
+  totalTokens: integer("total_tokens"),
+  estimatedCostUsd: real("estimated_cost_usd"),
+  status: text("status", { enum: ["success", "error"] }).notNull(),
+  errorMessage: text("error_message"),
+});

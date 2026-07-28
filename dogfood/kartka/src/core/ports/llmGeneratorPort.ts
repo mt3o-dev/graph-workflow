@@ -1,15 +1,21 @@
-import type { CardType, CardPayload } from "../domain/types";
+import type { CardDraft } from "../domain/types";
 
-// TODO(slice 2): implement this port against OpenRouter to let students upload
-// text/attachments and get LLM-drafted flashcards back for review before
-// saving. Slice 1 only defines the seam — no implementation, no fake/stub
-// behavior wired into any use case yet.
+// Implemented by src/adapters/llm/openRouterAdapter.ts (slice 2). Only
+// adjustment from the slice-1 seam: `userId` was added to the input so the
+// implementing adapter can attribute every OpenRouter call it logs to
+// llm_call_log to the requesting student (see core/usecases/llmUsecases.ts).
 
-export interface CardDraft {
-  type: CardType;
-  payload: CardPayload;
+export interface GenerateCardsInput {
+  sourceText: string;
+  setId: string;
+  userId: string;
+  /** Roughly how many cards to propose. Adapters may return fewer if the source material is thin. */
+  count?: number;
 }
 
 export interface LlmGeneratorPort {
-  generateCards(input: { sourceText: string; setId: string; count?: number }): Promise<CardDraft[]>;
+  generateCards(input: GenerateCardsInput): Promise<CardDraft[]>;
 }
+
+// Re-exported for callers that imported CardDraft from this module in slice 1.
+export type { CardDraft };

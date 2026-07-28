@@ -133,3 +133,32 @@ export interface PageQuery {
 
 /** 0-5 self-assessment / correctness score fed into SM-2. See sm2.ts. */
 export type ReviewQuality = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * A card proposed by the LLM-assisted generator (slice 2), NOT yet persisted.
+ * Same type+payload shape as a real Card, plus a confidence score and a short
+ * rationale so the student can judge whether to accept it. Always validated
+ * with validateCardPayload() before it is ever shown to a user.
+ */
+export interface CardDraft {
+  type: CardType;
+  payload: CardPayload;
+  /** 0-1, how confident the model claims to be that this card is well-formed/useful. */
+  confidence: number;
+  /** Short model-provided explanation of why this card was proposed. */
+  rationale: string;
+}
+
+/** One row of the LLM cost/usage log (slice 2). Read by slice 4's admin analytics. */
+export interface LlmCallLog {
+  id: string;
+  userId: string;
+  requestedAt: Date;
+  model: string;
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  estimatedCostUsd: number | null;
+  status: "success" | "error";
+  errorMessage: string | null;
+}

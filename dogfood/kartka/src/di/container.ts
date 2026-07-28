@@ -6,6 +6,8 @@ import type { CardRepoPort } from "../core/ports/cardRepoPort";
 import type { UserRepoPort } from "../core/ports/userRepoPort";
 import type { SchedulerPort } from "../core/ports/schedulerPort";
 import type { AuthPort } from "../core/ports/authPort";
+import type { LlmCallLogRepoPort } from "../core/ports/llmCallLogRepoPort";
+import type { LlmGeneratorPort } from "../core/ports/llmGeneratorPort";
 
 export interface Container {
   setRepo: SetRepoPort;
@@ -13,6 +15,9 @@ export interface Container {
   userRepo: UserRepoPort;
   scheduler: SchedulerPort;
   auth: AuthPort;
+  llmCallLogRepo: LlmCallLogRepoPort;
+  /** undefined when OPENROUTER_API_KEY isn't set — callers must show a "not configured" state, not crash. */
+  llmGenerator: LlmGeneratorPort | undefined;
   seedAdminIfNeeded(): Promise<void>;
 }
 
@@ -28,6 +33,7 @@ async function buildContainer(): Promise<Container> {
   let userRepo: UserRepoPort;
   let scheduler: SchedulerPort;
   let auth: AuthPort;
+  let llmCallLogRepo: LlmCallLogRepoPort;
 
   if (driver === "postgres") {
     const { createSetRepoPg } = await import("../adapters/db/setRepo.pg");
@@ -35,24 +41,37 @@ async function buildContainer(): Promise<Container> {
     const { createUserRepoPg } = await import("../adapters/db/userRepo.pg");
     const { createSchedulerRepoPg } = await import("../adapters/db/schedulerRepo.pg");
     const { createAuthAdapterPg } = await import("../adapters/auth/authAdapter.pg");
+    const { createLlmCallLogRepoPg } = await import("../adapters/db/llmCallLogRepo.pg");
     const pgDb = db as PgDb;
     setRepo = createSetRepoPg(pgDb);
     cardRepo = createCardRepoPg(pgDb);
     userRepo = createUserRepoPg(pgDb);
     scheduler = createSchedulerRepoPg(pgDb);
     auth = createAuthAdapterPg(pgDb, ENV.SESSION_SECRET);
+    llmCallLogRepo = createLlmCallLogRepoPg(pgDb);
   } else {
     const { createSetRepoSqlite } = await import("../adapters/db/setRepo.sqlite");
     const { createCardRepoSqlite } = await import("../adapters/db/cardRepo.sqlite");
     const { createUserRepoSqlite } = await import("../adapters/db/userRepo.sqlite");
     const { createSchedulerRepoSqlite } = await import("../adapters/db/schedulerRepo.sqlite");
     const { createAuthAdapterSqlite } = await import("../adapters/auth/authAdapter.sqlite");
+    const { createLlmCallLogRepoSqlite } = await import("../adapters/db/llmCallLogRepo.sqlite");
     const sqliteDb = db as SqliteDb;
     setRepo = createSetRepoSqlite(sqliteDb);
     cardRepo = createCardRepoSqlite(sqliteDb);
     userRepo = createUserRepoSqlite(sqliteDb);
     scheduler = createSchedulerRepoSqlite(sqliteDb);
     auth = createAuthAdapterSqlite(sqliteDb, ENV.SESSION_SECRET);
+    llmCallLogRepo = createLlmCallLogRepoSqlite(sqliteDb);
+  }
+
+  let llmGenerator: LlmGeneratorPort | undefined;
+  if (ENV.OPENROUTER_API_KEY) {
+    const { createOpenRouterAdapter } = await import("../adapters/llm/openRouterAdapter");
+    llmGenerator = createOpenRouterAdapter(
+      { apiKey: ENV.OPENROUTER_API_KEY, model: ENV.OPENROUTER_MODEL || "anthropic/claude-3.5-haiku" },
+      llmCallLogRepo,
+    );
   }
 
   async function seedAdminIfNeeded(): Promise<void> {
@@ -88,7 +107,7 @@ async function buildContainer(): Promise<Container> {
 
   await seedAdminIfNeeded();
 
-  return { setRepo, cardRepo, userRepo, scheduler, auth, seedAdminIfNeeded };
+  return { setRepo, cardRepo, userRepo, scheduler, auth, llmCallLogRepo, llmGenerator, seedAdminIfNeeded };
 }
 
 /** The composition root singleton. Astro pages import `getContainer()`, never adapters directly. */
