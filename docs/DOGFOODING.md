@@ -176,3 +176,121 @@ contract ran for real rather than only against the fake.
 `context/archive/coffer-core-import/memory-backlog.md` is unreplayed. On MCP
 registration: /gw-init + /gw-foundation, replay the backlog, promote slice 1's
 surviving nodes, wire them as slice 2's parent_refs, then deactivate --sweep.
+
+---
+
+# Dogfood #3 — Kartka (epic scale, slice 1 green)
+
+`dogfood/kartka/` — a spaced-repetition flashcard PWA (Bun + Astro + htmx,
+hexagonal, Drizzle sqlite↔postgres via `DB_DRIVER`, varlock env, SM-2
+scheduler, 6 question types, LLM-assisted card generation via OpenRouter with
+per-call cost logging, set sharing, admin moderation+analytics, i18n pl/en).
+Chosen to stress a **shared MCP store across multiple dogfood apps in one
+repo** — the first two dogfoods each had their own project; this repo had
+never run two epics against one `.mcp.json` registration concurrently.
+
+Roadmap (`dogfood/kartka/context/foundation/roadmap.md`): slice 1
+`kartka-core-scaffold` (**green, unreviewed** — see below) → slice 2
+`kartka-llm-assist` (pending) → slice 3 `kartka-sharing` (pending) → slice 4
+`kartka-admin` (pending).
+
+## Slice 1 result
+
+Hexagonal skeleton, SM-2 scheduler, 6 question types, CRUD + review flow,
+i18n (pl/en, no English-only strings left), PWA manifest+SW+icons, admin
+seam (role/banned columns + gated `/admin` stub) — all in one implementer
+pass (single general-purpose agent, no phase-parallel needed at this size).
+`bun test`: 19 pass / 0 fail, 46 assertions (sm2 quality sequences +
+easiness floor, Levenshtein fuzzy match, full createSet→addCard→
+listCardsInSet pagination + auth-rejection against a real temp
+`bun:sqlite` file). `bun run build` green (Astro SSR). Beyond the two
+required checks, the agent also ran the built server and drove a full
+signup → admin auto-seed → create set → add card → review → SM-2-persist
+flow with curl — the vertical slice was proven end-to-end, not just at the
+unit level.
+
+**Update — the review gate (#29's own fix) caught a real blocker on first
+use.** A second fresh-context agent independently reviewed the slice and
+returned **request changes**: a genuine exploitable IDOR — `/api/review/answer`
+and `/api/review/rate` scored/persisted review state against a client-supplied
+`cardId` with **no ownership check**, while every other card-mutating path
+(`editCard`, `deleteCard`, `listCardsInSet`) correctly used a
+`getOwnedCard`-style guard. Also flagged: 4 hardcoded English strings outside
+the i18n dictionaries, and one hardcoded `aria-label`. Everything else —
+hexagonal boundary (verified by grep, not just folder convention), SM-2
+correctness against multiple quality sequences, all 6 question types, password
+hashing (`Bun.password`), signed httpOnly session cookies, `prefers-reduced-
+motion` + focus-visible — reviewed clean. Both findings fixed (exported
+`getOwnedCard`, routed both endpoints through it with 403/404; added the
+missing i18n keys in `pl.json`/`en.json`, upload-status strings threaded to
+client JS via `data-*` attributes since that script runs in-browser). Re-ran
+green after the fix: 19/19 tests, build ok. **This is exactly the dogfood
+#1/#2 evidence repeating: single-agent slices need the review gate, and
+skipping it (as the first pass here did) is where real bugs slip through.**
+Slice 1 now approved.
+
+## New signals this run is surfacing (live — update as slices land)
+
+23. **One MCP server registration per repo, shared `MEMORY_DB_PATH`.**
+    `.mcp.json` points at `dogfood/coffer/context/memory-graph.db`; a second
+    dogfood app can't get its own store without editing `.mcp.json` and
+    restarting the MCP connection — not possible from inside a running
+    session. Workaround used: same shared store, new `change_id`
+    (`kartka-mvp`, `kartka-core-scaffold`) and project-scoped facets to keep
+    the two apps' graphs distinguishable by query. Real fix belongs in
+    gw-init: either support multiple named MCP servers per project
+    (`agentic-memory-<project>`) or document the shared-store-by-facet
+    pattern as the norm instead of an improvisation.
+24. **gw-init assumes one dogfood app per repo.** Its scaffold step
+    (`context/{changes,archive,foundation}`) had to be created by hand under
+    `dogfood/kartka/` rather than via the skill, because the skill's "verify
+    MCP server" step talks about *the* project store, singular. Needs a
+    monorepo-of-dogfoods variant.
+25. **A locked tech-stack decision assumed a package that doesn't exist.**
+    The spec named `@nurodev/astro-bun-adapter`; it 404s on npm. The
+    implementer substituted `@wyattjoh/astro-bun-adapter`, which forced an
+    unplanned `astro` downgrade (7.1.5 → 6.4.8) to satisfy its peer range —
+    a cascading dependency the orchestrator's tech-stack decision never
+    anticipated. Lesson: "locked" package names in a plan/spec are
+    unverified claims until `bun add`/`npm view` actually resolves them;
+    gw-plan (or whichever gate writes the stack decision) should spot-check
+    package existence, not just architecture fit.
+26. **varlock's real defaults inverted the spec's assumption.** The spec
+    assumed only `@sensitive`-tagged vars are masked; varlock actually
+    treats everything sensitive by default (`@defaultSensitive=false` must
+    be set explicitly at the schema root), and typed env access requires a
+    `varlock codegen` step plus launching via `varlock run --` — none of
+    which was knowable without reading the library's own README mid-build.
+    Same class of issue as #25: a tool chosen at plan time by
+    name/reputation, not by reading its actual current docs.
+27. **Postgres-via-Bun has more than one valid driver choice, spec didn't
+    pick one.** The spec said "Postgres via env" without naming a driver;
+    the implementer chose Drizzle's native `bun-sql` (`Bun.sql`-backed)
+    over `pg`/node-postgres to keep the stack Bun-native — a reasonable
+    call, but it was left to the implementing agent rather than decided at
+    plan time. Worth a standing rule: "runtime-native driver over the
+    conventional Node one" should be stated once in tech-stack.md for
+    Bun-based dogfoods, not re-decided per slice.
+28. **Hand-rolled migrations vs. drizzle-kit wasn't specified.** For a
+    from-scratch schema this was a harmless implementer choice
+    (idempotent `CREATE TABLE IF NOT EXISTS`), but it's the kind of
+    decision that should be a captured `decision` node at plan time, not
+    discovered only by reading the implementer's own deviation report —
+    otherwise slice 2's implementer might assume drizzle-kit migrations
+    exist and collide.
+29. **Single-agent slices skip gw-plan-review/gw-review entirely if the
+    orchestrator doesn't explicitly route through them.** Slice 1 went
+    straight from spec → implementer agent → "done", bypassing the
+    fresh-session plan-review and review gates dogfood #1/#2 both credit
+    with catching real drift (see their "What the workflow caught"
+    sections). Nothing here was necessarily wrong, but the workflow's own
+    evidence says single-pass slices are exactly where an unreviewed
+    deviation (like #25–#27) is most likely to slip through unchallenged.
+    Fix to consider: gw-new/gw-implement should refuse to call a slice
+    "done" without at least one independent review pass, regardless of
+    slice size.
+
+## Replay debt
+
+Not yet applicable — slice 1 has not archived (deliberately: pending a
+review pass per #29 before archiving).

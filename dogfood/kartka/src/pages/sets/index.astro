@@ -1,0 +1,43 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+import { getContainer } from "../../di/container";
+import { listSets } from "../../core/usecases/setUsecases";
+import { parsePageQuery } from "../../lib/pageQuery";
+import { renderSetsTableFragment } from "../../lib/fragments";
+
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect("/login?next=/sets");
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const { setRepo } = await getContainer();
+const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
+const data = await listSets(setRepo, user.id, query);
+const tableHtml = await renderSetsTableFragment({ data, sortBy: query.sortBy, sortDir: query.sortDir, request: Astro.request });
+---
+
+<BaseLayout title={t("sets.title", locale)} locale={locale}>
+  <h1>{t("sets.title", locale)}</h1>
+
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("sets.create", locale)}</summary>
+    <form method="post" action="/api/sets" class="stack" style="margin-top: var(--space-4)">
+      <div class="field">
+        <label for="title">{t("sets.form.title", locale)}</label>
+        <input id="title" name="title" required maxlength="200" />
+      </div>
+      <div class="field">
+        <label for="description">{t("sets.form.description", locale)}</label>
+        <textarea id="description" name="description" rows="2"></textarea>
+      </div>
+      <button type="submit" class="btn-primary">{t("sets.form.submit", locale)}</button>
+    </form>
+  </details>
+
+  <Fragment set:html={tableHtml} />
+</BaseLayout>

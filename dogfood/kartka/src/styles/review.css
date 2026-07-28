@@ -1,0 +1,110 @@
+.review-shell {
+  max-width: 640px;
+  margin-inline: auto;
+  padding: var(--space-4);
+}
+
+.review-progress {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-bottom: var(--space-3);
+}
+
+.flip-card {
+  perspective: 1200px;
+  min-height: 220px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-slow) var(--ease-standard);
+}
+
+.flip-card.is-flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  box-shadow: var(--shadow-md);
+  font-size: 1.25rem;
+}
+
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card-inner {
+    transition: none;
+  }
+}
+
+.review-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 480px) {
+  .review-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.rating-again {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.rating-hard {
+  background: color-mix(in srgb, var(--color-amber) 12%, transparent);
+  color: var(--color-amber);
+  border-color: var(--color-amber);
+}
+.rating-good {
+  background: color-mix(in srgb, var(--color-teal) 12%, transparent);
+  color: var(--color-teal-strong);
+  border-color: var(--color-teal);
+}
+.rating-easy {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.mc-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.mc-option {
+  text-align: left;
+  background: var(--color-bg-raised);
+  border: 1.5px solid var(--color-border);
+}
+
+.mc-option.is-correct {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+.mc-option.is-incorrect {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}

@@ -1,0 +1,183 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+import { getContainer } from "../../di/container";
+import { getOwnedSet } from "../../core/usecases/setUsecases";
+import { listCardsInSet } from "../../core/usecases/cardUsecases";
+import { parsePageQuery } from "../../lib/pageQuery";
+import { renderCardsTableFragment } from "../../lib/fragments";
+import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
+
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const { setRepo, cardRepo } = await getContainer();
+const setId = Astro.params.id!;
+
+let set;
+try {
+  set = await getOwnedSet(setRepo, setId, user.id);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  if (err instanceof ForbiddenError) return new Response(null, { status: 403 });
+  throw err;
+}
+
+const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
+const data = await listCardsInSet(cardRepo, setRepo, setId, user.id, query);
+const tableHtml = await renderCardsTableFragment({ setId, data, sortBy: query.sortBy, sortDir: query.sortDir, locale });
+
+const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"] as const;
+---
+
+<BaseLayout title={t("cards.title", locale, { setTitle: set.title })} locale={locale}>
+  <a href="/sets">&larr; {t("sets.title", locale)}</a>
+  <h1>{t("cards.title", locale, { setTitle: set.title })}</h1>
+  {set.description && <p>{set.description}</p>}
+
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("cards.add", locale)}</summary>
+    <form
+      method="post"
+      action={`/api/sets/${setId}/cards`}
+      class="stack"
+      style="margin-top: var(--space-4)"
+      id="card-form"
+      enctype="multipart/form-data"
+    >
+      <div class="field">
+        <label for="type">{t("cards.column.type", locale)}</label>
+        <select id="type" name="type" onchange="document.getElementById('card-form').dataset.type = this.value">
+          {cardTypes.map((ct) => <option value={ct}>{t(`cards.type.${ct}`, locale)}</option>)}
+        </select>
+      </div>
+
+      <fieldset data-fields="basic">
+        <div class="field">
+          <label for="front">{t("cards.form.front", locale)}</label>
+          <textarea id="front" name="front"></textarea>
+        </div>
+        <div class="field">
+          <label for="back">{t("cards.form.back", locale)}</label>
+          <textarea id="back" name="back"></textarea>
+        </div>
+      </fieldset>
+
+      <fieldset data-fields="cloze" hidden>
+        <div class="field">
+          <label for="text">{t("cards.form.clozeText", locale)}</label>
+          <textarea id="text" name="text" placeholder="The capital of France is {{c1::Paris}}."></textarea>
+          <small>{t("cards.form.clozeHelp", locale)}</small>
+        </div>
+      </fieldset>
+
+      <fieldset data-fields="multiple_choice" hidden>
+        <div class="field">
+          <label for="question">{t("cards.form.question", locale)}</label>
+          <input id="question" name="question" />
+        </div>
+        <div class="field">
+          <label>{t("cards.form.options", locale)}</label>
+          {[0, 1, 2, 3].map((i) => (
+            <div class="row">
+              <input type="radio" name="correctIndex" value={i} aria-label={t("cards.form.correctOption", locale)} />
+              <input name="options" placeholder={t("cards.form.option.placeholder", locale, { n: i + 1 })} />
+            </div>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset data-fields="true_false" hidden>
+        <div class="field">
+          <label for="statement">{t("cards.form.statement", locale)}</label>
+          <input id="statement" name="statement" />
+        </div>
+        <div class="field row">
+          <input type="checkbox" id="isTrue" name="isTrue" />
+          <label for="isTrue" style="margin:0">{t("cards.form.isTrue", locale)}</label>
+        </div>
+      </fieldset>
+
+      <fieldset data-fields="type_answer" hidden>
+        <div class="field">
+          <label for="prompt">{t("cards.form.prompt", locale)}</label>
+          <input id="prompt" name="prompt" />
+        </div>
+        <div class="field">
+          <label for="acceptedAnswers">{t("cards.form.acceptedAnswers", locale)}</label>
+          <textarea id="acceptedAnswers" name="acceptedAnswers" rows="3"></textarea>
+        </div>
+      </fieldset>
+
+      <fieldset data-fields="image_occlusion" hidden>
+        <div class="field">
+          <label for="imageFile">{t("cards.form.image", locale)}</label>
+          <input type="file" id="imageFile" accept="image/*" />
+          <input type="hidden" id="imageUrl" name="imageUrl" />
+          <small
+            id="upload-status"
+            data-uploading={t("upload.uploading", locale)}
+            data-uploaded-tpl={t("upload.uploaded", locale, { url: "{url}" })}
+            data-failed={t("upload.failed", locale)}
+          ></small>
+        </div>
+        <div class="field">
+          <label>{t("cards.form.regions", locale)}</label>
+          {[0, 1].map(() => (
+            <div class="row">
+              <input type="number" name="region_x" placeholder={t("cards.form.region.x", locale)} min="0" max="100" />
+              <input type="number" name="region_y" placeholder={t("cards.form.region.y", locale)} min="0" max="100" />
+              <input type="number" name="region_w" placeholder={t("cards.form.region.w", locale)} min="0" max="100" />
+              <input type="number" name="region_h" placeholder={t("cards.form.region.h", locale)} min="0" max="100" />
+              <input name="region_label" placeholder={t("cards.form.region.label", locale)} />
+            </div>
+          ))}
+        </div>
+      </fieldset>
+
+      <button type="submit" class="btn-primary">{t("cards.form.submit", locale)}</button>
+    </form>
+  </details>
+
+  <Fragment set:html={tableHtml} />
+</BaseLayout>
+
+<script>
+  const form = document.getElementById("card-form") as HTMLFormElement | null;
+  const typeSelect = document.getElementById("type") as HTMLSelectElement | null;
+
+  function syncVisibleFields() {
+    if (!form || !typeSelect) return;
+    const current = typeSelect.value;
+    form.querySelectorAll<HTMLFieldSetElement>("fieldset[data-fields]").forEach((fs) => {
+      fs.hidden = fs.dataset.fields !== current;
+    });
+  }
+  typeSelect?.addEventListener("change", syncVisibleFields);
+  syncVisibleFields();
+
+  const imageFile = document.getElementById("imageFile") as HTMLInputElement | null;
+  const imageUrlField = document.getElementById("imageUrl") as HTMLInputElement | null;
+  const uploadStatus = document.getElementById("upload-status");
+  imageFile?.addEventListener("change", async () => {
+    const file = imageFile.files?.[0];
+    if (!file || !imageUrlField) return;
+    const body = new FormData();
+    body.set("image", file);
+    if (uploadStatus) uploadStatus.textContent = uploadStatus.dataset.uploading ?? "";
+    const res = await fetch("/api/uploads", { method: "POST", body });
+    if (res.ok) {
+      const { url } = await res.json();
+      imageUrlField.value = url;
+      if (uploadStatus) uploadStatus.textContent = (uploadStatus.dataset.uploadedTpl ?? "{url}").replace("{url}", url);
+    } else if (uploadStatus) {
+      uploadStatus.textContent = uploadStatus.dataset.failed ?? "";
+    }
+  });
+</script>

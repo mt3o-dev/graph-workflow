@@ -1,0 +1,30 @@
+{
+  "name": "kartka",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "postinstall": "varlock codegen",
+    "dev": "varlock run -- astro dev",
+    "build": "varlock run -- astro build",
+    "preview": "varlock run -- astro preview",
+    "start": "varlock run -- bun ./dist/server/entry.mjs",
+    "test": "varlock run -- bun test",
+    "astro": "astro"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.1.2",
+    "drizzle-kit": "^0.31.10"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@wyattjoh/astro-bun-adapter": "^2.1.1",
+    "astro": "6.4.8",
+    "drizzle-orm": "^0.45.2",
+    "htmx.org": "^2.0.10",
+    "varlock": "^1.14.0"
+  }
+}

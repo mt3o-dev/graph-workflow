@@ -1,0 +1,79 @@
+---
+import { t, type Locale } from "../i18n";
+import type { User } from "../core/domain/types";
+
+export interface Props {
+  user: User | null;
+  locale: Locale;
+}
+const { user, locale } = Astro.props;
+---
+
+<header class="nav">
+  <div class="nav-inner container">
+    <a href="/" class="brand" aria-label={t("app.name", locale)}>
+      <img src="/branding/logo.svg" alt={t("app.name", locale)} height="32" />
+    </a>
+    <nav class="row">
+      {
+        user && (
+          <>
+            <a href="/sets">{t("nav.sets", locale)}</a>
+            <a href="/review">{t("nav.review", locale)}</a>
+            {user.role === "admin" && <a href="/admin">{t("nav.admin", locale)}</a>}
+            <span class="nav-greeting">{t("nav.greeting", locale, { name: user.displayName })}</span>
+            <form method="post" action="/api/auth/logout">
+              <button type="submit" class="btn-secondary">
+                {t("nav.logout", locale)}
+              </button>
+            </form>
+          </>
+        )
+      }
+      {
+        !user && (
+          <>
+            <a href="/login">{t("nav.login", locale)}</a>
+            <a href="/signup" class="btn btn-primary">
+              {t("nav.signup", locale)}
+            </a>
+          </>
+        )
+      }
+    </nav>
+  </div>
+</header>
+
+<style>
+  .nav {
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-raised);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+  }
+  .nav-inner nav {
+    align-items: center;
+  }
+  .nav-inner nav a {
+    text-decoration: none;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .nav-inner nav a:hover {
+    color: var(--color-teal-strong);
+  }
+  .nav-greeting {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+</style>

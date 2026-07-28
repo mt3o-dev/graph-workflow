@@ -1,0 +1,24 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../i18n";
+import { getCurrentUser } from "../lib/session";
+
+const user = await getCurrentUser(Astro.cookies);
+if (user) return Astro.redirect("/sets");
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+---
+
+<BaseLayout title={t("app.name", locale)} locale={locale}>
+  <div class="stack" style="align-items:center; text-align:center; padding-block: var(--space-16)">
+    <img src="/branding/logo.svg" alt={t("app.name", locale)} width="220" />
+    <p style="font-size:1.25rem; color:var(--color-text-muted)">{t("app.tagline", locale)}</p>
+    <div class="row" style="justify-content:center">
+      <a href="/signup" class="btn btn-primary">{t("nav.signup", locale)}</a>
+      <a href="/login" class="btn btn-secondary">{t("nav.login", locale)}</a>
+    </div>
+  </div>
+</BaseLayout>
