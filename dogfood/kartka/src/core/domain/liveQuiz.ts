@@ -324,6 +324,45 @@ export function recordAnswer(
   };
 }
 
+// --- Host screen (slice 13) ---------------------------------------------
+// Both derivations below are read-only projections of RoomState.players'
+// existing per-answer records — no new stored state, nothing here can be
+// mutated. They deliberately expose only a COUNT, never who answered what,
+// so the host-screen's "waiting for answers" bar can't leak reveal-phase
+// info (correctness) before the reveal itself.
+
+export interface AnsweredCount {
+  answered: number;
+  total: number;
+}
+
+/**
+ * How many of the currently-joined players have submitted an answer to the
+ * room's current question so far, out of how many are joined in total.
+ * Returns `{ answered: 0, total }` if no question is currently live
+ * (defensive — the host screen only renders this during "question-live").
+ */
+export function answeredCount(room: RoomState): AnsweredCount {
+  const total = Object.keys(room.players).length;
+  const question = currentQuestion(room);
+  if (!question) return { answered: 0, total };
+  const answered = Object.values(room.players).filter((p) => Boolean(p.answers[question.cardId])).length;
+  return { answered, total };
+}
+
+/**
+ * How many currently-joined players answered the room's current (or
+ * just-finished, during "reveal") question correctly. Used by the
+ * host-screen reveal fragment ("X of Y got it right") — safe to call in
+ * both "question-live" and "reveal" phases since currentQuestionIndex still
+ * points at the relevant question in either.
+ */
+export function correctAnswererCount(room: RoomState): number {
+  const question = currentQuestion(room);
+  if (!question) return 0;
+  return Object.values(room.players).filter((p) => p.answers[question.cardId]?.correct === true).length;
+}
+
 /** Highest score first; ties broken alphabetically by display name for determinism. */
 export function scoreboard(room: RoomState): ScoreboardEntry[] {
   return Object.values(room.players)

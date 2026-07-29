@@ -315,6 +315,7 @@
   "live.room.scoreboard.points": "{score} pkt",
   "live.room.disconnected": "Utracono połączenie — próbuję połączyć ponownie…",
   "live.room.errorUnknownRoom": "Ten pokój już nie istnieje.",
+  "live.room.openHostScreen": "Otwórz widok dla dużego ekranu",
   "live.teams.title": "Drużyny",
   "live.teams.countLabel": "Liczba drużyn",
   "live.teams.setButton": "Ustaw / przetasuj drużyny",
@@ -323,5 +324,23 @@
   "live.teams.unassigned": "Bez drużyny",
   "live.teams.moveButton": "Przenieś",
   "live.teams.leaderboard.title": "Wyniki drużyn",
-  "live.teams.leaderboard.points": "{score} pkt ({count} graczy)"
+  "live.teams.leaderboard.points": "{score} pkt ({count} graczy)",
+
+  "live.host.forbidden": "Tylko prowadzący ten pokój może zobaczyć widok dla dużego ekranu.",
+  "live.host.lobby.title": "Gotowi do gry?",
+  "live.host.lobby.scanHint": "Zeskanuj, aby dołączyć",
+  "live.host.lobby.joinUrl": "Albo wejdź na: {url}",
+  "live.host.lobby.playerCount": "Dołączyło graczy: {count}",
+  "live.host.lobby.startButton": "Rozpocznij quiz",
+  "live.host.question.number": "Pytanie {current} z {total}",
+  "live.host.question.waitingBar": "Odpowiedziało: {answered} z {total}",
+  "live.host.question.revealButton": "Pokaż odpowiedź",
+  "live.host.reveal.title": "Odpowiedź to…",
+  "live.host.reveal.correctCount": "Poprawnie odpowiedziało {correct} z {total}",
+  "live.host.reveal.nextButton": "Następne pytanie",
+  "live.host.finished.title": "Wyniki końcowe!",
+  "live.host.finished.podium.first": "1. miejsce",
+  "live.host.finished.podium.second": "2. miejsce",
+  "live.host.finished.podium.third": "3. miejsce",
+  "live.host.finished.teamPodium.title": "Najlepsza drużyna"
 }

@@ -5,9 +5,12 @@ import { getCurrentUser } from "../../lib/session";
 import { isValidRoomCode } from "../../core/domain/liveQuiz";
 import { ENV } from "../../env";
 
-// Slice 11 (live quiz): the room page — same shell for host and players (no
-// separate host big-screen view yet, that's slice 13's job, see roadmap.md).
-// All the real-time behavior (question/reveal/scoreboard swaps) comes from
+// Slice 11 (live quiz): the room page — the phone-in-hand shell shared by
+// every player, host included. Slice 13 added a SEPARATE dedicated
+// big-screen route (./[code]/host.astro) for the host to project; this page
+// is unchanged for players and still works exactly as before if the host
+// opens it too (e.g. to answer along on their own device). All the
+// real-time behavior (question/reveal/scoreboard swaps) comes from
 // htmx-ext-ws's `ws-connect`, pointed at the WebSocket sidecar process on its
 // own port — see docs/ADR-live-transport.md.
 const user = await getCurrentUser(Astro.cookies);
@@ -41,7 +44,25 @@ try {
   roomExists = true;
 }
 
+// Slice 13: purely a discoverability nicety — if this visitor happens to be
+// the room's host, show a link to the dedicated big-screen view. This is
+// NOT the security boundary (that's host.astro's own SSR check + the WS
+// upgrade gate, see docs there); failing to reach the sidecar here just
+// means the link doesn't render, nothing more.
+let isHost = false;
+if (roomExists) {
+  try {
+    const res = await fetch(`${httpProtocol}//${sidecarHost}/live/${code}/host-check`, {
+      headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
+    });
+    if (res.ok) isHost = ((await res.json()) as { isHost: boolean }).isHost === true;
+  } catch {
+    isHost = false;
+  }
+}
+
 const wsUrl = `${wsProtocol}//${sidecarHost}/live/${code}?lang=${locale}`;
+const hostScreenUrl = `/live/${code}/host?lang=${locale}`;
 ---
 
 <BaseLayout title={t("live.room.title", locale)} locale={locale}>
@@ -50,6 +71,13 @@ const wsUrl = `${wsProtocol}//${sidecarHost}/live/${code}?lang=${locale}`;
       <p role="alert">{t("live.room.errorUnknownRoom", locale)}</p>
     ) : (
       <div id="live-socket" hx-ext="ws" ws-connect={wsUrl}>
+        {isHost && (
+          <p>
+            <a href={hostScreenUrl} class="btn btn-secondary">
+              {t("live.room.openHostScreen", locale)}
+            </a>
+          </p>
+        )}
         <div id="live-room" class="stack">
           <p>{t("live.room.lobby.waiting", locale)}</p>
         </div>

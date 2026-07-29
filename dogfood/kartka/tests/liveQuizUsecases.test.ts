@@ -19,6 +19,7 @@ import {
   setLiveTeams,
   assignLiveTeam,
   computeTeamScoreboard,
+  isLiveHost,
 } from "../src/core/usecases/liveQuizUsecases";
 import { createInMemoryLiveSessionPort } from "../src/adapters/liveQuiz/inMemoryLiveSessionPort";
 import type { LiveSessionPort } from "../src/core/ports/liveSessionPort";
@@ -416,5 +417,41 @@ describe("getLiveRoom", () => {
     const fetched = await getLiveRoom(port, room.code);
     expect(fetched.code).toBe(room.code);
     await expect(getLiveRoom(port, "ZZZZZ")).rejects.toThrow(NotFoundError);
+  });
+});
+
+// Slice 13 (host screen): the read-only enforcement primitive behind the
+// dedicated big-screen route's two independent access-control gates (the
+// SSR host-check in src/pages/live/[code]/host.astro and the WebSocket
+// upgrade gate in live-server.ts — see both files' header comments). This
+// is the one piece of that whole access-control chain that's meaningfully
+// unit-testable without a real HTTP/WS round-trip; the transport-layer glue
+// (the sidecar's /host-check endpoint, the Astro page's fetch-and-403) is
+// disclosed as NOT covered here — see the slice report.
+describe("isLiveHost (slice 13, host screen access control)", () => {
+  test("true for the room's actual host, false for a joined non-host player", async () => {
+    const port = createInMemoryLiveSessionPort();
+    const owner = await makeUser(`host-check-owner-${crypto.randomUUID()}@example.com`);
+    const other = await makeUser(`host-check-other-${crypto.randomUUID()}@example.com`);
+    const { set } = await makeMixedSet(owner.id);
+    const room = await createLiveSession(port, setRepo, cardRepo, { setId: set.id, hostId: owner.id });
+    await joinLiveSession(port, { code: room.code, userId: other.id, displayName: other.displayName });
+
+    expect(await isLiveHost(port, { code: room.code, userId: owner.id })).toBe(true);
+    expect(await isLiveHost(port, { code: room.code, userId: other.id })).toBe(false);
+  });
+
+  test("false for a userId that never joined the room at all", async () => {
+    const port = createInMemoryLiveSessionPort();
+    const owner = await makeUser(`host-check-owner2-${crypto.randomUUID()}@example.com`);
+    const { set } = await makeMixedSet(owner.id);
+    const room = await createLiveSession(port, setRepo, cardRepo, { setId: set.id, hostId: owner.id });
+
+    expect(await isLiveHost(port, { code: room.code, userId: "never-joined-user" })).toBe(false);
+  });
+
+  test("throws NotFoundError for an unknown room code (fails closed, not open)", async () => {
+    const port = createInMemoryLiveSessionPort();
+    await expect(isLiveHost(port, { code: "ZZZZZ", userId: "someone" })).rejects.toThrow(NotFoundError);
   });
 });

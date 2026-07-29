@@ -45,10 +45,12 @@ import {
   getLiveRoom,
   setLiveTeams,
   assignLiveTeam,
+  isLiveHost,
 } from "./src/core/usecases/liveQuizUsecases";
 import { currentQuestion, type RoomState } from "./src/core/domain/liveQuiz";
 import { NotFoundError, ForbiddenError, ValidationError } from "./src/core/domain/errors";
 import type { Locale } from "./src/i18n";
+import { buildLiveJoinUrl } from "./src/lib/liveJoinUrl";
 import {
   renderLobbyFragment,
   renderQuestionFragment,
@@ -56,14 +58,28 @@ import {
   renderFinishedFragment,
   renderAnswerAckFragment,
   renderUnknownRoomFragment,
+  renderHostLobbyFragment,
+  renderHostQuestionFragment,
+  renderHostRevealFragment,
+  renderHostFinishedFragment,
 } from "./src/lib/liveFragments";
 
+/**
+ * Slice 13 (host screen): `view` distinguishes the regular per-player socket
+ * (`/live/:code`, unchanged since slice 11) from the dedicated big-screen
+ * host socket (`/live/:code?view=host`, opened only by
+ * src/pages/live/[code]/host.astro). `isHost` is still computed for BOTH —
+ * a host who opens the regular player page still gets their existing
+ * host-only controls (start/advance/team setup) exactly as before; `view`
+ * only changes which fragment set + oob target this socket receives.
+ */
 interface SocketData {
   code: string;
   userId: string;
   displayName: string;
   locale: Locale;
   isHost: boolean;
+  view: "player" | "host";
 }
 
 // Per-room connection registry. NOT Bun's built-in pub/sub topics, because
@@ -103,18 +119,54 @@ function renderRoomFragment(room: RoomState, locale: Locale, isHost: boolean): s
   return null as unknown as string; // handled separately below (needs the scoreboard, computed async)
 }
 
+/**
+ * Slice 13: the host-screen equivalent of renderRoomFragment above — same
+ * phase dispatch, different (host-only) fragment set + oob target. Only
+ * ever called for a socket whose upgrade already passed the isHost check
+ * (see handleSocketUpgrade) — this function itself does no authorization.
+ */
+function renderHostScreenFragment(room: RoomState, locale: Locale, joinUrl: string): string {
+  if (room.phase === "lobby") return renderHostLobbyFragment({ room, locale, joinUrl });
+  if (room.phase === "question-live") {
+    const q = currentQuestion(room);
+    if (!q) return renderHostLobbyFragment({ room, locale, joinUrl }); // defensive, shouldn't happen
+    return renderHostQuestionFragment({ room, question: q, index: room.currentQuestionIndex, total: room.questions.length, locale });
+  }
+  if (room.phase === "reveal") {
+    const q = currentQuestion(room);
+    if (!q) return renderHostLobbyFragment({ room, locale, joinUrl });
+    return renderHostRevealFragment({ room, question: q, locale });
+  }
+  // finished
+  return null as unknown as string; // handled separately below (needs the scoreboard, computed async)
+}
+
+/** Renders+sends whichever fragment set `ws` subscribes to (player or host-screen), for the room's CURRENT phase. */
+async function sendCurrentRoomState(ws: Bun.ServerWebSocket<SocketData>, room: RoomState): Promise<void> {
+  const { liveSessionPort } = await getContainer();
+  if (room.phase === "finished") {
+    const entries = await computeScoreboard(liveSessionPort, ws.data.code);
+    const teamEntries = await computeTeamScoreboard(liveSessionPort, ws.data.code);
+    if (ws.data.view === "host") {
+      ws.send(renderHostFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
+    } else {
+      ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
+    }
+    return;
+  }
+  if (ws.data.view === "host") {
+    const siteUrl = ENV.PUBLIC_SITE_URL || "http://localhost:4321";
+    ws.send(renderHostScreenFragment(room, ws.data.locale, buildLiveJoinUrl(siteUrl, room.code)));
+  } else {
+    ws.send(renderRoomFragment(room, ws.data.locale, ws.data.isHost));
+  }
+}
+
 async function broadcastRoomState(code: string, room: RoomState): Promise<void> {
   const sockets = roomSockets.get(code);
   if (!sockets) return;
-  const { liveSessionPort } = await getContainer();
   for (const ws of sockets) {
-    if (room.phase === "finished") {
-      const entries = await computeScoreboard(liveSessionPort, code);
-      const teamEntries = await computeTeamScoreboard(liveSessionPort, code);
-      ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
-    } else {
-      ws.send(renderRoomFragment(room, ws.data.locale, ws.data.isHost));
-    }
+    await sendCurrentRoomState(ws, room);
   }
 }
 
@@ -122,6 +174,12 @@ function localeFromRequest(req: Request): Locale {
   const url = new URL(req.url);
   const lang = url.searchParams.get("lang");
   return lang === "en" ? "en" : "pl";
+}
+
+/** `?view=host` selects the dedicated big-screen host socket; anything else (including absent) is the regular player socket. */
+function viewFromRequest(req: Request): "player" | "host" {
+  const url = new URL(req.url);
+  return url.searchParams.get("view") === "host" ? "host" : "player";
 }
 
 async function handleCreate(req: Request): Promise<Response> {
@@ -136,7 +194,12 @@ async function handleCreate(req: Request): Promise<Response> {
     await getOwnedSet(setRepo, setId, user.id); // redundant with createLiveSession's own check, but fails fast with a clearer 403 before any room work
     const room = await createLiveSession(liveSessionPort, setRepo, cardRepo, { setId, hostId: user.id });
     const siteUrl = ENV.PUBLIC_SITE_URL || "http://localhost:4321";
-    return Response.redirect(`${siteUrl}/live/${room.code}?lang=${user.locale}`, 303);
+    // Slice 13: only the host ever hits this endpoint (it's the "Start live
+    // session" form's POST target), so the host — and only the host — lands
+    // straight on the dedicated big-screen route. Players reach the regular
+    // /live/{code} room page separately, via the join flow (join.astro/
+    // enter.astro) or a scanned QR code, never through this redirect.
+    return Response.redirect(`${siteUrl}/live/${room.code}/host?lang=${user.locale}`, 303);
   } catch (err) {
     if (err instanceof NotFoundError) return new Response("Set not found", { status: 404 });
     if (err instanceof ForbiddenError) return new Response("Forbidden", { status: 403 });
@@ -158,17 +221,53 @@ async function handleSocketUpgrade(req: Request, server: Bun.Server<SocketData>,
     throw err;
   }
 
+  const isHost = room.hostId === user.id;
+  const view = viewFromRequest(req);
+  // Slice 13: the host-screen socket is rejected outright — no upgrade, no
+  // connection at all — for anyone who isn't this room's actual host. This
+  // is the SAME server-side hostId comparison every other host-only action
+  // in this file uses, applied here at the transport layer as a second,
+  // independent gate on top of src/pages/live/[code]/host.astro's own SSR
+  // check (see that file + isLiveHost's header comment) — a non-host can't
+  // reach this view even by hand-crafting the WebSocket URL directly.
+  if (view === "host" && !isHost) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const data: SocketData = {
     code: room.code,
     userId: user.id,
     displayName: user.displayName,
     locale: localeFromRequest(req),
-    isHost: room.hostId === user.id,
+    isHost,
+    view,
   };
   const upgraded = server.upgrade(req, { data });
   if (!upgraded) return new Response("WebSocket upgrade failed", { status: 500 });
   // Bun handles the 101 response itself once upgraded; nothing more to return.
   return undefined as unknown as Response;
+}
+
+/**
+ * Slice 13: the SSR host-check src/pages/live/[code]/host.astro calls
+ * (server-to-server, cookie header forwarded manually — see that file)
+ * before rendering ANY host-screen markup. Reuses isLiveHost (the same
+ * read-only `room.hostId === userId` query the WS upgrade gate above uses),
+ * so both enforcement points share one authorization decision instead of
+ * two independently-written comparisons drifting apart.
+ */
+async function handleHostCheck(req: Request, code: string): Promise<Response> {
+  const user = await getUserFromCookieHeader(req.headers.get("cookie"));
+  if (!user) return new Response(JSON.stringify({ isHost: false }), { status: 401, headers: { "content-type": "application/json" } });
+
+  const { liveSessionPort } = await getContainer();
+  try {
+    const isHost = await isLiveHost(liveSessionPort, { code: code.toUpperCase(), userId: user.id });
+    return new Response(JSON.stringify({ isHost }), { status: 200, headers: { "content-type": "application/json" } });
+  } catch (err) {
+    if (err instanceof NotFoundError) return new Response(JSON.stringify({ isHost: false }), { status: 404, headers: { "content-type": "application/json" } });
+    throw err;
+  }
 }
 
 const port = Number(ENV.LIVE_WS_PORT) || 4322;
@@ -199,6 +298,13 @@ const server = Bun.serve<SocketData>({
       });
     }
 
+    // Slice 13: SSR-side authorization check for the host-screen route (see
+    // src/pages/live/[code]/host.astro + handleHostCheck's header comment).
+    const hostCheckMatch = url.pathname.match(/^\/live\/([^/]+)\/host-check$/);
+    if (hostCheckMatch) {
+      return handleHostCheck(req, hostCheckMatch[1]!);
+    }
+
     const match = url.pathname.match(/^\/live\/([^/]+)$/);
     if (match) {
       return handleSocketUpgrade(req, srv, match[1]!);
@@ -217,13 +323,7 @@ const server = Bun.serve<SocketData>({
           displayName: ws.data.displayName,
         });
         // Unicast current state to the joiner (covers late joins mid-question)...
-        if (room.phase === "finished") {
-          const entries = await computeScoreboard(liveSessionPort, ws.data.code);
-          const teamEntries = await computeTeamScoreboard(liveSessionPort, ws.data.code);
-          ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
-        } else {
-          ws.send(renderRoomFragment(room, ws.data.locale, ws.data.isHost));
-        }
+        await sendCurrentRoomState(ws, room);
         // ...and refresh the lobby view for everyone else already waiting.
         if (room.phase === "lobby") await broadcastRoomState(ws.data.code, room);
       } catch (err) {

@@ -315,6 +315,7 @@
   "live.room.scoreboard.points": "{score} pts",
   "live.room.disconnected": "Connection lost — trying to reconnect…",
   "live.room.errorUnknownRoom": "This room no longer exists.",
+  "live.room.openHostScreen": "Open big-screen host view",
   "live.teams.title": "Teams",
   "live.teams.countLabel": "Number of teams",
   "live.teams.setButton": "Set / reshuffle teams",
@@ -323,5 +324,23 @@
   "live.teams.unassigned": "Unassigned",
   "live.teams.moveButton": "Move",
   "live.teams.leaderboard.title": "Team leaderboard",
-  "live.teams.leaderboard.points": "{score} pts ({count} players)"
+  "live.teams.leaderboard.points": "{score} pts ({count} players)",
+
+  "live.host.forbidden": "Only this room's host can view the big-screen host view.",
+  "live.host.lobby.title": "Ready to play?",
+  "live.host.lobby.scanHint": "Scan to join",
+  "live.host.lobby.joinUrl": "Or go to: {url}",
+  "live.host.lobby.playerCount": "{count} player(s) joined",
+  "live.host.lobby.startButton": "Start quiz",
+  "live.host.question.number": "Question {current} of {total}",
+  "live.host.question.waitingBar": "{answered} of {total} answered",
+  "live.host.question.revealButton": "Show answer",
+  "live.host.reveal.title": "The answer is…",
+  "live.host.reveal.correctCount": "{correct} of {total} got it right",
+  "live.host.reveal.nextButton": "Next question",
+  "live.host.finished.title": "Final results!",
+  "live.host.finished.podium.first": "1st",
+  "live.host.finished.podium.second": "2nd",
+  "live.host.finished.podium.third": "3rd",
+  "live.host.finished.teamPodium.title": "Top team"
 }

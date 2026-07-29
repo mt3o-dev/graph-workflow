@@ -1,0 +1,82 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/liveHost.css";
+import { t, resolveLocale } from "../../../i18n";
+import { getCurrentUser } from "../../../lib/session";
+import { isValidRoomCode } from "../../../core/domain/liveQuiz";
+import { ENV } from "../../../env";
+
+// Slice 13 (host screen): the dedicated big-screen route, separate from the
+// shared player view (../[code].astro, unchanged since slice 11). This page
+// renders NOTHING game-specific itself — it's a thin SSR shell exactly like
+// [code].astro, just pointed at a different fragment set (see
+// live-server.ts's renderHostScreenFragment) over the same WebSocket
+// transport, distinguished by `?view=host` on the connect URL.
+//
+// Access control (be paranoid, per the roadmap): this is checked TWICE,
+// independently, both server-side —
+//   1. HERE: an SSR call to the sidecar's authoritative RoomState (this
+//      Astro process's own `liveSessionPort` instance is NOT load-bearing,
+//      see docs/ADR-live-transport.md — only the sidecar knows the real
+//      room.hostId), forwarding this request's own signed session cookie so
+//      the sidecar can verify identity itself rather than trusting a claim
+//      from this process.
+//   2. AGAIN at the WebSocket upgrade in live-server.ts (handleSocketUpgrade)
+//      when this page's own ws-connect fires, so a non-host can't reach this
+//      view even by hand-crafting the URL and skipping this page entirely.
+// A non-host (or anonymous visitor) is rejected with a hard 403 response
+// here — never a client-side redirect that still shipped the real markup
+// first.
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const code = (Astro.params.code ?? "").toUpperCase();
+if (!isValidRoomCode(code)) return Astro.redirect(`/live/join?error=notfound&lang=${locale}`);
+
+const liveWsPort = ENV.LIVE_WS_PORT || "4322";
+const httpProtocol = Astro.url.protocol === "https:" ? "https:" : "http:";
+const wsProtocol = Astro.url.protocol === "https:" ? "wss:" : "ws:";
+const sidecarHost = `${Astro.url.hostname}:${liveWsPort}`;
+
+// Fail CLOSED, not open: unlike [code].astro's existence pre-check (a UX
+// nicety for an unauthenticated-risk-free existence probe), this is the
+// actual access-control decision for a host-only view — if the sidecar
+// can't be reached at all, reject rather than render.
+let isHost = false;
+try {
+  const res = await fetch(`${httpProtocol}//${sidecarHost}/live/${code}/host-check`, {
+    headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
+  });
+  if (res.ok) {
+    const body = (await res.json()) as { isHost: boolean };
+    isHost = body.isHost === true;
+  } else if (res.status === 404) {
+    return Astro.redirect(`/live/join?error=notfound&lang=${locale}`);
+  }
+} catch {
+  isHost = false;
+}
+
+if (!isHost) {
+  return new Response(t("live.host.forbidden", locale), { status: 403 });
+}
+
+const wsUrl = `${wsProtocol}//${sidecarHost}/live/${code}?lang=${locale}&view=host`;
+---
+
+<BaseLayout title={t("live.room.title", locale)} locale={locale}>
+  <div id="live-socket" hx-ext="ws" ws-connect={wsUrl}>
+    <div id="live-host-screen" class="stack">
+      <p>{t("live.room.lobby.waiting", locale)}</p>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import "htmx-ext-ws";
+</script>

@@ -167,3 +167,26 @@ export async function computeTeamScoreboard(port: LiveSessionPort, code: string)
   if (!room) throw new NotFoundError("Room");
   return port.getTeamScoreboard(code);
 }
+
+// --- Host screen (slice 13) ---------------------------------------------
+
+export interface IsLiveHostInput {
+  code: string;
+  userId: string;
+}
+
+/**
+ * Read-only version of the `room.hostId === userId` check every other
+ * host-only action here already enforces (advanceLiveQuestion, setLiveTeams,
+ * assignLiveTeam) — a boolean query instead of a throw, since the callers
+ * (the dedicated host-screen HTTP check in live-server.ts, and its WebSocket
+ * upgrade handler) need to decide whether to render/upgrade at all, not to
+ * perform a mutation. Still throws NotFoundError for an unknown code, same
+ * as every other room lookup in this module — this is a real access-control
+ * gate, not a "fail open on missing room" convenience.
+ */
+export async function isLiveHost(port: LiveSessionPort, input: IsLiveHostInput): Promise<boolean> {
+  const room = await port.getRoom(input.code);
+  if (!room) throw new NotFoundError("Room");
+  return room.hostId === input.userId;
+}

@@ -542,6 +542,41 @@ regression testing (not just "team functions return empty"), sane auto-split
 edge cases, zero new persistent state — reviewed clean. 247/247 tests stable
 across repeated runs, build green after both fixes.
 
+## Slice 13 result — kartka-live-host-screen (roadmap complete)
+
+The last slice on the currently-planned roadmap: a dedicated big-screen
+host route with server-rendered QR-code join, a live "waiting for answers"
+bar, reveal animation, and a podium screen. Double-gated host-only access
+held up under scrutiny on both sides independently — the SSR host-check
+endpoint fails closed on every failure mode traced (no cookie, wrong user,
+unknown room, unreachable sidecar), and the WebSocket upgrade handler
+independently re-checks `room.hostId` *before* upgrading, so a client
+connecting directly to the host socket without ever loading the page is
+still rejected. One should-fix, a test-coverage gap rather than a code bug:
+the QR-rendering test suite checked structural well-formedness but never
+cross-checked the hand-built SVG rect-merging logic against the real
+`qrcode-generator` matrix — the reviewer verified correctness by hand (0
+mismatches across 234 dark modules) but flagged that a rect-run off-by-one
+would have slipped through the shipped tests undetected. Fixed by adding a
+real module-by-module cross-check test. 263/263 tests, build green.
+
+**This closes out the entire currently-planned live-quiz arc and roadmap**:
+base MVP (slices 1-4: core scaffold, LLM-assist, sharing, admin), six
+feature slices from the post-MVP brainstorm (5-10: FSRS, offline, rich
+content, cram mode, reminders, a11y reading profile), and the full-Kahoot
+arc (11-13: WebSocket core, teams, host screen) — 13 slices, each built by
+an implementer agent and independently re-reviewed by a fresh-context
+agent before merge. The review gate caught a real, non-hypothetical bug in
+6 of those 13 passes (slice 1's IDOR, slice 4's banned-session gap, slice 7's
+dead img allowlist, slice 8's timezone comparison, slice 11's cross-process
+migration bug, slice 12's unwired feature) plus disclosed (not silently
+skipped) three genuine browser-QA gaps (slices 6, 9, 11) that no tooling in
+this environment could close. That's the core empirical result of this
+dogfood: an unreviewed single-agent slice (the very first pass, before the
+gate was reinstated per issue #29) shipped an exploitable bug; every
+slice after, reviewed as a matter of course, either came back clean or had
+its defect caught before merge.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

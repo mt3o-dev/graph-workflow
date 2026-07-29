@@ -35,6 +35,7 @@
     "marked": "^18.0.7",
     "marked-katex-extension": "^5.1.10",
     "marked-shiki": "^1.2.1",
+    "qrcode-generator": "^2.0.4",
     "sanitize-html": "^2.17.6",
     "shiki": "^4.3.1",
     "varlock": "^1.14.0",

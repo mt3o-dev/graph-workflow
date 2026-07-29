@@ -6,8 +6,9 @@
 import { t, type Locale } from "../i18n";
 import { escapeHtml } from "./html";
 import type { RoomState, PublicLiveQuestion, LiveQuestion, ScoreboardEntry, TeamScoreboardEntry } from "../core/domain/liveQuiz";
-import { toPublicQuestion, teamScoreboard } from "../core/domain/liveQuiz";
+import { toPublicQuestion, teamScoreboard, answeredCount, correctAnswererCount } from "../core/domain/liveQuiz";
 import type { MultipleChoicePayload, TrueFalsePayload, TypeAnswerPayload } from "../core/domain/types";
+import { renderQrCodeSvg } from "./qr";
 
 // LiveQuestion's payload field is a distributed conditional type keyed on a
 // generic default (LiveCardType, itself a union) rather than a true
@@ -248,4 +249,121 @@ export function renderFinishedFragment(opts: { entries: ScoreboardEntry[]; teamE
 
 export function renderUnknownRoomFragment(locale: Locale): string {
   return oob(`<p role="alert">${escapeHtml(t("live.room.errorUnknownRoom", locale))}</p>`);
+}
+
+// --- Host screen (slice 13) ---------------------------------------------
+// Separate fragment set for the dedicated big-screen host route
+// (src/pages/live/[code]/host.astro), swapped into a DIFFERENT oob target
+// (#live-host-screen) than every fragment above (#live-room) — the two
+// views can coexist (a host could keep the regular room page open on their
+// phone alongside the big-screen tab) without ever colliding. Access to
+// this whole rendering path is gated server-side, both by an SSR host-check
+// AND an independent WebSocket-upgrade check (see live-server.ts /
+// isLiveHost) — nothing here re-derives or re-checks hostId, it trusts the
+// caller already verified it. Reuses the exact same liveQuizUsecases/
+// liveQuiz domain functions as the player fragments (answeredCount/
+// correctAnswererCount/teamScoreboard) — no new game logic, presentation
+// only, per the roadmap's scope cut for this slice.
+
+function hostOob(inner: string): string {
+  return `<div id="live-host-screen" hx-swap-oob="true" class="stack">${inner}</div>`;
+}
+
+export function renderHostLobbyFragment(opts: { room: RoomState; locale: Locale; joinUrl: string }): string {
+  const { room, locale, joinUrl } = opts;
+  const playerCount = Object.keys(room.players).length;
+  const qrSvg = renderQrCodeSvg(joinUrl, { size: 280, label: t("live.host.lobby.scanHint", locale) });
+  return hostOob(
+    `<section class="host-lobby stack">
+       <h2>${escapeHtml(t("live.host.lobby.title", locale))}</h2>
+       <p class="host-room-code">${escapeHtml(room.code)}</p>
+       <div class="host-qr">${qrSvg}</div>
+       <p><small>${escapeHtml(t("live.host.lobby.scanHint", locale))}</small></p>
+       <p><small>${escapeHtml(t("live.host.lobby.joinUrl", locale, { url: joinUrl }))}</small></p>
+       <p class="host-player-count" aria-live="polite">${escapeHtml(t("live.host.lobby.playerCount", locale, { count: playerCount }))}</p>
+       <form ws-send><input type="hidden" name="type" value="advance"/><button type="submit" class="btn-primary">${escapeHtml(t("live.host.lobby.startButton", locale))}</button></form>
+     </section>`,
+  );
+}
+
+export function renderHostQuestionFragment(opts: {
+  room: RoomState;
+  question: LiveQuestion;
+  index: number;
+  total: number;
+  locale: Locale;
+}): string {
+  const { room, question, index, total, locale } = opts;
+  const pub = toPublicQuestion(question);
+  const { answered, total: totalPlayers } = answeredCount(room);
+  const pct = totalPlayers > 0 ? Math.round((answered / totalPlayers) * 100) : 0;
+  const questionText =
+    pub.type === "multiple_choice" ? pub.question : pub.type === "true_false" ? pub.statement : pub.prompt;
+
+  return hostOob(
+    `<section class="host-question stack">
+       <h2>${escapeHtml(t("live.host.question.number", locale, { current: index + 1, total }))}</h2>
+       <p class="host-question-text">${escapeHtml(questionText)}</p>
+       <div class="host-answer-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${totalPlayers}" aria-valuenow="${answered}">
+         <div class="host-answer-bar-fill" style="width:${pct}%"></div>
+       </div>
+       <p aria-live="polite">${escapeHtml(t("live.host.question.waitingBar", locale, { answered, total: totalPlayers }))}</p>
+       <form ws-send><input type="hidden" name="type" value="advance"/><button type="submit" class="btn-secondary">${escapeHtml(t("live.host.question.revealButton", locale))}</button></form>
+     </section>`,
+  );
+}
+
+export function renderHostRevealFragment(opts: { room: RoomState; question: LiveQuestion; locale: Locale }): string {
+  const { room, question, locale } = opts;
+  const total = Object.keys(room.players).length;
+  const correct = correctAnswererCount(room);
+  return hostOob(
+    `<section class="host-reveal stack">
+       <h2>${escapeHtml(t("live.host.reveal.title", locale))}</h2>
+       <p class="host-reveal-answer flash-correct">${escapeHtml(correctAnswerDisplay(question, locale))}</p>
+       <p>${escapeHtml(t("live.host.reveal.correctCount", locale, { correct, total }))}</p>
+       <form ws-send><input type="hidden" name="type" value="advance"/><button type="submit" class="btn-primary">${escapeHtml(t("live.host.reveal.nextButton", locale))}</button></form>
+     </section>`,
+  );
+}
+
+export function renderHostFinishedFragment(opts: {
+  entries: ScoreboardEntry[];
+  teamEntries?: TeamScoreboardEntry[];
+  locale: Locale;
+}): string {
+  const { entries, teamEntries, locale } = opts;
+  const [first, second, third] = entries;
+
+  const podiumSpot = (entry: ScoreboardEntry | undefined, label: string, rankClass: string) =>
+    entry
+      ? `<li class="host-podium-spot ${rankClass}">
+           <span class="host-podium-rank">${escapeHtml(label)}</span>
+           <span class="host-podium-name">${escapeHtml(entry.displayName)}</span>
+           <span class="host-podium-score">${escapeHtml(t("live.room.scoreboard.points", locale, { score: entry.score }))}</span>
+         </li>`
+      : "";
+
+  const podium = `<ol class="host-podium stagger">
+      ${podiumSpot(first, t("live.host.finished.podium.first", locale), "is-first")}
+      ${podiumSpot(second, t("live.host.finished.podium.second", locale), "is-second")}
+      ${podiumSpot(third, t("live.host.finished.podium.third", locale), "is-third")}
+    </ol>`;
+
+  const rest = entries.slice(3);
+  const restList = rest.length ? scoreboardListHtml(rest, locale) : "";
+
+  const topTeam = teamEntries && teamEntries.length ? teamEntries[0] : undefined;
+  const teamBlock = topTeam
+    ? `<section class="stack"><h3>${escapeHtml(t("live.host.finished.teamPodium.title", locale))}</h3>${teamScoreboardListHtml([topTeam], locale)}</section>`
+    : "";
+
+  return hostOob(
+    `<section class="host-finished stack">
+       <h2>${escapeHtml(t("live.host.finished.title", locale))}</h2>
+       ${podium}
+       ${restList}
+       ${teamBlock}
+     </section>`,
+  );
 }

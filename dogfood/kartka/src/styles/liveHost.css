@@ -1,0 +1,138 @@
+/* Slice 13: the dedicated big-screen host view (src/pages/live/[code]/host.astro).
+   Extends the SAME animation language slice 1 established in review.css
+   (flip-card reveal, bounce-correct flash) and global.css (stagger-in list
+   entrance) to a shared-screen moment, rather than inventing new motion.
+   The project-wide `prefers-reduced-motion: reduce` override in global.css
+   already zeroes every animation/transition duration declared here — no
+   separate guard needed in this file (matches how most of this app's
+   later-slice CSS already relies on that one global rule). */
+
+.host-lobby,
+.host-question,
+.host-reveal,
+.host-finished {
+  max-width: 900px;
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.host-room-code {
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  margin: var(--space-4) 0;
+  color: var(--color-indigo-strong);
+}
+
+.host-qr {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-4) auto;
+}
+.host-qr svg {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-md);
+}
+
+.host-player-count {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.host-question-text {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  margin: var(--space-4) 0;
+}
+
+/* Live "waiting for answers" bar (slice 13's own reveal-safe derived count —
+   see core/domain/liveQuiz.ts's answeredCount). The fill's width is set
+   inline per-render (server-computed percentage), the transition here is
+   purely presentational smoothing between successive pushes. */
+.host-answer-bar {
+  width: 100%;
+  max-width: 640px;
+  height: var(--space-6);
+  margin: var(--space-4) auto;
+  background: var(--color-bg-raised);
+  border: 1.5px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.host-answer-bar-fill {
+  height: 100%;
+  background: var(--color-teal);
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+
+/* Reveal: same bounce-correct micro-bounce global.css already defines for
+   the review flow's correct-answer flash (.flash-correct), reused verbatim
+   here — a satisfying "pop" on the revealed answer, not a new animation. */
+.host-reveal-answer {
+  display: inline-block;
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  font-weight: 800;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  margin: var(--space-4) 0;
+}
+
+/* Podium: DOM order is 1st/2nd/3rd (screen-reader-friendly ranked order);
+   flexbox `order` rearranges the classic center-tallest podium layout
+   visually. Entrance reuses global.css's .stagger/@keyframes stagger-in
+   (the same staggered-reveal language slice 1's list views already use). */
+.host-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-4);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-6) 0;
+}
+.host-podium-spot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg-raised);
+  box-shadow: var(--shadow-md);
+  min-width: 140px;
+}
+.host-podium-spot.is-first {
+  order: 2;
+  padding-block: var(--space-8);
+  border-color: var(--color-amber);
+  box-shadow: var(--shadow-lg);
+}
+.host-podium-spot.is-second {
+  order: 1;
+}
+.host-podium-spot.is-third {
+  order: 3;
+}
+.host-podium-rank {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.host-podium-spot.is-first .host-podium-rank {
+  color: var(--color-amber);
+}
+.host-podium-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.host-podium-score {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}

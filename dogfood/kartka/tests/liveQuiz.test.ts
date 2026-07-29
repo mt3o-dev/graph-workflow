@@ -2,8 +2,10 @@ import { describe, test, expect } from "bun:test";
 import {
   addPlayer,
   advancePhase,
+  answeredCount,
   assignPlayerTeam,
   configureTeams,
+  correctAnswererCount,
   createRoomState,
   generateRoomCode,
   isAnswerCorrect,
@@ -388,5 +390,53 @@ describe("teams (slice 12)", () => {
     const board = scoreboard(afterAnswer);
     expect(board[0]!.userId).toBe("p1");
     expect(board[0]!.score).toBe(result.points);
+  });
+});
+
+// Slice 13 (host screen): the two read-only derivations the host-screen's
+// "waiting for answers" bar and reveal fragment need — both are pure
+// projections of RoomState.players' existing per-answer records (no new
+// stored state), fixture-tested here per the roadmap's explicit testing
+// callout for "an easy fixture-based test".
+describe("host screen derived counts (slice 13)", () => {
+  function fourPlayerRoomInQuestion(): RoomState {
+    let room = createRoomState({ code: "ABCDE", hostId: "host-1", setId: "set-1", questions: [mcQuestion] });
+    for (const id of ["p1", "p2", "p3", "p4"]) {
+      room = addPlayer(room, { userId: id, displayName: id });
+    }
+    return advancePhase(room, new Date("2026-01-01T00:00:00.000Z"));
+  }
+
+  test("answeredCount: 0 of N before anyone answers, then increments per submission, without leaking who/correctness", () => {
+    let room = fourPlayerRoomInQuestion();
+    expect(answeredCount(room)).toEqual({ answered: 0, total: 4 });
+
+    ({ room } = recordAnswer(room, "p1", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:01.000Z"))); // correct
+    expect(answeredCount(room)).toEqual({ answered: 1, total: 4 });
+
+    ({ room } = recordAnswer(room, "p2", mcQuestion.cardId, "0", new Date("2026-01-01T00:00:02.000Z"))); // wrong
+    expect(answeredCount(room)).toEqual({ answered: 2, total: 4 }); // count doesn't distinguish correct/incorrect
+
+    ({ room } = recordAnswer(room, "p3", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:03.000Z")));
+    ({ room } = recordAnswer(room, "p4", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:04.000Z")));
+    expect(answeredCount(room)).toEqual({ answered: 4, total: 4 });
+  });
+
+  test("answeredCount defaults to {0, total} outside question-live (e.g. still in lobby)", () => {
+    let room = createRoomState({ code: "ABCDE", hostId: "host-1", setId: "set-1", questions: [mcQuestion] });
+    room = addPlayer(room, { userId: "p1", displayName: "p1" });
+    expect(answeredCount(room)).toEqual({ answered: 0, total: 1 });
+  });
+
+  test("correctAnswererCount only counts players who actually got it right", () => {
+    let room = fourPlayerRoomInQuestion();
+    expect(correctAnswererCount(room)).toBe(0);
+
+    ({ room } = recordAnswer(room, "p1", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:01.000Z"))); // correct (option index 1)
+    ({ room } = recordAnswer(room, "p2", mcQuestion.cardId, "0", new Date("2026-01-01T00:00:02.000Z"))); // wrong
+    ({ room } = recordAnswer(room, "p3", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:03.000Z"))); // correct
+
+    expect(correctAnswererCount(room)).toBe(2);
+    expect(answeredCount(room)).toEqual({ answered: 3, total: 4 }); // regression: unaffected by correctness
   });
 });
