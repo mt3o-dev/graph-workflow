@@ -23,7 +23,14 @@ const locale: Locale =
 ---
 
 <!doctype html>
-<html lang={locale} data-scheduler-preference={user?.schedulerPreference ?? "sm2"}>
+<html
+  lang={locale}
+  data-scheduler-preference={user?.schedulerPreference ?? "sm2"}
+  data-reading-font={user?.readingFont ?? "system"}
+  data-text-size={user?.textSize ?? "normal"}
+  data-line-spacing={user?.lineSpacing ?? "normal"}
+  data-contrast={user?.contrast ?? "normal"}
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

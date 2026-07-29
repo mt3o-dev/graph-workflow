@@ -19,6 +19,13 @@ export const users = pgTable("users", {
   // strings, both null by default. Added via ALTER in migratePg.ts.
   quietHoursStart: text("quiet_hours_start"),
   quietHoursEnd: text("quiet_hours_end"),
+  // Slice 10: per-user reading/accessibility profile, one column per
+  // independent preference (same pattern as scheduler_preference above).
+  // Added via ALTER in migratePg.ts.
+  readingFont: text("reading_font", { enum: ["system", "opendyslexic"] }).notNull().default("system"),
+  textSize: text("text_size", { enum: ["normal", "large", "xlarge"] }).notNull().default("normal"),
+  lineSpacing: text("line_spacing", { enum: ["normal", "relaxed", "loose"] }).notNull().default("normal"),
+  contrast: text("contrast", { enum: ["normal", "high"] }).notNull().default("normal"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 

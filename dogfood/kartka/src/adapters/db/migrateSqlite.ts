@@ -160,4 +160,20 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   } catch (err) {
     if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
   }
+
+  // Slice 10: per-user reading/accessibility profile. Every existing user
+  // can share the same literal defaults (preserving current behavior), same
+  // no-backfill-needed pattern as scheduler_preference above.
+  for (const [col, def] of [
+    ["reading_font", "system"],
+    ["text_size", "normal"],
+    ["line_spacing", "normal"],
+    ["contrast", "normal"],
+  ] as const) {
+    try {
+      db.run(`ALTER TABLE users ADD COLUMN ${col} TEXT NOT NULL DEFAULT '${def}';`);
+    } catch (err) {
+      if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    }
+  }
 }

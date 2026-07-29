@@ -42,6 +42,9 @@
   --radius-md: 8px;
   --radius-lg: 10px;
 
+  /* Border weight — bumped by the slice 10 high-contrast preset below. */
+  --border-width-strong: 1px;
+
   /* Motion */
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration-fast: 120ms;
@@ -51,6 +54,18 @@
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+
+  /*
+   * Slice 10 (reading/accessibility profile): custom properties applied only
+   * to the actual reading surfaces (review card content, card list/preview
+   * text — see review.css/global.css's .rich-content, .review-shell,
+   * .card-preview rules), never to page chrome/nav/buttons, so text-size and
+   * line-spacing presets don't break layout. Defaults are exactly today's
+   * look — a user who never touches settings sees zero change.
+   */
+  --content-font-family: var(--font-sans);
+  --content-font-size: 1rem;
+  --content-line-height: 1.5;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -86,4 +101,63 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
+}
+
+/*
+ * Slice 10 — reading font / text size / line spacing presets. Scoped to
+ * `--content-*` custom properties, not applied globally — see the reading
+ * surfaces this slice actually touches (review.css, global.css's
+ * .rich-content and card-preview rules).
+ */
+:root[data-reading-font="opendyslexic"] {
+  --content-font-family: "OpenDyslexic", var(--font-sans);
+}
+
+:root[data-text-size="large"] {
+  --content-font-size: 1.125rem;
+}
+:root[data-text-size="xlarge"] {
+  --content-font-size: 1.25rem;
+}
+
+:root[data-line-spacing="relaxed"] {
+  --content-line-height: 1.75;
+}
+:root[data-line-spacing="loose"] {
+  --content-line-height: 2;
+}
+
+/*
+ * High contrast (slice 10): meaningfully beyond the already-AA baseline —
+ * pure black/white, thicker borders, stronger focus rings — not a token
+ * tweak nobody would notice. Layered the same 3-tier way the existing
+ * light-default / OS-dark-media / forced-data-theme-dark pattern above
+ * already works, so it composes correctly with both OS preference and an
+ * explicit forced theme.
+ */
+:root[data-contrast="high"] {
+  --color-bg: #ffffff;
+  --color-bg-raised: #ffffff;
+  --color-text: #000000;
+  --color-border: #000000;
+  --color-focus-ring: #000000;
+  --border-width-strong: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-contrast="high"] {
+    --color-bg: #000000;
+    --color-bg-raised: #000000;
+    --color-text: #ffffff;
+    --color-border: #ffffff;
+    --color-focus-ring: #ffffff;
+  }
+}
+
+:root[data-theme="dark"][data-contrast="high"] {
+  --color-bg: #000000;
+  --color-bg-raised: #000000;
+  --color-text: #ffffff;
+  --color-border: #ffffff;
+  --color-focus-ring: #ffffff;
 }

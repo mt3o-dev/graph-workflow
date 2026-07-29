@@ -1,5 +1,28 @@
 @import "./tokens.css";
 
+/*
+ * Slice 10: OpenDyslexic, vendored under public/vendor/opendyslexic/ (SIL
+ * Open Font License — same size-conscious woff2-only, only-the-weights-we-
+ * need choice as slice 7's KaTeX font vendoring). Only activated via the
+ * [data-reading-font="opendyslexic"] attribute selector below (set
+ * server-side in BaseLayout.astro from the logged-in user's profile) — never
+ * loaded/applied unconditionally.
+ */
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/vendor/opendyslexic/fonts/OpenDyslexic-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/vendor/opendyslexic/fonts/OpenDyslexic-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -35,6 +58,13 @@ a {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Slice 10: the opt-in [data-contrast="high"] preset (tokens.css) strengthens
+   this baseline further — a noticeably thicker focus ring, not just a color
+   swap nobody would notice. */
+:root[data-contrast="high"] :focus-visible {
+  outline-width: 4px;
 }
 
 button,
@@ -86,7 +116,7 @@ button:active,
 
 .card {
   background: var(--color-bg-raised);
-  border: 1px solid var(--color-border);
+  border: var(--border-width-strong) solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: var(--space-6);
@@ -105,7 +135,7 @@ select {
   font-size: 1rem;
   width: 100%;
   padding: var(--space-2) var(--space-3);
-  border: 1.5px solid var(--color-border);
+  border: max(1.5px, var(--border-width-strong)) solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-raised);
   color: var(--color-text);
@@ -341,4 +371,19 @@ th button {
 :root[data-theme="dark"] .rich-content .shiki span {
   color: var(--shiki-dark, inherit) !important;
   background-color: var(--shiki-dark-bg, inherit) !important;
+}
+
+/*
+ * Slice 10: reading/accessibility profile applied to the actual reading
+ * surfaces — rich card content (review + card detail) and the card
+ * list/preview text (.card-preview, set in fragments.ts) — not page chrome.
+ * The --content-* custom properties themselves are defined/overridden in
+ * tokens.css based on the data-reading-font/data-text-size/data-line-spacing
+ * attributes BaseLayout.astro sets on <html>.
+ */
+.rich-content,
+.card-preview {
+  font-family: var(--content-font-family);
+  font-size: var(--content-font-size);
+  line-height: var(--content-line-height);
 }

@@ -129,4 +129,11 @@ export async function migratePg(db: PgDb): Promise<void> {
   // backfill needed — see the matching comment in migrateSqlite.ts.
   await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_hours_start TEXT;`);
   await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_hours_end TEXT;`);
+
+  // Slice 10: per-user reading/accessibility profile — see the matching
+  // comment in migrateSqlite.ts.
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reading_font TEXT NOT NULL DEFAULT 'system';`);
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS text_size TEXT NOT NULL DEFAULT 'normal';`);
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS line_spacing TEXT NOT NULL DEFAULT 'normal';`);
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS contrast TEXT NOT NULL DEFAULT 'normal';`);
 }

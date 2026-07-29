@@ -20,6 +20,10 @@ function toDomain(row: typeof users.$inferSelect): User {
     schedulerPreference: row.schedulerPreference,
     quietHoursStart: row.quietHoursStart ?? null,
     quietHoursEnd: row.quietHoursEnd ?? null,
+    readingFont: row.readingFont,
+    textSize: row.textSize,
+    lineSpacing: row.lineSpacing,
+    contrast: row.contrast,
     createdAt: row.createdAt,
   };
 }
@@ -38,6 +42,10 @@ export function createUserRepoSqlite(db: SqliteDb): UserRepoPort {
         schedulerPreference: "sm2" as const,
         quietHoursStart: null,
         quietHoursEnd: null,
+        readingFont: "system" as const,
+        textSize: "normal" as const,
+        lineSpacing: "normal" as const,
+        contrast: "normal" as const,
         createdAt: new Date(),
       };
       await db.insert(users).values(row);
@@ -112,6 +120,13 @@ export function createUserRepoSqlite(db: SqliteDb): UserRepoPort {
       await db.update(users).set({ quietHoursStart, quietHoursEnd }).where(eq(users.id, id));
       const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
       if (!row) throw new Error("User disappeared during quiet hours update");
+      return toDomain(row);
+    },
+
+    async updateReadingProfile(id, profile) {
+      await db.update(users).set(profile).where(eq(users.id, id));
+      const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      if (!row) throw new Error("User disappeared during reading profile update");
       return toDomain(row);
     },
   };

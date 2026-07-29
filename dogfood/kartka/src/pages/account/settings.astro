@@ -64,6 +64,55 @@ const quietHoursEnabled = !!(user.quietHoursStart && user.quietHoursEnd);
     </button>
   </div>
 
+  <form method="post" action="/api/account/reading-profile" class="stack card">
+    <h2>{t("settings.reading.label", locale)}</h2>
+    <p class="empty-state">{t("settings.reading.hint", locale)}</p>
+
+    <div class="field">
+      <label>{t("settings.reading.font.label", locale)}</label>
+      <label class="row">
+        <input type="radio" name="readingFont" value="system" checked={user.readingFont === "system"} />
+        <span>{t("settings.reading.font.system", locale)}</span>
+      </label>
+      <label class="row">
+        <input type="radio" name="readingFont" value="opendyslexic" checked={user.readingFont === "opendyslexic"} />
+        <span>{t("settings.reading.font.opendyslexic", locale)}</span>
+      </label>
+    </div>
+
+    <div class="field">
+      <label for="textSize">{t("settings.reading.textSize.label", locale)}</label>
+      <select id="textSize" name="textSize">
+        <option value="normal" selected={user.textSize === "normal"}>{t("settings.reading.textSize.normal", locale)}</option>
+        <option value="large" selected={user.textSize === "large"}>{t("settings.reading.textSize.large", locale)}</option>
+        <option value="xlarge" selected={user.textSize === "xlarge"}>{t("settings.reading.textSize.xlarge", locale)}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="lineSpacing">{t("settings.reading.lineSpacing.label", locale)}</label>
+      <select id="lineSpacing" name="lineSpacing">
+        <option value="normal" selected={user.lineSpacing === "normal"}>{t("settings.reading.lineSpacing.normal", locale)}</option>
+        <option value="relaxed" selected={user.lineSpacing === "relaxed"}>{t("settings.reading.lineSpacing.relaxed", locale)}</option>
+        <option value="loose" selected={user.lineSpacing === "loose"}>{t("settings.reading.lineSpacing.loose", locale)}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>{t("settings.reading.contrast.label", locale)}</label>
+      <label class="row">
+        <input type="radio" name="contrast" value="normal" checked={user.contrast === "normal"} />
+        <span>{t("settings.reading.contrast.normal", locale)}</span>
+      </label>
+      <label class="row">
+        <input type="radio" name="contrast" value="high" checked={user.contrast === "high"} />
+        <span>{t("settings.reading.contrast.high", locale)}</span>
+      </label>
+    </div>
+
+    <button type="submit" class="btn-primary">{t("common.save", locale)}</button>
+  </form>
+
   <form method="post" action="/api/account/quiet-hours" class="stack card">
     <h2>{t("settings.quietHours.label", locale)}</h2>
     <p class="empty-state">{t("settings.quietHours.hint", locale)}</p>

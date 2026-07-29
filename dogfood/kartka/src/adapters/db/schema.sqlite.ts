@@ -21,6 +21,13 @@ export const users = sqliteTable("users", {
   // migrateSqlite.ts, same no-backfill-needed pattern as exam_date.
   quietHoursStart: text("quiet_hours_start"),
   quietHoursEnd: text("quiet_hours_end"),
+  // Slice 10: per-user reading/accessibility profile, one column per
+  // independent preference (same pattern as scheduler_preference above, not
+  // a combined JSON blob). Added via ALTER in migrateSqlite.ts.
+  readingFont: text("reading_font", { enum: ["system", "opendyslexic"] }).notNull().default("system"),
+  textSize: text("text_size", { enum: ["normal", "large", "xlarge"] }).notNull().default("normal"),
+  lineSpacing: text("line_spacing", { enum: ["normal", "relaxed", "loose"] }).notNull().default("normal"),
+  contrast: text("contrast", { enum: ["normal", "high"] }).notNull().default("normal"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

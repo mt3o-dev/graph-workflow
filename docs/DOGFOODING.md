@@ -449,6 +449,22 @@ card counts in the notification payload reuse the exact same
 count query that could silently drift from what a student actually sees.
 183/183 tests, build green, zero changes needed post-review.
 
+## Slice 10 result — kartka-a11y-reading
+
+The deliberately small slice: OpenDyslexic toggle, text size/line-spacing/
+contrast presets, self-service via the same per-column pattern slice 5
+established. Reviewed clean. Two things worth noting even on a "just CSS"
+slice: enum validation was genuinely bypass-tested (the usecase called
+directly with bogus values cast past the type system, not merely a
+`<select>`-option check), and high contrast is a real pure-black/white swap
+plus a border-width bump, not a token tweak too subtle to matter. One
+design note, not a defect: the border-width change applies globally rather
+than scoped to reading surfaces — a deliberate site-wide choice the reviewer
+found no actual breakage from, flagged for product sign-off. This is the
+6th slice past the base MVP (5 FSRS, 6 offline, 7 rich-content, 8 cram-mode,
+9 reminders, 10 a11y) — 190/190 tests, build green, zero code changes
+needed post-review. Full-Kahoot arc (slices 11-13) is next.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

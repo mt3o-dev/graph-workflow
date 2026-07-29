@@ -6,6 +6,12 @@ export type Visibility = "private" | "unlisted" | "public";
 /** Which SchedulerPort implementation reviewUsecases.ts uses for this user. See fsrs.ts / roadmap.md slice 5. */
 export type SchedulerPreference = "sm2" | "fsrs";
 
+/** Slice 10 (reading/accessibility profile): four independent self-service preferences, each its own column on `User` — same one-column-per-field pattern as schedulerPreference, not a combined JSON blob. */
+export type ReadingFont = "system" | "opendyslexic";
+export type TextSize = "normal" | "large" | "xlarge";
+export type LineSpacing = "normal" | "relaxed" | "loose";
+export type Contrast = "normal" | "high";
+
 export interface User {
   id: string;
   email: string;
@@ -25,6 +31,18 @@ export interface User {
    */
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
+  /**
+   * Slice 10: per-user reading/accessibility profile — four independent
+   * self-service knobs (font, text size, line spacing, contrast), each
+   * defaulting to its least-surprising "off" value. See
+   * authUsecases.changeReadingProfile for the validation and
+   * layouts/BaseLayout.astro for how these become `data-*` attributes on
+   * `<html>` (same pattern as schedulerPreference).
+   */
+  readingFont: ReadingFont;
+  textSize: TextSize;
+  lineSpacing: LineSpacing;
+  contrast: Contrast;
   createdAt: Date;
 }
 

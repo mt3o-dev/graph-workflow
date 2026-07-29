@@ -1,6 +1,6 @@
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthPort } from "../ports/authPort";
-import type { Locale, SchedulerPreference, Session, User } from "../domain/types";
+import type { Locale, SchedulerPreference, Session, User, ReadingFont, TextSize, LineSpacing, Contrast } from "../domain/types";
 import { ConflictError, ValidationError } from "../domain/errors";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,4 +120,35 @@ export async function changeQuietHours(
     throw new ValidationError("Quiet hours must be in HH:MM 24h format");
   }
   return userRepo.updateQuietHours(requestingUserId, quietHoursStart, quietHoursEnd);
+}
+
+const VALID_READING_FONTS: ReadingFont[] = ["system", "opendyslexic"];
+const VALID_TEXT_SIZES: TextSize[] = ["normal", "large", "xlarge"];
+const VALID_LINE_SPACINGS: LineSpacing[] = ["normal", "relaxed", "loose"];
+const VALID_CONTRASTS: Contrast[] = ["normal", "high"];
+
+export interface ReadingProfileInput {
+  readingFont: ReadingFont;
+  textSize: TextSize;
+  lineSpacing: LineSpacing;
+  contrast: Contrast;
+}
+
+/**
+ * Self-service reading/accessibility profile update (slice 10), same
+ * ownership pattern as changeSchedulerPreference/changeQuietHours above:
+ * `requestingUserId` is always the id written to, never a value taken from
+ * the request body. See pages/api/account/reading-profile.ts.
+ */
+export async function changeReadingProfile(
+  userRepo: UserRepoPort,
+  requestingUserId: string,
+  input: ReadingProfileInput,
+): Promise<User> {
+  if (!VALID_READING_FONTS.includes(input.readingFont)) throw new ValidationError("Invalid reading font value");
+  if (!VALID_TEXT_SIZES.includes(input.textSize)) throw new ValidationError("Invalid text size value");
+  if (!VALID_LINE_SPACINGS.includes(input.lineSpacing)) throw new ValidationError("Invalid line spacing value");
+  if (!VALID_CONTRASTS.includes(input.contrast)) throw new ValidationError("Invalid contrast value");
+
+  return userRepo.updateReadingProfile(requestingUserId, input);
 }

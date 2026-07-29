@@ -1,4 +1,15 @@
-import type { User, UserWithSetCount, Locale, PageQuery, Paginated, SchedulerPreference } from "../domain/types";
+import type {
+  User,
+  UserWithSetCount,
+  Locale,
+  PageQuery,
+  Paginated,
+  SchedulerPreference,
+  ReadingFont,
+  TextSize,
+  LineSpacing,
+  Contrast,
+} from "../domain/types";
 
 export interface UserRepoPort {
   create(input: {
@@ -20,4 +31,9 @@ export interface UserRepoPort {
   updateSchedulerPreference(id: string, preference: SchedulerPreference): Promise<User>;
   /** Self-service quiet-hours update (slice 9) — see authUsecases.changeQuietHours for the ownership-check wrapper callers must use. */
   updateQuietHours(id: string, quietHoursStart: string | null, quietHoursEnd: string | null): Promise<User>;
+  /** Self-service reading/accessibility profile update (slice 10) — see authUsecases.changeReadingProfile for the ownership-check wrapper callers must use. */
+  updateReadingProfile(
+    id: string,
+    profile: { readingFont: ReadingFont; textSize: TextSize; lineSpacing: LineSpacing; contrast: Contrast },
+  ): Promise<User>;
 }

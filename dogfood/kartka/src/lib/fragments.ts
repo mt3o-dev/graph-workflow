@@ -123,7 +123,7 @@ export async function renderCardsTableFragment(opts: {
               .map(
                 (card) => `<tr>
                   <td><span class="badge">${escapeHtml(t(`cards.type.${card.type}` as never, locale))}</span></td>
-                  <td>${escapeHtml(previewOf(card).slice(0, 80))}</td>
+                  <td class="card-preview">${escapeHtml(previewOf(card).slice(0, 80))}</td>
                   <td>${escapeHtml(card.createdAt.toLocaleDateString(locale))}</td>
                   <td class="row">
                     <form method="post" action="/api/cards/${card.id}/delete">
@@ -452,7 +452,7 @@ export function renderAdminCardsTableFragment(opts: {
               .map(
                 (card) => `<tr>
                   <td><span class="badge">${escapeHtml(t(`cards.type.${card.type}` as never, locale))}</span></td>
-                  <td>${escapeHtml(previewOf(card).slice(0, 80))}</td>
+                  <td class="card-preview">${escapeHtml(previewOf(card).slice(0, 80))}</td>
                   <td>${escapeHtml(card.createdAt.toLocaleDateString(locale))}</td>
                   <td class="row">
                     <form method="post" action="/api/admin/cards/${card.id}/delete">
