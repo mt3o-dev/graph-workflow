@@ -5,7 +5,8 @@ import { t, resolveLocale } from "../../i18n";
 import { getCurrentUser } from "../../lib/session";
 import { getContainer } from "../../di/container";
 import { startReviewSession } from "../../core/usecases/reviewUsecases";
-import { renderCardFragment, renderEmpty } from "../../lib/reviewFragments";
+import { renderEmpty } from "../../lib/reviewFragments";
+import { renderCardFragmentRich } from "../../lib/richReviewFragments";
 
 const user = await getCurrentUser(Astro.cookies);
 if (!user) return Astro.redirect("/login?next=/review");
@@ -24,7 +25,7 @@ if (setId) due = due.filter((d) => d.card.setId === setId);
 const html =
   due.length === 0
     ? renderEmpty(locale)
-    : renderCardFragment(
+    : await renderCardFragmentRich(
         due[0]!.card,
         due.slice(1).map((d) => d.card.id),
         1,

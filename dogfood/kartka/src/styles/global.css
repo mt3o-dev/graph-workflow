@@ -296,3 +296,49 @@ th button {
   border-color: var(--color-success);
   background: var(--color-success-bg);
 }
+
+/* Slice 7: rich card content (Markdown + KaTeX + syntax-highlighted code).
+   Server-rendered HTML from src/core/domain/richContent.ts is dropped in via
+   set:html on this class — resets applied here exist purely to make legacy
+   plain-text cards (now wrapped in a <p> by the markdown renderer) look
+   visually identical to the old plain-escaped-text rendering, not to
+   restyle real markdown content. */
+.rich-content > p:first-child {
+  margin-top: 0;
+}
+.rich-content > p:last-child {
+  margin-bottom: 0;
+}
+.rich-content pre {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.rich-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.rich-content img {
+  max-width: 100%;
+}
+
+/* Shiki dual light/dark theme output (see richContent.ts): the highlighter
+   bakes the light-theme colors directly into `color`/`background-color` and
+   stashes the dark-theme colors in --shiki-dark/--shiki-dark-bg custom
+   properties; this override is what actually activates them in dark mode,
+   matching the app's existing prefers-color-scheme support. */
+@media (prefers-color-scheme: dark) {
+  .rich-content .shiki,
+  .rich-content .shiki span {
+    color: var(--shiki-dark, inherit) !important;
+    background-color: var(--shiki-dark-bg, inherit) !important;
+  }
+}
+/* Shiki bakes its "light" theme colors in as the plain color/background-color
+   values, so only a dark-specific override rule is needed here; light is
+   already the default with no override required. */
+:root[data-theme="dark"] .rich-content .shiki,
+:root[data-theme="dark"] .rich-content .shiki span {
+  color: var(--shiki-dark, inherit) !important;
+  background-color: var(--shiki-dark-bg, inherit) !important;
+}

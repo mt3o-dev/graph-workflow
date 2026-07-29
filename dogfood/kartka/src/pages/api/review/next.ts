@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
 import { getContainer } from "../../../di/container";
 import { getCurrentUser } from "../../../lib/session";
-import { parseQueue, renderNext } from "../../../lib/reviewFragments";
+import { parseQueue } from "../../../lib/reviewFragments";
+import { renderNextRich } from "../../../lib/richReviewFragments";
 import { resolveLocale, type Locale } from "../../../i18n";
 
 export const GET: APIRoute = async ({ url, cookies, request }) => {
@@ -14,6 +15,6 @@ export const GET: APIRoute = async ({ url, cookies, request }) => {
   const locale = (url.searchParams.get("lang") as Locale) || resolveLocale({ queryLang: null, acceptLanguage: request.headers.get("accept-language") });
 
   const { cardRepo } = await getContainer();
-  const html = await renderNext(cardRepo, queue, total, reviewed, locale);
+  const html = await renderNextRich(cardRepo, queue, total, reviewed, locale);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 };

@@ -383,6 +383,33 @@ service-worker/DOM path was verified only by code inspection on both
 passes — recorded honestly in `docs/TODO.md` as outstanding real-browser QA
 rather than claimed as tested. 104/104 tests, build green after the fix.
 
+## Slice 7 result — kartka-rich-content
+
+The highest-stakes review yet: Markdown + KaTeX + syntax-highlighted code in
+card bodies, viewable via slice 3's public sharing, so an XSS bug here is a
+real cross-user vulnerability, not a self-inflicted one. Two-layer defense-
+in-depth (write-time raw-HTML strip, render-time allowlist sanitization)
+held against every payload class the reviewer tried through the *actual*
+write→store→render pipeline: script tags, `onerror`/`onload` handlers,
+`javascript:`/`data:` URIs in both markdown and raw-HTML-in-markdown form,
+CSS-injection attempts against the style allowlist (including trying to
+bypass the anchored hex-color/length regexes), and KaTeX macro injection
+(verified `trust` isn't enabled). The reviewer deliberately skipped layer 1
+to confirm layer 2 alone still holds — the defense-in-depth claim wasn't
+just asserted, it was tested as designed. Two should-fix items, both closed:
+(1) `img` was entirely missing from the render-time allowlist, so markdown
+images silently rendered as nothing — dead feature with matching dead CSS,
+no XSS either way, just undisclosed brokenness; fixed by allowlisting `img`
+narrowly (src/alt/title/width/height, http/https only, no event handlers
+ever allowlisted). (2) no `docs/TODO.md` entry existed for this slice's
+disclosed gaps despite code comments pointing at "the slice report" —
+fixed. Also worth noting: the *implementer* caught and fixed its own
+client-bundle-bloat bug mid-build (importing the rich pipeline into the
+same module slice 6's offline code bundles into the browser would have
+dragged Shiki's multi-megabyte grammar set into every user's phone) —
+caught before review, not by review. 142/142 tests, build green, client
+bundle re-verified unchanged at 504K after the post-review fix.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

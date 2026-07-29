@@ -61,6 +61,8 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
         </select>
       </div>
 
+      <small style="display:block;color:var(--color-text-muted);margin-bottom:var(--space-3)">{t("cards.form.richHint", locale)}</small>
+
       <fieldset data-fields="basic">
         <div class="field">
           <label for="front">{t("cards.form.front", locale)}</label>
@@ -144,7 +146,20 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
         </div>
       </fieldset>
 
-      <button type="submit" class="btn-primary">{t("cards.form.submit", locale)}</button>
+      <div class="row">
+        <button type="submit" class="btn-primary">{t("cards.form.submit", locale)}</button>
+        <button
+          type="button"
+          class="btn-secondary"
+          hx-post={`/api/cards/preview?lang=${locale}`}
+          hx-include="#card-form"
+          hx-target="#card-preview"
+          hx-swap="innerHTML"
+        >
+          {t("cards.form.preview", locale)}
+        </button>
+      </div>
+      <div id="card-preview"></div>
     </form>
   </details>
 

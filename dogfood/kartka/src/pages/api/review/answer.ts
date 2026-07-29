@@ -6,7 +6,8 @@ import { getOwnedCard } from "../../../core/usecases/cardUsecases";
 import { ForbiddenError, NotFoundError } from "../../../core/domain/errors";
 import { qualityFromCorrectness } from "../../../core/domain/quality";
 import { matchesAnyAccepted } from "../../../core/domain/levenshtein";
-import { parseQueue, feedbackFragment } from "../../../lib/reviewFragments";
+import { parseQueue } from "../../../lib/reviewFragments";
+import { feedbackFragmentRich } from "../../../lib/richReviewFragments";
 import { resolveLocale, t, type Locale } from "../../../i18n";
 import type {
   MultipleChoicePayload,
@@ -61,6 +62,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     { cardId, userId: user.id, quality: qualityFromCorrectness(correct), schedulerPreference: user.schedulerPreference },
   );
 
-  const html = feedbackFragment({ correct, correctAnswerText, queue, total, reviewed: current, locale });
+  const html = await feedbackFragmentRich({ correct, correctAnswerText, queue, total, reviewed: current, locale });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 };

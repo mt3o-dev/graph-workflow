@@ -2,6 +2,7 @@ import type { CardRepoPort } from "../ports/cardRepoPort";
 import type { SetRepoPort } from "../ports/setRepoPort";
 import type { Card, CardPayload, CardType, PageQuery, Paginated } from "../domain/types";
 import { validateCardPayload } from "../domain/cardValidation";
+import { sanitizeCardPayload } from "../domain/richContent";
 import { getOwnedSet } from "./setUsecases";
 import { NotFoundError, ForbiddenError } from "../domain/errors";
 
@@ -18,8 +19,13 @@ export async function addCard(
   input: AddCardInput,
 ): Promise<Card> {
   await getOwnedSet(setRepo, input.setId, input.ownerId);
-  validateCardPayload(input.type, input.payload);
-  return cardRepo.create({ setId: input.setId, type: input.type, payload: input.payload });
+  // Write-time sanitization (richContent.ts Layer 1) happens before
+  // validation on purpose: if stripping raw HTML leaves a required field
+  // empty (e.g. a "card" that was only a <script> tag), validation correctly
+  // rejects it instead of silently storing an empty card.
+  const sanitizedPayload = sanitizeCardPayload(input.type, input.payload);
+  validateCardPayload(input.type, sanitizedPayload);
+  return cardRepo.create({ setId: input.setId, type: input.type, payload: sanitizedPayload });
 }
 
 export interface EditCardInput {
@@ -47,8 +53,9 @@ export async function editCard(
   input: EditCardInput,
 ): Promise<Card> {
   const card = await getOwnedCard(cardRepo, setRepo, input.cardId, input.ownerId);
-  validateCardPayload(card.type, input.payload);
-  return cardRepo.update(input.cardId, { payload: input.payload });
+  const sanitizedPayload = sanitizeCardPayload(card.type, input.payload);
+  validateCardPayload(card.type, sanitizedPayload);
+  return cardRepo.update(input.cardId, { payload: sanitizedPayload });
 }
 
 export async function deleteCard(

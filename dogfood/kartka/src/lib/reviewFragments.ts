@@ -8,6 +8,21 @@ import { renderClozeHidden } from "../core/domain/cloze";
 // auto-checked/self-rated split client-side, instead of re-deciding it.
 export const AUTO_CHECKED = new Set(["multiple_choice", "true_false", "type_answer"]);
 
+// IMPORTANT — bundle-safety constraint (slice 7):
+// This file is imported by src/client/offline/render.ts and therefore gets
+// bundled straight into the *browser* for the offline-review path (slice 6).
+// It must NEVER import src/core/domain/richContent.ts (or anything that
+// pulls in marked/katex/shiki/sanitize-html) — those libraries are meant to
+// run server-side only. A first pass at this slice added that import here
+// and it silently dragged Shiki's entire per-language grammar set (multiple
+// megabytes) into the client bundle, because a module with side-effecting
+// top-level code (richContent.ts constructs a Marked instance at import
+// time) can't be tree-shaken away just because only some of its exports are
+// used. The rich-rendering equivalents of the functions below live in
+// src/lib/richReviewFragments.ts instead, which only server-rendered pages
+// import. See that file's header comment and the slice report for the
+// disclosed limitation this implies for offline-queued reviews (plain
+// escaped text only, no markdown/math/code, while offline).
 function progressLine(current: number, total: number, locale: Locale): string {
   return `<p class="review-progress">${escapeHtml(t("review.progress", locale, { current, total }))}</p>`;
 }
@@ -104,7 +119,7 @@ export function parseQueue(csv: string): string[] {
     .filter(Boolean);
 }
 
-/** Renders the next card in the queue (or the session-done state), advancing `reviewed`. */
+/** Renders the next card in the queue (or the session-done state), advancing `reviewed`. Plain/escaped — see richReviewFragments.ts's renderNextRich for the SSR rich equivalent. */
 export async function renderNext(
   cardRepo: CardRepoPort,
   queue: string[],

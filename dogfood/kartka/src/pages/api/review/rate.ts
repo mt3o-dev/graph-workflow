@@ -5,7 +5,8 @@ import { submitReview } from "../../../core/usecases/reviewUsecases";
 import { getOwnedCard } from "../../../core/usecases/cardUsecases";
 import { ForbiddenError, NotFoundError } from "../../../core/domain/errors";
 import { qualityFromSelfRating, type SelfRating } from "../../../core/domain/quality";
-import { parseQueue, renderNext } from "../../../lib/reviewFragments";
+import { parseQueue } from "../../../lib/reviewFragments";
+import { renderNextRich } from "../../../lib/richReviewFragments";
 import { resolveLocale, type Locale } from "../../../i18n";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -33,6 +34,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     { cardId, userId: user.id, quality: qualityFromSelfRating(rating), schedulerPreference: user.schedulerPreference },
   );
 
-  const html = await renderNext(cardRepo, queue, total, current, locale);
+  const html = await renderNextRich(cardRepo, queue, total, current, locale);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });
 };

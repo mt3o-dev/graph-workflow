@@ -4,6 +4,29 @@ Things deliberately left unfinished or simplified, grouped by the slice that
 introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
 items" guidance:
 
+## Slice 7 (rich content)
+
+- **Offline-reviewed cards render as plain escaped text, not rich
+  Markdown/KaTeX/code.** `src/client/offline/render.ts` (slice 6) imports
+  from `reviewFragments.ts`, which deliberately has zero import of
+  `richContent.ts`/marked/katex/shiki — pulling those in would bundle
+  Shiki's full per-language grammar set (megabytes) into the browser.
+  Disclosed limitation, not a silent regression: a student reviewing offline
+  sees their card's raw markdown source with entities escaped, not rendered
+  formatting. Revisit if a lighter client-side renderer becomes worth the
+  bundle cost.
+- **Markdown images render (`<img>` is allowlisted, src/alt/title/width/
+  height only, http/https schemes)** — added post-review after slice 7's
+  first pass shipped with `img` entirely un-allowlisted (dead CSS, silently
+  broken feature, no XSS risk either way since it just rendered nothing).
+- No live-preview-as-you-type; a single "Preview" button re-renders the
+  whole form on demand instead of a split-pane editor — matches this app's
+  existing no-gimmicks design level.
+- h1/h2 excluded from the render allowlist (h3–h6 allowed) — those belong to
+  page chrome (set/page titles), not card body text.
+- KaTeX fonts vendored as woff2 only (not woff/ttf) to keep the vendor
+  bundle small (332K vs ~1.2M) — fine for all current-generation browsers.
+
 ## Slice 6 (offline review)
 
 - **No real-browser QA yet.** The client-side IndexedDB/service-worker/DOM

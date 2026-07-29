@@ -30,6 +30,10 @@ const locale: Locale =
     <title>{title} · {t("app.name", locale)}</title>
     <meta name="theme-color" content="#14b8a6" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Slice 7: KaTeX's stylesheet for server-rendered math (output: "html"
+         mode — see src/core/domain/richContent.ts). No KaTeX client-side JS
+         is shipped; this is just static CSS + @font-face rules. -->
+    <link rel="stylesheet" href="/vendor/katex/katex.min.css" />
     <link rel="icon" href="/branding/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/branding/icon.svg" />
     <script>

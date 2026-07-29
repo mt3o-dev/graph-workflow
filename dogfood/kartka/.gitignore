@@ -11,6 +11,11 @@ dist
 /data/
 src/env.gen.d.ts
 
+# scratch/probe files agents leave behind (rm is policy-denied in this
+# environment) — underscore-prefixed test files are scratch, never real
+# suite members; see docs/DOGFOODING.md issue #30
+tests/_*
+
 # code coverage
 coverage
 *.lcov
