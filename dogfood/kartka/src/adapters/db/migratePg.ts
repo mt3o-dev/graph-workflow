@@ -108,4 +108,8 @@ export async function migratePg(db: PgDb): Promise<void> {
     await db.update(sets).set({ slug }).where(eq(sets.id, row.id));
   }
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_slug ON sets(slug);`);
+
+  // Slice 8: cram mode's opt-in exam date. Nullable, no backfill needed — see
+  // the matching comment in migrateSqlite.ts.
+  await db.execute(`ALTER TABLE sets ADD COLUMN IF NOT EXISTS exam_date TIMESTAMP;`);
 }

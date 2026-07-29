@@ -34,6 +34,15 @@ export interface CardSet {
   visibility: Visibility;
   /** Stable, unguessable, URL-safe share-link identifier. Immutable once set. See core/domain/slug.ts. */
   slug: string;
+  /**
+   * Slice 8 (cram mode): nullable, opt-in. When set, the owner can start a
+   * cram session (see core/domain/cramPlanner.ts) that re-prioritizes which
+   * of this set's cards are selected for review, without ever touching
+   * stored ReviewState/FsrsReviewState — see cramUsecases.ts for the safety
+   * constraint. null (the default for every set) means purely normal
+   * spaced-repetition scheduling, same as before this slice existed.
+   */
+  examDate: Date | null;
   createdAt: Date;
 }
 

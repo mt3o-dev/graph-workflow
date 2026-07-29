@@ -21,5 +21,7 @@ export interface SetRepoPort {
   /** Every set regardless of owner/visibility, joined with owner display name + card count. Admin-only (slice 4) — see adminUsecases.ts. */
   listAllAdmin(query: PageQuery): Promise<Paginated<SetWithOwnerAndCardCount>>;
   updateVisibility(id: string, visibility: Visibility): Promise<CardSet>;
+  /** Slice 8 (cram mode): owner-only set/clear of a set's exam date. See setUsecases.setExamDate for the ownership check. */
+  updateExamDate(id: string, examDate: Date | null): Promise<CardSet>;
   delete(id: string): Promise<void>;
 }

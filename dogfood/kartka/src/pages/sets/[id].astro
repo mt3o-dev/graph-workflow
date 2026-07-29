@@ -5,8 +5,9 @@ import { getCurrentUser } from "../../lib/session";
 import { getContainer } from "../../di/container";
 import { getOwnedSet } from "../../core/usecases/setUsecases";
 import { listCardsInSet } from "../../core/usecases/cardUsecases";
+import { previewCramSession } from "../../core/usecases/cramUsecases";
 import { parsePageQuery } from "../../lib/pageQuery";
-import { renderCardsTableFragment, renderVisibilityControlFragment } from "../../lib/fragments";
+import { renderCardsTableFragment, renderVisibilityControlFragment, renderCramControlFragment } from "../../lib/fragments";
 import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
 
 const user = await getCurrentUser(Astro.cookies);
@@ -17,7 +18,7 @@ const locale = resolveLocale({
   acceptLanguage: Astro.request.headers.get("accept-language"),
 });
 
-const { setRepo, cardRepo } = await getContainer();
+const { setRepo, cardRepo, scheduler, fsrsScheduler } = await getContainer();
 const setId = Astro.params.id!;
 
 let set;
@@ -34,6 +35,9 @@ const data = await listCardsInSet(cardRepo, setRepo, setId, user.id, query);
 const tableHtml = await renderCardsTableFragment({ setId, data, sortBy: query.sortBy, sortDir: query.sortDir, locale });
 const visibilityHtml = renderVisibilityControlFragment({ set, locale });
 
+const cramSummary = await previewCramSession(cardRepo, setRepo, { sm2: scheduler, fsrs: fsrsScheduler }, setId, user.id, user.schedulerPreference);
+const cramHtml = renderCramControlFragment({ summary: cramSummary, locale });
+
 const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"] as const;
 ---
 
@@ -43,6 +47,13 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
   {set.description && <p>{set.description}</p>}
 
   <Fragment set:html={visibilityHtml} />
+
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("cram.examDate.label", locale)}</summary>
+    <div style="margin-top: var(--space-4)">
+      <Fragment set:html={cramHtml} />
+    </div>
+  </details>
 
   <details class="card" style="margin-bottom: var(--space-6)">
     <summary class="btn btn-primary" style="display:inline-block">{t("cards.add", locale)}</summary>

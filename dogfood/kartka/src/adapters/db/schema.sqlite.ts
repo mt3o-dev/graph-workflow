@@ -37,6 +37,10 @@ export const sets = sqliteTable("sets", {
   // by a separate `CREATE UNIQUE INDEX` in migrateSqlite.ts/migratePg.ts
   // instead (see the comment there for why).
   slug: text("slug").notNull(),
+  // Slice 8: cram mode's opt-in exam date. Nullable — most sets have none.
+  // Added via ALTER in migrateSqlite.ts, same pattern as scheduler_preference
+  // (no backfill needed: NULL is the correct default for every existing set).
+  examDate: integer("exam_date", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

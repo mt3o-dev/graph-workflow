@@ -10,6 +10,7 @@
 import { t, type Locale } from "../i18n";
 import type { Card, CardSet, Paginated, UserWithSetCount, Visibility } from "../core/domain/types";
 import type { SetWithOwner, SetWithOwnerAndCardCount } from "../core/ports/setRepoPort";
+import type { CramSessionSummary } from "../core/usecases/cramUsecases";
 import { totalPages } from "../lib/pageQuery";
 import { escapeHtml } from "./html";
 
@@ -170,6 +171,44 @@ export function renderVisibilityControlFragment(opts: { set: CardSet; locale: Lo
         ? `<p>${escapeHtml(t("sets.visibility.shareLink", locale))}: <a href="${shareUrl}">${escapeHtml(shareUrl)}</a></p>`
         : `<p class="empty-state">${escapeHtml(t("sets.visibility.privateHint", locale))}</p>`
     }
+  </div>`;
+}
+
+/**
+ * Owner-only htmx-updated cram-mode control on the set detail page
+ * (/sets/[id].astro) — see cramUsecases.ts / cramPlanner.ts. Shows the
+ * exam-date form, and when a date is set, the countdown, an honest
+ * "N cards won't get proper attention" warning if applicable, and the entry
+ * point into a cram session (which reuses the normal review-flow UI).
+ */
+export function renderCramControlFragment(opts: { summary: CramSessionSummary; locale: Locale }): string {
+  const { summary, locale } = opts;
+  const { set, daysUntilExam, deprioritizedCount } = summary;
+  const isoDate = set.examDate ? set.examDate.toISOString().slice(0, 10) : "";
+
+  const activeSection =
+    set.examDate && daysUntilExam !== null
+      ? `<p>${escapeHtml(t("cram.daysUntilExam", locale, { days: daysUntilExam }))}</p>
+         ${
+           deprioritizedCount > 0
+             ? `<p class="empty-state">${escapeHtml(t("cram.deprioritizedWarning", locale, { count: deprioritizedCount }))}</p>`
+             : ""
+         }
+         <a href="/review?setId=${set.id}&cram=1" class="btn btn-primary">${escapeHtml(t("cram.start", locale))}</a>`
+      : `<p class="empty-state">${escapeHtml(t("cram.notSet", locale))}</p>`;
+
+  return `<div id="cram-control" class="stack">
+    <form hx-post="/api/sets/${set.id}/exam-date" hx-target="#cram-control" hx-swap="outerHTML" class="row">
+      <label for="examDate">${escapeHtml(t("cram.examDate.label", locale))}</label>
+      <input type="date" id="examDate" name="examDate" value="${escapeHtml(isoDate)}" />
+      <button type="submit" class="btn-secondary">${escapeHtml(t("cram.examDate.save", locale))}</button>
+      ${
+        set.examDate
+          ? `<button type="button" class="btn-secondary" onclick="const f=this.form; f.examDate.value=''; f.requestSubmit();">${escapeHtml(t("cram.examDate.clear", locale))}</button>`
+          : ""
+      }
+    </form>
+    ${activeSection}
   </div>`;
 }
 

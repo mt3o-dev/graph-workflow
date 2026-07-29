@@ -410,6 +410,27 @@ dragged Shiki's multi-megabyte grammar set into every user's phone) —
 caught before review, not by review. 142/142 tests, build green, client
 bundle re-verified unchanged at 504K after the post-review fix.
 
+## Slice 8 result — kartka-cram-mode
+
+A per-set optional exam date composes special "cram" review sessions
+(weighted card selection, deprioritized-card warnings) under a deliberately
+strict safety constraint: cram mode must never write review state outside
+the existing `submitReview` path — it only changes which cards get
+*selected*, never touches stored scheduling data directly. That constraint
+held: the reviewer independently re-grepped for any scheduler `.upsert`
+outside `reviewUsecases.ts` and found none, confirming the implementer's own
+self-verifying static test wasn't just checking itself. One real should-fix
+found and fixed: `setExamDate`'s past-date guard compared a UTC-midnight
+`examDate` (parsed from an HTML date-input string, which ECMA-262 parses as
+UTC) against a *server-local*-midnight `today` — in any server timezone west
+of UTC, a student setting today's own exam date was wrongly rejected as "in
+the past." Fixed by comparing UTC calendar-date strings on both sides
+instead of epoch milliseconds, which removes the mismatched-reference-frame
+bug structurally rather than patching around one timezone. This is the
+second slice in a row (after #29's fix) where the independent review caught
+a real, non-hypothetical bug the implementer's own — otherwise thorough —
+test suite didn't cover. 160/160 tests, build green after the fix.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

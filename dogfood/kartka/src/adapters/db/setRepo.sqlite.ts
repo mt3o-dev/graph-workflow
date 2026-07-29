@@ -17,6 +17,7 @@ function toDomain(row: typeof sets.$inferSelect): CardSet {
     description: row.description,
     visibility: row.visibility,
     slug: row.slug,
+    examDate: row.examDate ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -148,6 +149,13 @@ export function createSetRepoSqlite(db: SqliteDb): SetRepoPort {
       await db.update(sets).set({ visibility }).where(eq(sets.id, id));
       const [row] = await db.select().from(sets).where(eq(sets.id, id)).limit(1);
       if (!row) throw new Error("Set disappeared during visibility update");
+      return toDomain(row);
+    },
+
+    async updateExamDate(id: string, examDate: Date | null): Promise<CardSet> {
+      await db.update(sets).set({ examDate }).where(eq(sets.id, id));
+      const [row] = await db.select().from(sets).where(eq(sets.id, id)).limit(1);
+      if (!row) throw new Error("Set disappeared during exam date update");
       return toDomain(row);
     },
 

@@ -35,6 +35,9 @@ export const sets = pgTable("sets", {
   // schema.sqlite.ts field-for-field (see the note there); uniqueness is
   // enforced by a separate `CREATE UNIQUE INDEX` in migratePg.ts.
   slug: text("slug").notNull(),
+  // Slice 8: cram mode's opt-in exam date. Nullable — most sets have none.
+  // Added via ALTER in migratePg.ts, same pattern as scheduler_preference.
+  examDate: timestamp("exam_date", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 

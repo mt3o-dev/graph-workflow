@@ -51,6 +51,14 @@
   "sets.visibility.shareLink": "Share link",
   "sets.visibility.privateHint": "This set is private — only visible to you.",
 
+  "cram.examDate.label": "Exam date",
+  "cram.examDate.save": "Save",
+  "cram.examDate.clear": "Clear",
+  "cram.notSet": "No exam date set — this set uses normal spaced-repetition scheduling.",
+  "cram.daysUntilExam": "{days} days until your exam",
+  "cram.deprioritizedWarning": "{count} cards won't get proper attention before your exam at this pace.",
+  "cram.start": "Start cram session",
+
   "discover.title": "Discover public sets",
   "discover.empty": "There aren't any public sets yet.",
   "discover.column.title": "Title",

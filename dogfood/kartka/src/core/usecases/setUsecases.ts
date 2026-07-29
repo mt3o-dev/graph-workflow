@@ -51,6 +51,40 @@ export async function setVisibility(
   return setRepo.updateVisibility(setId, visibility);
 }
 
+/**
+ * Owner-only: sets or clears (examDate=null) a set's cram-mode exam date.
+ * Reuses getOwnedSet so a non-owner (even logged-in) request 403s before any
+ * write happens — see docs/architecture.md's ownership-check convention.
+ *
+ * This ONLY writes the Set row's examDate column. It never touches
+ * ReviewState/FsrsReviewState — see cramPlanner.ts's safety-constraint
+ * header comment. Clearing the date (passing null) returns the set to
+ * purely normal spaced-repetition scheduling with zero residual effect,
+ * since cram mode never mutated stored schedule data in the first place.
+ */
+export async function setExamDate(
+  setRepo: SetRepoPort,
+  setId: string,
+  ownerId: string,
+  examDate: Date | null,
+  now: Date = new Date(),
+): Promise<CardSet> {
+  await getOwnedSet(setRepo, setId, ownerId);
+  if (examDate !== null) {
+    if (Number.isNaN(examDate.getTime())) throw new ValidationError("Invalid exam date");
+    // Compare calendar-date strings, not epoch ms. examDate arrives from an
+    // <input type=date> "YYYY-MM-DD" value, which `new Date(raw)` parses as
+    // UTC midnight (ECMA-262) — comparing that against a *server-local*
+    // midnight `today` (the previous bug here) rejects "today" itself in
+    // any timezone west of UTC. Reducing both sides to their UTC calendar-
+    // date string removes the two-different-reference-frames mismatch
+    // entirely, so "today" is always accepted regardless of server TZ.
+    const toUtcDateString = (d: Date) => d.toISOString().slice(0, 10);
+    if (toUtcDateString(examDate) < toUtcDateString(now)) throw new ValidationError("Exam date must be today or in the future");
+  }
+  return setRepo.updateExamDate(setId, examDate);
+}
+
 export async function listPublicSets(setRepo: SetRepoPort, query: PageQuery): Promise<Paginated<SetWithOwner>> {
   return setRepo.listPublic(query);
 }

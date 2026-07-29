@@ -51,6 +51,14 @@
   "sets.visibility.shareLink": "Link do udostępnienia",
   "sets.visibility.privateHint": "Ten zestaw jest prywatny — widoczny tylko dla Ciebie.",
 
+  "cram.examDate.label": "Data egzaminu",
+  "cram.examDate.save": "Zapisz",
+  "cram.examDate.clear": "Wyczyść",
+  "cram.notSet": "Nie ustawiono daty egzaminu — ten zestaw korzysta z normalnego harmonogramu powtórek.",
+  "cram.daysUntilExam": "{days} dni do egzaminu",
+  "cram.deprioritizedWarning": "{count} fiszek nie zostanie odpowiednio powtórzonych przed egzaminem przy tym tempie.",
+  "cram.start": "Rozpocznij tryb intensywnej nauki",
+
   "discover.title": "Odkrywaj publiczne zestawy",
   "discover.empty": "Nie ma jeszcze żadnych publicznych zestawów.",
   "discover.column.title": "Tytuł",

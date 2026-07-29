@@ -120,4 +120,14 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
     await db.update(sets).set({ slug }).where(eq(sets.id, row.id));
   }
   db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_slug ON sets(slug);`);
+
+  // Slice 8: cram mode's opt-in exam date. Nullable, no backfill needed —
+  // NULL is the correct value for every set that existed before this slice
+  // (means "cram mode never activates for this set"), same as
+  // scheduler_preference's ALTER above but without a literal default.
+  try {
+    db.run(`ALTER TABLE sets ADD COLUMN exam_date INTEGER;`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+  }
 }

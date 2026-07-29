@@ -5,8 +5,11 @@ import { t, resolveLocale } from "../../i18n";
 import { getCurrentUser } from "../../lib/session";
 import { getContainer } from "../../di/container";
 import { startReviewSession } from "../../core/usecases/reviewUsecases";
+import { startCramSession } from "../../core/usecases/cramUsecases";
 import { renderEmpty } from "../../lib/reviewFragments";
 import { renderCardFragmentRich } from "../../lib/richReviewFragments";
+import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
+import type { Card } from "../../core/domain/types";
 
 const user = await getCurrentUser(Astro.cookies);
 if (!user) return Astro.redirect("/login?next=/review");
@@ -16,26 +19,55 @@ const locale = resolveLocale({
   acceptLanguage: Astro.request.headers.get("accept-language"),
 });
 
-const { cardRepo, scheduler, fsrsScheduler } = await getContainer();
-let due = await startReviewSession(cardRepo, { sm2: scheduler, fsrs: fsrsScheduler }, user.id, user.schedulerPreference);
+const { cardRepo, setRepo, scheduler, fsrsScheduler } = await getContainer();
+const schedulers = { sm2: scheduler, fsrs: fsrsScheduler };
 
 const setId = Astro.url.searchParams.get("setId");
-if (setId) due = due.filter((d) => d.card.setId === setId);
+// Slice 8: cram mode is opt-in and only ever changes which cards get
+// selected — the actual review submission below goes through the exact
+// same /api/review/answer, /api/review/rate flow as any normal review (see
+// cramUsecases.ts's header comment).
+const cramRequested = Astro.url.searchParams.get("cram") === "1";
+
+let cards: Card[];
+let cramInfo: { daysUntilExam: number; deprioritizedCount: number } | null = null;
+
+if (cramRequested && setId) {
+  let session;
+  try {
+    session = await startCramSession(cardRepo, setRepo, schedulers, setId, user.id, user.schedulerPreference);
+  } catch (err) {
+    if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+    if (err instanceof ForbiddenError) return new Response(null, { status: 403 });
+    throw err;
+  }
+  cards = session.cards;
+  if (session.daysUntilExam !== null) {
+    cramInfo = { daysUntilExam: session.daysUntilExam, deprioritizedCount: session.deprioritizedCount };
+  }
+} else {
+  const due = await startReviewSession(cardRepo, schedulers, user.id, user.schedulerPreference);
+  cards = setId ? due.filter((d) => d.card.setId === setId).map((d) => d.card) : due.map((d) => d.card);
+}
 
 const html =
-  due.length === 0
+  cards.length === 0
     ? renderEmpty(locale)
-    : await renderCardFragmentRich(
-        due[0]!.card,
-        due.slice(1).map((d) => d.card.id),
-        1,
-        due.length,
-        locale,
-      );
+    : await renderCardFragmentRich(cards[0]!, cards.slice(1).map((c) => c.id), 1, cards.length, locale);
 ---
 
 <BaseLayout title={t("review.title", locale)} locale={locale}>
   <h1>{t("review.title", locale)}</h1>
+  {
+    cramInfo && (
+      <div class="card stack" style="margin-bottom: var(--space-4)">
+        <p>{t("cram.daysUntilExam", locale, { days: cramInfo.daysUntilExam })}</p>
+        {cramInfo.deprioritizedCount > 0 && (
+          <p class="empty-state">{t("cram.deprioritizedWarning", locale, { count: cramInfo.deprioritizedCount })}</p>
+        )}
+      </div>
+    )
+  }
   <div id="review-area" set:html={html} />
   <script>
     // Slice 6 (offline review): scoped exception to "no client JS" — see
