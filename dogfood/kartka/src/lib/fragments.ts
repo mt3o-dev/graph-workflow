@@ -8,8 +8,8 @@
 // markup here is kept in lockstep with the .astro versions by hand — see
 // docs/TODO.md for the "de-duplicate fragment markup" follow-up.
 import { t, type Locale } from "../i18n";
-import type { Card, CardSet, Paginated, Visibility } from "../core/domain/types";
-import type { SetWithOwner } from "../core/ports/setRepoPort";
+import type { Card, CardSet, Paginated, UserWithSetCount, Visibility } from "../core/domain/types";
+import type { SetWithOwner, SetWithOwnerAndCardCount } from "../core/ports/setRepoPort";
 import { totalPages } from "../lib/pageQuery";
 import { escapeHtml } from "./html";
 
@@ -224,4 +224,216 @@ export async function renderPublicSetsFragment(opts: {
         </nav>`;
 
   return `<div id="discover-table">${body}${pagination}</div>`;
+}
+
+/** Admin-only users list (slice 4). See docs/architecture.md's fragments.ts note re: duplicated-by-hand markup. */
+export function renderAdminUsersTableFragment(opts: {
+  data: Paginated<UserWithSetCount>;
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  currentUserId: string;
+  locale: Locale;
+}): string {
+  const { data, sortBy, sortDir, currentUserId, locale } = opts;
+  const tp = totalPages(data.total, data.pageSize);
+
+  const sortLink = (col: string) => {
+    const nextDir = sortBy === col && sortDir === "asc" ? "desc" : "asc";
+    return `/api/admin/users?sortBy=${col}&sortDir=${nextDir}&page=1&pageSize=${data.pageSize}&lang=${locale}`;
+  };
+  const pageLink = (page: number) =>
+    `/api/admin/users?sortBy=${sortBy}&sortDir=${sortDir}&page=${page}&pageSize=${data.pageSize}&lang=${locale}`;
+  const arrow = (col: string) => (sortBy === col ? (sortDir === "asc" ? "▲" : "▼") : "");
+
+  const body =
+    data.items.length === 0
+      ? `<p class="empty-state">${escapeHtml(t("admin.users.empty", locale))}</p>`
+      : `<table>
+          <thead><tr>
+            <th>${escapeHtml(t("admin.users.column.email", locale))}</th>
+            <th><button type="button" hx-get="${sortLink("displayName")}" hx-target="#admin-users-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("admin.users.column.displayName", locale))} ${arrow("displayName")}</button></th>
+            <th>${escapeHtml(t("admin.users.column.role", locale))}</th>
+            <th>${escapeHtml(t("admin.users.column.banned", locale))}</th>
+            <th>${escapeHtml(t("admin.users.column.sets", locale))}</th>
+            <th><button type="button" hx-get="${sortLink("createdAt")}" hx-target="#admin-users-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("admin.users.column.created", locale))} ${arrow("createdAt")}</button></th>
+            <th>${escapeHtml(t("admin.users.column.actions", locale))}</th>
+          </tr></thead>
+          <tbody class="stagger">
+            ${data.items
+              .map((u) => {
+                const isSelf = u.id === currentUserId;
+                const action = isSelf
+                  ? ""
+                  : u.banned
+                    ? `<form method="post" action="/api/admin/users/${u.id}/unban">
+                        <button type="submit" class="btn-secondary" onclick="return confirm(${JSON.stringify(t("admin.users.unbanConfirm", locale))})">${escapeHtml(t("admin.users.action.unban", locale))}</button>
+                      </form>`
+                    : `<form method="post" action="/api/admin/users/${u.id}/ban">
+                        <button type="submit" class="btn-danger" onclick="return confirm(${JSON.stringify(t("admin.users.banConfirm", locale))})">${escapeHtml(t("admin.users.action.ban", locale))}</button>
+                      </form>`;
+                return `<tr>
+                  <td>${escapeHtml(u.email)}</td>
+                  <td>${escapeHtml(u.displayName)}</td>
+                  <td><span class="badge">${escapeHtml(t(`admin.users.role.${u.role}`, locale))}</span></td>
+                  <td>${escapeHtml(t(u.banned ? "admin.users.status.banned" : "admin.users.status.active", locale))}</td>
+                  <td>${u.setCount}</td>
+                  <td>${escapeHtml(u.createdAt.toLocaleDateString(locale))}</td>
+                  <td class="row">${action}</td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>`;
+
+  const pagination =
+    data.items.length === 0
+      ? ""
+      : `<nav class="row" aria-label="${escapeHtml(t("pagination.nav", locale))}">
+          ${data.page > 1 ? `<button type="button" hx-get="${pageLink(data.page - 1)}" hx-target="#admin-users-table" hx-swap="outerHTML">${escapeHtml(t("pagination.previous", locale))}</button>` : ""}
+          <span>${escapeHtml(t("pagination.pageOf", locale, { page: data.page, totalPages: tp }))}</span>
+          ${data.page < tp ? `<button type="button" hx-get="${pageLink(data.page + 1)}" hx-target="#admin-users-table" hx-swap="outerHTML">${escapeHtml(t("pagination.next", locale))}</button>` : ""}
+        </nav>`;
+
+  return `<div id="admin-users-table">${body}${pagination}</div>`;
+}
+
+/** Admin-only sets list (slice 4): every set regardless of owner/visibility, with a bypass delete + drill-into-cards link. */
+export function renderAdminSetsTableFragment(opts: {
+  data: Paginated<SetWithOwnerAndCardCount>;
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  locale: Locale;
+}): string {
+  const { data, sortBy, sortDir, locale } = opts;
+  const tp = totalPages(data.total, data.pageSize);
+
+  const sortLink = (col: string) => {
+    const nextDir = sortBy === col && sortDir === "asc" ? "desc" : "asc";
+    return `/api/admin/sets?sortBy=${col}&sortDir=${nextDir}&page=1&pageSize=${data.pageSize}&lang=${locale}`;
+  };
+  const pageLink = (page: number) =>
+    `/api/admin/sets?sortBy=${sortBy}&sortDir=${sortDir}&page=${page}&pageSize=${data.pageSize}&lang=${locale}`;
+  const arrow = (col: string) => (sortBy === col ? (sortDir === "asc" ? "▲" : "▼") : "");
+
+  const body =
+    data.items.length === 0
+      ? `<p class="empty-state">${escapeHtml(t("admin.sets.empty", locale))}</p>`
+      : `<table>
+          <thead><tr>
+            <th><button type="button" hx-get="${sortLink("title")}" hx-target="#admin-sets-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("admin.sets.column.title", locale))} ${arrow("title")}</button></th>
+            <th>${escapeHtml(t("admin.sets.column.owner", locale))}</th>
+            <th>${escapeHtml(t("admin.sets.column.visibility", locale))}</th>
+            <th><button type="button" hx-get="${sortLink("cardCount")}" hx-target="#admin-sets-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("admin.sets.column.cards", locale))} ${arrow("cardCount")}</button></th>
+            <th><button type="button" hx-get="${sortLink("createdAt")}" hx-target="#admin-sets-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("admin.sets.column.created", locale))} ${arrow("createdAt")}</button></th>
+            <th>${escapeHtml(t("admin.sets.column.actions", locale))}</th>
+          </tr></thead>
+          <tbody class="stagger">
+            ${data.items
+              .map(
+                (set) => `<tr>
+                  <td>${escapeHtml(set.title)}</td>
+                  <td>${escapeHtml(set.ownerDisplayName)}</td>
+                  <td>${escapeHtml(t(`sets.visibility.${set.visibility}`, locale))}</td>
+                  <td>${set.cardCount}</td>
+                  <td>${escapeHtml(set.createdAt.toLocaleDateString(locale))}</td>
+                  <td class="row">
+                    <a href="/admin/sets/${set.id}/cards">${escapeHtml(t("admin.sets.action.view", locale))}</a>
+                    <form method="post" action="/api/admin/sets/${set.id}/delete">
+                      <button type="submit" class="btn-danger" onclick="return confirm(${JSON.stringify(t("admin.sets.deleteConfirm", locale))})">${escapeHtml(t("admin.sets.action.delete", locale))}</button>
+                    </form>
+                  </td>
+                </tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>`;
+
+  const pagination =
+    data.items.length === 0
+      ? ""
+      : `<nav class="row" aria-label="${escapeHtml(t("pagination.nav", locale))}">
+          ${data.page > 1 ? `<button type="button" hx-get="${pageLink(data.page - 1)}" hx-target="#admin-sets-table" hx-swap="outerHTML">${escapeHtml(t("pagination.previous", locale))}</button>` : ""}
+          <span>${escapeHtml(t("pagination.pageOf", locale, { page: data.page, totalPages: tp }))}</span>
+          ${data.page < tp ? `<button type="button" hx-get="${pageLink(data.page + 1)}" hx-target="#admin-sets-table" hx-swap="outerHTML">${escapeHtml(t("pagination.next", locale))}</button>` : ""}
+        </nav>`;
+
+  return `<div id="admin-sets-table">${body}${pagination}</div>`;
+}
+
+/** Admin-only cards-in-a-set drill-in (slice 4) — same shape as renderCardsTableFragment but pointing at the admin-bypass delete endpoint. */
+export function renderAdminCardsTableFragment(opts: {
+  setId: string;
+  data: Paginated<Card>;
+  sortBy: string;
+  sortDir: "asc" | "desc";
+  locale: Locale;
+}): string {
+  const { setId, data, sortBy, sortDir, locale } = opts;
+  const tp = totalPages(data.total, data.pageSize);
+  const sortLink = (col: string) => {
+    const nextDir = sortBy === col && sortDir === "asc" ? "desc" : "asc";
+    return `/api/admin/sets/${setId}/cards?sortBy=${col}&sortDir=${nextDir}&page=1&pageSize=${data.pageSize}&lang=${locale}`;
+  };
+  const pageLink = (page: number) =>
+    `/api/admin/sets/${setId}/cards?sortBy=${sortBy}&sortDir=${sortDir}&page=${page}&pageSize=${data.pageSize}&lang=${locale}`;
+  const arrow = (col: string) => (sortBy === col ? (sortDir === "asc" ? "▲" : "▼") : "");
+
+  const previewOf = (card: Card): string => {
+    const p = card.payload as Record<string, unknown>;
+    switch (card.type) {
+      case "basic":
+        return String(p.front ?? "");
+      case "cloze":
+        return String(p.text ?? "");
+      case "multiple_choice":
+        return String(p.question ?? "");
+      case "true_false":
+        return String(p.statement ?? "");
+      case "type_answer":
+        return String(p.prompt ?? "");
+      case "image_occlusion":
+        return `${(p.regions as unknown[] | undefined)?.length ?? 0} region(s)`;
+      default:
+        return "";
+    }
+  };
+
+  const body =
+    data.items.length === 0
+      ? `<p class="empty-state">${escapeHtml(t("admin.cards.empty", locale))}</p>`
+      : `<table>
+          <thead><tr>
+            <th><button type="button" hx-get="${sortLink("type")}" hx-target="#admin-cards-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("cards.column.type", locale))} ${arrow("type")}</button></th>
+            <th>${escapeHtml(t("cards.column.preview", locale))}</th>
+            <th><button type="button" hx-get="${sortLink("createdAt")}" hx-target="#admin-cards-table" hx-swap="outerHTML" hx-push-url="true">${escapeHtml(t("cards.column.created", locale))} ${arrow("createdAt")}</button></th>
+            <th>${escapeHtml(t("cards.column.actions", locale))}</th>
+          </tr></thead>
+          <tbody class="stagger">
+            ${data.items
+              .map(
+                (card) => `<tr>
+                  <td><span class="badge">${escapeHtml(t(`cards.type.${card.type}` as never, locale))}</span></td>
+                  <td>${escapeHtml(previewOf(card).slice(0, 80))}</td>
+                  <td>${escapeHtml(card.createdAt.toLocaleDateString(locale))}</td>
+                  <td class="row">
+                    <form method="post" action="/api/admin/cards/${card.id}/delete">
+                      <button type="submit" class="btn-danger" onclick="return confirm(${JSON.stringify(t("admin.cards.deleteConfirm", locale))})">${escapeHtml(t("admin.cards.action.delete", locale))}</button>
+                    </form>
+                  </td>
+                </tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>`;
+
+  const pagination =
+    data.items.length === 0
+      ? ""
+      : `<nav class="row" aria-label="${escapeHtml(t("pagination.nav", locale))}">
+          ${data.page > 1 ? `<button type="button" hx-get="${pageLink(data.page - 1)}" hx-target="#admin-cards-table" hx-swap="outerHTML">${escapeHtml(t("pagination.previous", locale))}</button>` : ""}
+          <span>${escapeHtml(t("pagination.pageOf", locale, { page: data.page, totalPages: tp }))}</span>
+          ${data.page < tp ? `<button type="button" hx-get="${pageLink(data.page + 1)}" hx-target="#admin-cards-table" hx-swap="outerHTML">${escapeHtml(t("pagination.next", locale))}</button>` : ""}
+        </nav>`;
+
+  return `<div id="admin-cards-table">${body}${pagination}</div>`;
 }

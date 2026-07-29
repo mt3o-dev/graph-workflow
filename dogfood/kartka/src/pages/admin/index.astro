@@ -1,0 +1,141 @@
+---
+// Admin dashboard: the simple analytics summary (slice 4). Users/Sets are
+// separate routes (admin/users.astro, admin/sets.astro) — see those files
+// for the paginated moderation lists.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { t, resolveLocale } from "../../i18n";
+import { requireAdminPage } from "../../lib/adminGuard";
+import { getContainer } from "../../di/container";
+import { getAdminAnalytics } from "../../core/usecases/adminUsecases";
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const gate = await requireAdminPage(Astro.cookies, locale, Astro.url.pathname);
+if (gate instanceof Response) return gate;
+const user = gate;
+
+const { scheduler, llmCallLogRepo } = await getContainer();
+const analytics = await getAdminAnalytics(scheduler, llmCallLogRepo, user);
+---
+
+<BaseLayout title={t("admin.title", locale)} locale={locale}>
+  <h1>{t("admin.title", locale)}</h1>
+  <AdminNav active="analytics" locale={locale} />
+
+  <h2>{t("admin.analytics.activeUsers", locale)}</h2>
+  <div class="row stat-row">
+    <div class="card stat-tile">
+      <strong>{analytics.activeUsers7d}</strong>
+      <span>{t("admin.analytics.activeUsers7d", locale)}</span>
+    </div>
+    <div class="card stat-tile">
+      <strong>{analytics.activeUsers30d}</strong>
+      <span>{t("admin.analytics.activeUsers30d", locale)}</span>
+    </div>
+  </div>
+
+  <h2>{t("admin.analytics.reviewVolume", locale)}</h2>
+  <div class="row stat-row">
+    <div class="card stat-tile">
+      <strong>{analytics.reviewsLast7d}</strong>
+      <span>{t("admin.analytics.reviews7d", locale)}</span>
+    </div>
+    <div class="card stat-tile">
+      <strong>{analytics.reviewsLast30d}</strong>
+      <span>{t("admin.analytics.reviews30d", locale)}</span>
+    </div>
+  </div>
+  <p class="empty-state">{t("admin.analytics.reviewVolumeHint", locale)}</p>
+
+  <h2>{t("admin.analytics.llmTotals", locale)}</h2>
+  <div class="row stat-row">
+    <div class="card stat-tile">
+      <strong>{analytics.llm.totals.callCount}</strong>
+      <span>{t("admin.analytics.llmCalls", locale)}</span>
+    </div>
+    <div class="card stat-tile">
+      <strong>{analytics.llm.totals.totalTokens}</strong>
+      <span>{t("admin.analytics.llmTokens", locale)}</span>
+    </div>
+    <div class="card stat-tile">
+      <strong>${analytics.llm.totals.totalCostUsd.toFixed(4)}</strong>
+      <span>{t("admin.analytics.llmCost", locale)}</span>
+    </div>
+  </div>
+
+  {
+    analytics.llm.totals.callCount === 0 ? (
+      <p class="empty-state">{t("admin.analytics.empty", locale)}</p>
+    ) : (
+      <>
+        <h3>{t("admin.analytics.llmByModel", locale)}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>{t("admin.analytics.column.model", locale)}</th>
+              <th>{t("admin.analytics.column.calls", locale)}</th>
+              <th>{t("admin.analytics.column.tokens", locale)}</th>
+              <th>{t("admin.analytics.column.cost", locale)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {analytics.llm.byModel.map((row) => (
+              <tr>
+                <td>{row.model}</td>
+                <td>{row.callCount}</td>
+                <td>{row.totalTokens}</td>
+                <td>${row.totalCostUsd.toFixed(4)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3>{t("admin.analytics.llmByDay", locale)}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>{t("admin.analytics.column.day", locale)}</th>
+              <th>{t("admin.analytics.column.calls", locale)}</th>
+              <th>{t("admin.analytics.column.tokens", locale)}</th>
+              <th>{t("admin.analytics.column.cost", locale)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {analytics.llm.byDay.map((row) => (
+              <tr>
+                <td>{row.day}</td>
+                <td>{row.callCount}</td>
+                <td>{row.totalTokens}</td>
+                <td>${row.totalCostUsd.toFixed(4)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </>
+    )
+  }
+</BaseLayout>
+
+<style>
+  .stat-row {
+    flex-wrap: wrap;
+    margin-block-end: var(--space-6);
+  }
+  .stat-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 160px;
+  }
+  .stat-tile strong {
+    font-size: 1.75rem;
+  }
+  .stat-tile span {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+  }
+</style>

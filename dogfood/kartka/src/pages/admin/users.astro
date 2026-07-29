@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { t, resolveLocale } from "../../i18n";
+import { requireAdminPage } from "../../lib/adminGuard";
+import { getContainer } from "../../di/container";
+import { listUsersForAdmin } from "../../core/usecases/adminUsecases";
+import { parsePageQuery } from "../../lib/pageQuery";
+import { renderAdminUsersTableFragment } from "../../lib/fragments";
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const gate = await requireAdminPage(Astro.cookies, locale, Astro.url.pathname);
+if (gate instanceof Response) return gate;
+const user = gate;
+
+const { userRepo } = await getContainer();
+const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
+const data = await listUsersForAdmin(userRepo, user, query);
+const tableHtml = renderAdminUsersTableFragment({ data, sortBy: query.sortBy, sortDir: query.sortDir, currentUserId: user.id, locale });
+---
+
+<BaseLayout title={t("admin.users.title", locale)} locale={locale}>
+  <h1>{t("admin.title", locale)}</h1>
+  <AdminNav active="users" locale={locale} />
+  <h2>{t("admin.users.title", locale)}</h2>
+  <Fragment set:html={tableHtml} />
+</BaseLayout>

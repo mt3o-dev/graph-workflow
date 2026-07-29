@@ -151,6 +151,11 @@ export interface CardDraft {
   rationale: string;
 }
 
+/** A user row enriched with how many sets they own, for the admin users list (slice 4). */
+export interface UserWithSetCount extends User {
+  setCount: number;
+}
+
 /** One row of the LLM cost/usage log (slice 2). Read by slice 4's admin analytics. */
 export interface LlmCallLog {
   id: string;

@@ -1,0 +1,42 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import AdminNav from "../../../../components/AdminNav.astro";
+import { t, resolveLocale } from "../../../../i18n";
+import { requireAdminPage } from "../../../../lib/adminGuard";
+import { getContainer } from "../../../../di/container";
+import { listCardsForAdmin } from "../../../../core/usecases/adminUsecases";
+import { parsePageQuery } from "../../../../lib/pageQuery";
+import { renderAdminCardsTableFragment } from "../../../../lib/fragments";
+import { NotFoundError } from "../../../../core/domain/errors";
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const gate = await requireAdminPage(Astro.cookies, locale, Astro.url.pathname);
+if (gate instanceof Response) return gate;
+const user = gate;
+
+const { setRepo, cardRepo } = await getContainer();
+const setId = Astro.params.id!;
+const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
+
+let view;
+try {
+  view = await listCardsForAdmin(cardRepo, setRepo, user, setId, query);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  throw err;
+}
+
+const tableHtml = renderAdminCardsTableFragment({ setId, data: view.data, sortBy: query.sortBy, sortDir: query.sortDir, locale });
+---
+
+<BaseLayout title={t("admin.cards.title", locale, { setTitle: view.set.title })} locale={locale}>
+  <h1>{t("admin.title", locale)}</h1>
+  <AdminNav active="sets" locale={locale} />
+  <a href="/admin/sets">&larr; {t("admin.cards.back", locale)}</a>
+  <h2>{t("admin.cards.title", locale, { setTitle: view.set.title })}</h2>
+  <Fragment set:html={tableHtml} />
+</BaseLayout>

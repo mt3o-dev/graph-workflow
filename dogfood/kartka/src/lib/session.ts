@@ -15,7 +15,9 @@ export async function getCurrentUser(cookies: AstroCookies): Promise<User | null
   const session = await auth.getSession(sessionId);
   if (!session) return null;
 
-  return userRepo.findById(session.userId);
+  const user = await userRepo.findById(session.userId);
+  if (!user || user.banned) return null;
+  return user;
 }
 
 export async function setSessionCookie(cookies: AstroCookies, sessionId: string): Promise<void> {

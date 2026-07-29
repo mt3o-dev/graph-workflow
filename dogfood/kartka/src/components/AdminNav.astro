@@ -1,0 +1,32 @@
+---
+// Small tab strip shared by the three /admin* pages (slice 4).
+import { t, type Locale } from "../i18n";
+
+export interface Props {
+  active: "analytics" | "users" | "sets";
+  locale: Locale;
+}
+const { active, locale } = Astro.props;
+---
+
+<nav class="row admin-nav" aria-label={t("admin.title", locale)}>
+  <a href="/admin" aria-current={active === "analytics" ? "page" : undefined}>{t("admin.tabs.analytics", locale)}</a>
+  <a href="/admin/users" aria-current={active === "users" ? "page" : undefined}>{t("admin.tabs.users", locale)}</a>
+  <a href="/admin/sets" aria-current={active === "sets" ? "page" : undefined}>{t("admin.tabs.sets", locale)}</a>
+</nav>
+
+<style>
+  .admin-nav {
+    margin-block-end: var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+    padding-block-end: var(--space-3);
+  }
+  .admin-nav a {
+    text-decoration: none;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+  .admin-nav a[aria-current="page"] {
+    color: var(--color-teal-strong);
+  }
+</style>

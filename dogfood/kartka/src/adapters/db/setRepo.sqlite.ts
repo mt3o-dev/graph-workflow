@@ -1,7 +1,7 @@
 import { eq, asc, desc, count } from "drizzle-orm";
 import type { SqliteDb } from "./index";
-import { sets, users } from "./schema.sqlite";
-import type { SetRepoPort, SetWithOwner } from "../../core/ports/setRepoPort";
+import { sets, users, cards } from "./schema.sqlite";
+import type { SetRepoPort, SetWithOwner, SetWithOwnerAndCardCount } from "../../core/ports/setRepoPort";
 import type { CardSet, PageQuery, Paginated, Visibility } from "../../core/domain/types";
 import { newId } from "./ids";
 import { generateSlug } from "../../core/domain/slug";
@@ -104,6 +104,40 @@ export function createSetRepoSqlite(db: SqliteDb): SetRepoPort {
 
       return {
         items: rows.map((r) => ({ ...toDomain(r.set), ownerDisplayName: r.ownerDisplayName })),
+        total,
+        page,
+        pageSize,
+      };
+    },
+
+    async listAllAdmin(query: PageQuery): Promise<Paginated<SetWithOwnerAndCardCount>> {
+      const page = Math.max(1, query.page);
+      const pageSize = Math.min(100, Math.max(1, query.pageSize));
+      const cardCountExpr = count(cards.id);
+      const orderExpr =
+        query.sortBy === "cardCount"
+          ? query.sortDir === "asc"
+            ? asc(cardCountExpr)
+            : desc(cardCountExpr)
+          : (() => {
+              const sortCol = SORTABLE[(query.sortBy as SortKey) in SORTABLE ? (query.sortBy as SortKey) : "createdAt"];
+              return query.sortDir === "asc" ? asc(sortCol) : desc(sortCol);
+            })();
+
+      const [{ value: total }] = await db.select({ value: count() }).from(sets);
+
+      const rows = await db
+        .select({ set: sets, ownerDisplayName: users.displayName, cardCount: cardCountExpr })
+        .from(sets)
+        .innerJoin(users, eq(sets.ownerId, users.id))
+        .leftJoin(cards, eq(cards.setId, sets.id))
+        .groupBy(sets.id, users.displayName)
+        .orderBy(orderExpr)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      return {
+        items: rows.map((r) => ({ ...toDomain(r.set), ownerDisplayName: r.ownerDisplayName, cardCount: r.cardCount })),
         total,
         page,
         pageSize,

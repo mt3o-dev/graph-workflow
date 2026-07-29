@@ -1,4 +1,4 @@
-import { and, eq, inArray, lte, asc } from "drizzle-orm";
+import { and, eq, inArray, lte, gte, asc, count, countDistinct } from "drizzle-orm";
 import type { PgDb } from "./index";
 import { reviewStates } from "./schema.pg";
 import type { SchedulerPort, DueEntry } from "../../core/ports/schedulerPort";
@@ -75,6 +75,22 @@ export function createSchedulerRepoPg(db: PgDb): SchedulerPort {
         if (state) entries.push({ cardId, state });
       }
       return entries;
+    },
+
+    async countActiveUsersSince(since) {
+      const [{ value }] = await db
+        .select({ value: countDistinct(reviewStates.userId) })
+        .from(reviewStates)
+        .where(gte(reviewStates.lastReviewedAt, since));
+      return value;
+    },
+
+    async countReviewedSince(since) {
+      const [{ value }] = await db
+        .select({ value: count() })
+        .from(reviewStates)
+        .where(gte(reviewStates.lastReviewedAt, since));
+      return value;
     },
   };
 }

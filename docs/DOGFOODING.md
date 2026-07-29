@@ -316,6 +316,23 @@ slug's validity to a prober — noted explicitly by the implementer and
 verified consistent by the reviewer. Two slices in a row now reviewed clean;
 the review-gate discipline from #29 is holding.
 
+## Slice 4 result — kartka-admin
+
+Admin panel: paginated/sortable user/set/card lists, ban/unban, admin-bypass
+delete for sets/cards, analytics dashboard (LLM cost totals real off
+`llm_call_log`; active-users/review-volume are documented, UI-visible
+proxies off `ReviewState.lastReviewedAt`, no separate event log exists yet).
+One **should-fix** from review: `getCurrentUser` didn't check `user.banned`,
+so a banned user's still-signed session cookie kept working until its
+30-day natural expiry even though `login()` correctly rejected them —
+accurately self-documented in a test comment, but not enforced and not
+recorded as a known gap. Fixed (`session.ts` now treats a banned user's
+session as logged-out). Everything else — server-side role re-checks
+independent of page gates, genuine cascade-delete via `ON DELETE CASCADE` +
+`PRAGMA foreign_keys=ON` rather than fake-ownership, correct last-admin-
+lockout counting, allowlisted sort columns — reviewed clean. 72/72 tests,
+build green after the fix.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

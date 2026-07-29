@@ -39,3 +39,14 @@ pragmatic, don't block on infeasible-in-sandbox items" guidance:
   (`floor(min(len_a, len_b) / 8)`, minimum 1) — good enough to forgive a
   typo or two on longer answers without accepting wrong answers; not tuned
   against real student input.
+- **Banning doesn't revoke other active sessions** (slice 4) — `getCurrentUser`
+  now rejects a banned user's session on next lookup (fixed post-review), but
+  a device with a still-cached response or a very short window between ban
+  and next request isn't instantly cut off since there's no server-push
+  session invalidation. Acceptable at this scale; revisit if sessions need
+  hard real-time revocation.
+- **Last-admin-lockout check has a benign race** (slice 4): two concurrent
+  ban requests against two different admins could both read "1 other active
+  admin" before either commits, banning both. Not addressed with a
+  transaction/lock — low likelihood, low severity (an operator can still fix
+  it via direct DB access), noted rather than fixed for this slice's scope.

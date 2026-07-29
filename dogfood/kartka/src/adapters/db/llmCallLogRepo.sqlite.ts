@@ -1,3 +1,4 @@
+import { desc } from "drizzle-orm";
 import type { SqliteDb } from "./index";
 import { llmCallLog } from "./schema.sqlite";
 import type { LlmCallLogRepoPort } from "../../core/ports/llmCallLogRepoPort";
@@ -36,6 +37,11 @@ export function createLlmCallLogRepoSqlite(db: SqliteDb): LlmCallLogRepoPort {
       };
       await db.insert(llmCallLog).values(row);
       return toDomain(row as typeof llmCallLog.$inferSelect);
+    },
+
+    async listAll() {
+      const rows = await db.select().from(llmCallLog).orderBy(desc(llmCallLog.requestedAt));
+      return rows.map(toDomain);
     },
   };
 }

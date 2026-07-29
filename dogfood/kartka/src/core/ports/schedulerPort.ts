@@ -21,4 +21,21 @@ export interface SchedulerPort {
    * dueAt ascending (never-reviewed cards sort first).
    */
   listDue(userId: string, cardIds: string[], now: Date): Promise<DueEntry[]>;
+
+  /**
+   * Distinct users with at least one review_states row whose lastReviewedAt
+   * falls at/after `since`. Admin analytics "active users" proxy (slice 4) —
+   * slice 1 has no separate review-event log, only this per-(card,user)
+   * timestamp, so this is the closest available signal. See adminUsecases.ts.
+   */
+  countActiveUsersSince(since: Date): Promise<number>;
+
+  /**
+   * Count of review_states rows whose lastReviewedAt falls at/after `since`.
+   * Admin analytics "review volume" proxy (slice 4) — undercounts true review
+   * volume when the same card is reviewed more than once in the window,
+   * since only the latest review overwrites this row's timestamp. See
+   * adminUsecases.ts.
+   */
+  countReviewedSince(since: Date): Promise<number>;
 }
