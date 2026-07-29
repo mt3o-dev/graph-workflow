@@ -17,6 +17,7 @@ function toDomain(row: typeof users.$inferSelect): User {
     role: row.role,
     banned: row.banned,
     locale: row.locale,
+    schedulerPreference: row.schedulerPreference,
     createdAt: row.createdAt,
   };
 }
@@ -32,6 +33,7 @@ export function createUserRepoPg(db: PgDb): UserRepoPort {
         role: input.role ?? "student",
         banned: false,
         locale: input.locale ?? "pl",
+        schedulerPreference: "sm2" as const,
         createdAt: new Date(),
       };
       await db.insert(users).values(row);
@@ -93,6 +95,13 @@ export function createUserRepoPg(db: PgDb): UserRepoPort {
         .from(users)
         .where(and(...conditions));
       return value;
+    },
+
+    async updateSchedulerPreference(id, preference) {
+      await db.update(users).set({ schedulerPreference: preference }).where(eq(users.id, id));
+      const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      if (!row) throw new Error("User disappeared during scheduler preference update");
+      return toDomain(row);
     },
   };
 }

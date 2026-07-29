@@ -333,6 +333,20 @@ independent of page gates, genuine cascade-delete via `ON DELETE CASCADE` +
 lockout counting, allowlisted sort columns — reviewed clean. 72/72 tests,
 build green after the fix.
 
+## Slice 5 result — kartka-fsrs
+
+FSRS as an opt-in second `SchedulerPort` alongside SM-2, per-user preference,
+sm2→fsrs bootstrap mapping for mid-use switches. Reviewer independently
+checked the FSRS formulas against the published v4.5 algorithm (S0/D0
+tables, difficulty mean-reversion, stability update forms, the
+retrievability/interval formulas) and found a faithful port, not an
+approximation — with tests asserting real algorithmic properties (stability
+growth, Again-vs-Good divergence, difficulty bounds) rather than smoke
+tests. SM-2 verified byte-identical/untouched via git diff since slice 1.
+One should-fix, docs-only: `docs/TODO.md` hadn't recorded the deferred
+per-user parameter-fitting gap that was only living in a code comment and
+the roadmap note — fixed. 96/96 tests, build green.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

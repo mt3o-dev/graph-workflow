@@ -18,8 +18,8 @@ const gate = await requireAdminPage(Astro.cookies, locale, Astro.url.pathname);
 if (gate instanceof Response) return gate;
 const user = gate;
 
-const { scheduler, llmCallLogRepo } = await getContainer();
-const analytics = await getAdminAnalytics(scheduler, llmCallLogRepo, user);
+const { scheduler, fsrsScheduler, llmCallLogRepo } = await getContainer();
+const analytics = await getAdminAnalytics(scheduler, fsrsScheduler, llmCallLogRepo, user);
 ---
 
 <BaseLayout title={t("admin.title", locale)} locale={locale}>

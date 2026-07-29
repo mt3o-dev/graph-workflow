@@ -9,6 +9,7 @@
   "nav.login": "Log in",
   "nav.signup": "Sign up",
   "nav.logout": "Log out",
+  "nav.settings": "Settings",
   "nav.greeting": "Hi, {name}",
 
   "auth.login.title": "Log in",
@@ -219,5 +220,13 @@
   "llm.error.sourceRequired": "Paste some text or upload a file first.",
   "llm.confidence": "Confidence: {pct}%",
   "llm.accept": "Accept",
-  "llm.reject": "Reject"
+  "llm.reject": "Reject",
+
+  "settings.title": "Settings",
+  "settings.saved": "Saved.",
+  "settings.scheduler.label": "Spaced-repetition algorithm",
+  "settings.scheduler.sm2": "SM-2 (default)",
+  "settings.scheduler.sm2Hint": "The classic SuperMemo-2 algorithm. What every account uses unless changed.",
+  "settings.scheduler.fsrs": "FSRS",
+  "settings.scheduler.fsrsHint": "Free Spaced Repetition Scheduler — the algorithm Anki now defaults to. Usually schedules reviews more efficiently. Switching keeps your existing progress; it does not reset any card."
 }

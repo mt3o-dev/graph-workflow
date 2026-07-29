@@ -1,4 +1,4 @@
-import type { User, UserWithSetCount, Locale, PageQuery, Paginated } from "../domain/types";
+import type { User, UserWithSetCount, Locale, PageQuery, Paginated, SchedulerPreference } from "../domain/types";
 
 export interface UserRepoPort {
   create(input: {
@@ -16,4 +16,6 @@ export interface UserRepoPort {
   setBanned(id: string, banned: boolean): Promise<User>;
   /** Count of non-banned admins, optionally excluding one user id. Used for the "don't lock out all admin access" guard in adminUsecases.setUserBanned. */
   countActiveAdmins(excludingUserId?: string): Promise<number>;
+  /** Self-service scheduler switch (slice 5) — see authUsecases.changeSchedulerPreference for the ownership-check wrapper callers must use. */
+  updateSchedulerPreference(id: string, preference: SchedulerPreference): Promise<User>;
 }

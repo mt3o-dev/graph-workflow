@@ -1,7 +1,7 @@
 import { and, eq, inArray, lte, gte, asc, count, countDistinct } from "drizzle-orm";
 import type { SqliteDb } from "./index";
 import { reviewStates } from "./schema.sqlite";
-import type { SchedulerPort, DueEntry } from "../../core/ports/schedulerPort";
+import type { Sm2SchedulerPort, DueEntry } from "../../core/ports/schedulerPort";
 import type { ReviewState } from "../../core/domain/types";
 
 function toDomain(row: typeof reviewStates.$inferSelect): ReviewState {
@@ -16,7 +16,7 @@ function toDomain(row: typeof reviewStates.$inferSelect): ReviewState {
   };
 }
 
-export function createSchedulerRepoSqlite(db: SqliteDb): SchedulerPort {
+export function createSchedulerRepoSqlite(db: SqliteDb): Sm2SchedulerPort {
   return {
     async get(cardId, userId) {
       const [row] = await db
@@ -49,7 +49,7 @@ export function createSchedulerRepoSqlite(db: SqliteDb): SchedulerPort {
       return state;
     },
 
-    async listDue(userId, cardIds, now): Promise<DueEntry[]> {
+    async listDue(userId, cardIds, now): Promise<DueEntry<ReviewState>[]> {
       if (cardIds.length === 0) return [];
 
       const existingRows = await db
@@ -66,7 +66,7 @@ export function createSchedulerRepoSqlite(db: SqliteDb): SchedulerPort {
         .where(and(eq(reviewStates.userId, userId), inArray(reviewStates.cardId, cardIds)));
       const hasAnyState = new Set(allExistingForUser.map((r) => r.cardId));
 
-      const entries: DueEntry[] = [];
+      const entries: DueEntry<ReviewState>[] = [];
       // Never-reviewed cards are always due, and sort first.
       for (const cardId of cardIds) {
         if (!hasAnyState.has(cardId)) entries.push({ cardId, state: null });

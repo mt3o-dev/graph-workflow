@@ -56,6 +56,18 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
     );
   `);
   db.run(`
+    CREATE TABLE IF NOT EXISTS fsrs_review_states (
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      difficulty REAL NOT NULL,
+      stability REAL NOT NULL,
+      reps INTEGER NOT NULL DEFAULT 0,
+      due_at INTEGER NOT NULL,
+      last_reviewed_at INTEGER,
+      PRIMARY KEY (card_id, user_id)
+    );
+  `);
+  db.run(`
     CREATE TABLE IF NOT EXISTS llm_call_log (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -72,8 +84,21 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fsrs_review_states_user_due ON fsrs_review_states(user_id, due_at);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+
+  // Slice 5: `users` already existed from slice 1 — add the scheduler
+  // preference column via ALTER, same pattern as sets.slug in slice 3.
+  // Unlike slug this needs no nullable+backfill dance: every existing user
+  // can share the same literal default ('sm2', preserving current
+  // behavior), so a plain NOT NULL DEFAULT ALTER is enough. SQLite still has
+  // no "ADD COLUMN IF NOT EXISTS", hence the catch-and-ignore.
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN scheduler_preference TEXT NOT NULL DEFAULT 'sm2';`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+  }
 
   // Slice 3: `sets` already existed from slice 1, so the slug column is added
   // via ALTER rather than baked into the CREATE TABLE above (keeps one

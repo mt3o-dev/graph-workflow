@@ -1,0 +1,49 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect("/login?next=/account/settings");
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+---
+
+<BaseLayout title={t("settings.title", locale)} locale={locale}>
+  <h1>{t("settings.title", locale)}</h1>
+
+  {
+    saved && (
+      <p class="empty-state" role="status" aria-live="polite">
+        {t("settings.saved", locale)}
+      </p>
+    )
+  }
+
+  <form method="post" action="/api/account/scheduler-preference" class="stack card">
+    <h2>{t("settings.scheduler.label", locale)}</h2>
+
+    <div class="field">
+      <label class="row">
+        <input type="radio" name="schedulerPreference" value="sm2" checked={user.schedulerPreference === "sm2"} />
+        <span>{t("settings.scheduler.sm2", locale)}</span>
+      </label>
+      <p class="empty-state">{t("settings.scheduler.sm2Hint", locale)}</p>
+    </div>
+
+    <div class="field">
+      <label class="row">
+        <input type="radio" name="schedulerPreference" value="fsrs" checked={user.schedulerPreference === "fsrs"} />
+        <span>{t("settings.scheduler.fsrs", locale)}</span>
+      </label>
+      <p class="empty-state">{t("settings.scheduler.fsrsHint", locale)}</p>
+    </div>
+
+    <button type="submit" class="btn-primary">{t("common.save", locale)}</button>
+  </form>
+</BaseLayout>

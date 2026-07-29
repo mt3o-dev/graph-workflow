@@ -15,8 +15,8 @@ const locale = resolveLocale({
   acceptLanguage: Astro.request.headers.get("accept-language"),
 });
 
-const { cardRepo, scheduler } = await getContainer();
-let due = await startReviewSession(cardRepo, scheduler, user.id);
+const { cardRepo, scheduler, fsrsScheduler } = await getContainer();
+let due = await startReviewSession(cardRepo, { sm2: scheduler, fsrs: fsrsScheduler }, user.id, user.schedulerPreference);
 
 const setId = Astro.url.searchParams.get("setId");
 if (setId) due = due.filter((d) => d.card.setId === setId);

@@ -1,7 +1,7 @@
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { SetRepoPort, SetWithOwnerAndCardCount } from "../ports/setRepoPort";
 import type { CardRepoPort } from "../ports/cardRepoPort";
-import type { SchedulerPort } from "../ports/schedulerPort";
+import type { Sm2SchedulerPort, FsrsSchedulerPort } from "../ports/schedulerPort";
 import type { LlmCallLogRepoPort } from "../ports/llmCallLogRepoPort";
 import type { Card, CardSet, PageQuery, Paginated, Role, User, UserWithSetCount } from "../domain/types";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../domain/errors";
@@ -125,21 +125,28 @@ export interface AdminAnalytics {
 /**
  * Simple summary dashboard, not full BI (slice 4 scope). Data-availability
  * note: slice 1 never introduced a separate review-event log — the only
- * signal is ReviewState.lastReviewedAt, one timestamp per (card,user) that
- * gets overwritten on every review. So:
- *  - "active users" = distinct users with >=1 review_states row whose
- *    lastReviewedAt falls in the window (scheduler.countActiveUsersSince).
- *  - "review volume" = count of review_states rows whose lastReviewedAt
- *    falls in the window (scheduler.countReviewedSince) — this UNDERCOUNTS
- *    true review volume, since a card reviewed twice in the same window
- *    only contributes once (its row's timestamp is just overwritten by the
+ * signal is ReviewState.lastReviewedAt (SM-2) / FsrsReviewState.lastReviewedAt
+ * (FSRS, slice 5), one timestamp per (card,user) that gets overwritten on
+ * every review. So:
+ *  - "active users" = distinct users with >=1 state row (either scheduler)
+ *    whose lastReviewedAt falls in the window, summed across both
+ *    schedulers' countActiveUsersSince. This can double-count a user who
+ *    reviewed under both SM-2 and FSRS cards in the same window (e.g. right
+ *    after switching preference) — an edge case narrow enough not to
+ *    justify a cross-scheduler distinct-user query for a slice-4-scope
+ *    dashboard, but worth knowing about if the number looks slightly high.
+ *  - "review volume" = count of state rows (both schedulers, summed) whose
+ *    lastReviewedAt falls in the window — this UNDERCOUNTS true review
+ *    volume, since a card reviewed twice in the same window only
+ *    contributes once (its row's timestamp is just overwritten by the
  *    later review). Both are proxies, not exact event counts; see the
  *    matching doc comments on SchedulerPort.
  * LLM cost figures, by contrast, come straight from llm_call_log (slice 2),
  * which *was* built as an append-only per-call log, so those numbers are exact.
  */
 export async function getAdminAnalytics(
-  scheduler: SchedulerPort,
+  scheduler: Sm2SchedulerPort,
+  fsrsScheduler: FsrsSchedulerPort,
   llmCallLogRepo: LlmCallLogRepoPort,
   actor: AdminActor,
   now: Date = new Date(),
@@ -148,19 +155,33 @@ export async function getAdminAnalytics(
   const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const since30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [activeUsers7d, activeUsers30d, reviewsLast7d, reviewsLast30d, logs] = await Promise.all([
+  const [
+    sm2ActiveUsers7d,
+    fsrsActiveUsers7d,
+    sm2ActiveUsers30d,
+    fsrsActiveUsers30d,
+    sm2Reviews7d,
+    fsrsReviews7d,
+    sm2Reviews30d,
+    fsrsReviews30d,
+    logs,
+  ] = await Promise.all([
     scheduler.countActiveUsersSince(since7d),
+    fsrsScheduler.countActiveUsersSince(since7d),
     scheduler.countActiveUsersSince(since30d),
+    fsrsScheduler.countActiveUsersSince(since30d),
     scheduler.countReviewedSince(since7d),
+    fsrsScheduler.countReviewedSince(since7d),
     scheduler.countReviewedSince(since30d),
+    fsrsScheduler.countReviewedSince(since30d),
     llmCallLogRepo.listAll(),
   ]);
 
   return {
-    activeUsers7d,
-    activeUsers30d,
-    reviewsLast7d,
-    reviewsLast30d,
+    activeUsers7d: sm2ActiveUsers7d + fsrsActiveUsers7d,
+    activeUsers30d: sm2ActiveUsers30d + fsrsActiveUsers30d,
+    reviewsLast7d: sm2Reviews7d + fsrsReviews7d,
+    reviewsLast30d: sm2Reviews30d + fsrsReviews30d,
     llm: aggregateLlmCosts(logs),
   };
 }

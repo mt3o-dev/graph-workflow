@@ -4,7 +4,7 @@ import { getDb, getDriver, migrate, type SqliteDb, type PgDb } from "../adapters
 import type { SetRepoPort } from "../core/ports/setRepoPort";
 import type { CardRepoPort } from "../core/ports/cardRepoPort";
 import type { UserRepoPort } from "../core/ports/userRepoPort";
-import type { SchedulerPort } from "../core/ports/schedulerPort";
+import type { Sm2SchedulerPort, FsrsSchedulerPort } from "../core/ports/schedulerPort";
 import type { AuthPort } from "../core/ports/authPort";
 import type { LlmCallLogRepoPort } from "../core/ports/llmCallLogRepoPort";
 import type { LlmGeneratorPort } from "../core/ports/llmGeneratorPort";
@@ -13,7 +13,10 @@ export interface Container {
   setRepo: SetRepoPort;
   cardRepo: CardRepoPort;
   userRepo: UserRepoPort;
-  scheduler: SchedulerPort;
+  /** SM-2 scheduler (slice 1). See fsrsScheduler for the opt-in slice-5 alternative. */
+  scheduler: Sm2SchedulerPort;
+  /** FSRS scheduler (slice 5) — see core/ports/schedulerPort.ts and reviewUsecases.ts. */
+  fsrsScheduler: FsrsSchedulerPort;
   auth: AuthPort;
   llmCallLogRepo: LlmCallLogRepoPort;
   /** undefined when OPENROUTER_API_KEY isn't set — callers must show a "not configured" state, not crash. */
@@ -31,7 +34,8 @@ async function buildContainer(): Promise<Container> {
   let setRepo: SetRepoPort;
   let cardRepo: CardRepoPort;
   let userRepo: UserRepoPort;
-  let scheduler: SchedulerPort;
+  let scheduler: Sm2SchedulerPort;
+  let fsrsScheduler: FsrsSchedulerPort;
   let auth: AuthPort;
   let llmCallLogRepo: LlmCallLogRepoPort;
 
@@ -40,6 +44,7 @@ async function buildContainer(): Promise<Container> {
     const { createCardRepoPg } = await import("../adapters/db/cardRepo.pg");
     const { createUserRepoPg } = await import("../adapters/db/userRepo.pg");
     const { createSchedulerRepoPg } = await import("../adapters/db/schedulerRepo.pg");
+    const { createFsrsSchedulerRepoPg } = await import("../adapters/db/fsrsSchedulerRepo.pg");
     const { createAuthAdapterPg } = await import("../adapters/auth/authAdapter.pg");
     const { createLlmCallLogRepoPg } = await import("../adapters/db/llmCallLogRepo.pg");
     const pgDb = db as PgDb;
@@ -47,6 +52,7 @@ async function buildContainer(): Promise<Container> {
     cardRepo = createCardRepoPg(pgDb);
     userRepo = createUserRepoPg(pgDb);
     scheduler = createSchedulerRepoPg(pgDb);
+    fsrsScheduler = createFsrsSchedulerRepoPg(pgDb);
     auth = createAuthAdapterPg(pgDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoPg(pgDb);
   } else {
@@ -54,6 +60,7 @@ async function buildContainer(): Promise<Container> {
     const { createCardRepoSqlite } = await import("../adapters/db/cardRepo.sqlite");
     const { createUserRepoSqlite } = await import("../adapters/db/userRepo.sqlite");
     const { createSchedulerRepoSqlite } = await import("../adapters/db/schedulerRepo.sqlite");
+    const { createFsrsSchedulerRepoSqlite } = await import("../adapters/db/fsrsSchedulerRepo.sqlite");
     const { createAuthAdapterSqlite } = await import("../adapters/auth/authAdapter.sqlite");
     const { createLlmCallLogRepoSqlite } = await import("../adapters/db/llmCallLogRepo.sqlite");
     const sqliteDb = db as SqliteDb;
@@ -61,6 +68,7 @@ async function buildContainer(): Promise<Container> {
     cardRepo = createCardRepoSqlite(sqliteDb);
     userRepo = createUserRepoSqlite(sqliteDb);
     scheduler = createSchedulerRepoSqlite(sqliteDb);
+    fsrsScheduler = createFsrsSchedulerRepoSqlite(sqliteDb);
     auth = createAuthAdapterSqlite(sqliteDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoSqlite(sqliteDb);
   }
@@ -107,7 +115,7 @@ async function buildContainer(): Promise<Container> {
 
   await seedAdminIfNeeded();
 
-  return { setRepo, cardRepo, userRepo, scheduler, auth, llmCallLogRepo, llmGenerator, seedAdminIfNeeded };
+  return { setRepo, cardRepo, userRepo, scheduler, fsrsScheduler, auth, llmCallLogRepo, llmGenerator, seedAdminIfNeeded };
 }
 
 /** The composition root singleton. Astro pages import `getContainer()`, never adapters directly. */

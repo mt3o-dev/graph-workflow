@@ -12,6 +12,9 @@ export const users = pgTable("users", {
   role: text("role", { enum: ["student", "admin"] }).notNull().default("student"),
   banned: boolean("banned").notNull().default(false),
   locale: text("locale", { enum: ["pl", "en"] }).notNull().default("pl"),
+  // Slice 5: per-user scheduler choice (SM-2 vs FSRS). Added via ALTER in
+  // migratePg.ts.
+  schedulerPreference: text("scheduler_preference", { enum: ["sm2", "fsrs"] }).notNull().default("sm2"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 
@@ -53,6 +56,24 @@ export const reviewStates = pgTable(
     easiness: real("easiness").notNull().default(2.5),
     interval: integer("interval").notNull().default(0),
     repetitions: integer("repetitions").notNull().default(0),
+    dueAt: timestamp("due_at", { mode: "date" }).notNull(),
+    lastReviewedAt: timestamp("last_reviewed_at", { mode: "date" }),
+  },
+  (t) => [primaryKey({ columns: [t.cardId, t.userId] })],
+);
+
+// Slice 5: per-(card,user) FSRS scheduling state, alongside review_states
+// (SM-2's table, unchanged). Deliberately a separate table rather than
+// widening review_states — {difficulty,stability} aren't the same thing as
+// {easiness,interval,repetitions}, see FsrsReviewState / SchedulerPort.
+export const fsrsReviewStates = pgTable(
+  "fsrs_review_states",
+  {
+    cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    difficulty: real("difficulty").notNull(),
+    stability: real("stability").notNull(),
+    reps: integer("reps").notNull().default(0),
     dueAt: timestamp("due_at", { mode: "date" }).notNull(),
     lastReviewedAt: timestamp("last_reviewed_at", { mode: "date" }),
   },

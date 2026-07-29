@@ -1,7 +1,19 @@
-# TODO / known gaps (slice 1)
+# TODO / known gaps
 
-Things deliberately left unfinished or simplified for slice 1, per the "be
-pragmatic, don't block on infeasible-in-sandbox items" guidance:
+Things deliberately left unfinished or simplified, grouped by the slice that
+introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
+items" guidance:
+
+## Slice 5 (FSRS)
+
+- **No per-user FSRS parameter fitting.** `fsrs.ts` uses the published
+  default 17-weight vector for every user; the roadmap's slice-5 note
+  originally floated fitting parameters from each user's own review log once
+  enough history exists. Deferred — hardcoded defaults are a reasonable v1,
+  optimization is a follow-up once there's enough real review data per user
+  to fit against.
+
+## Slice 1
 
 - **PWA icons**: raster PNGs (`public/icons/icon-192.png`, `icon-512.png`)
   *were* generated successfully via `bunx sharp-cli` against

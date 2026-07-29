@@ -1,6 +1,6 @@
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthPort } from "../ports/authPort";
-import type { Locale, Session, User } from "../domain/types";
+import type { Locale, SchedulerPreference, Session, User } from "../domain/types";
 import { ConflictError, ValidationError } from "../domain/errors";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -66,4 +66,25 @@ export async function login(
 
 export async function logout(auth: AuthPort, sessionId: string): Promise<void> {
   await auth.destroySession(sessionId);
+}
+
+const VALID_SCHEDULER_PREFERENCES: SchedulerPreference[] = ["sm2", "fsrs"];
+
+/**
+ * Self-service scheduler switch (slice 5). Takes `requestingUserId` and
+ * always writes to that same id — there is no "target user id" parameter,
+ * so the API route calling this can never be tricked into changing someone
+ * else's preference no matter what the request body contains (the class of
+ * bug flagged repeatedly in prior slices' reviews: a missing ownership
+ * check). See pages/api/account/scheduler-preference.ts.
+ */
+export async function changeSchedulerPreference(
+  userRepo: UserRepoPort,
+  requestingUserId: string,
+  preference: SchedulerPreference,
+): Promise<User> {
+  if (!VALID_SCHEDULER_PREFERENCES.includes(preference)) {
+    throw new ValidationError("Invalid scheduler preference value");
+  }
+  return userRepo.updateSchedulerPreference(requestingUserId, preference);
 }

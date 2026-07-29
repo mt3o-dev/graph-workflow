@@ -56,6 +56,18 @@ export async function migratePg(db: PgDb): Promise<void> {
     );
   `);
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS fsrs_review_states (
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      difficulty REAL NOT NULL,
+      stability REAL NOT NULL,
+      reps INTEGER NOT NULL DEFAULT 0,
+      due_at TIMESTAMP NOT NULL,
+      last_reviewed_at TIMESTAMP,
+      PRIMARY KEY (card_id, user_id)
+    );
+  `);
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS llm_call_log (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -72,8 +84,15 @@ export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_fsrs_review_states_user_due ON fsrs_review_states(user_id, due_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+
+  // Slice 5: `users` already existed from slice 1 — add the scheduler
+  // preference column via ALTER, same pattern as sets.slug in slice 3. No
+  // backfill needed (unlike slug): every existing user can share the same
+  // literal default ('sm2', preserving current behavior).
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS scheduler_preference TEXT NOT NULL DEFAULT 'sm2';`);
 
   // Slice 3: `sets` already existed from slice 1 — see the matching comment
   // in migrateSqlite.ts for why this is an ALTER + backfill + separate

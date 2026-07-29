@@ -3,6 +3,8 @@
 export type Role = "student" | "admin";
 export type Locale = "pl" | "en";
 export type Visibility = "private" | "unlisted" | "public";
+/** Which SchedulerPort implementation reviewUsecases.ts uses for this user. See fsrs.ts / roadmap.md slice 5. */
+export type SchedulerPreference = "sm2" | "fsrs";
 
 export interface User {
   id: string;
@@ -12,6 +14,8 @@ export interface User {
   role: Role;
   banned: boolean;
   locale: Locale;
+  /** Defaults to "sm2" — switching to "fsrs" never resets existing progress, see reviewUsecases.ts / fsrs.ts bootstrap. */
+  schedulerPreference: SchedulerPreference;
   createdAt: Date;
 }
 
@@ -115,6 +119,22 @@ export interface ReviewState {
   easiness: number;
   interval: number;
   repetitions: number;
+  dueAt: Date;
+  lastReviewedAt: Date | null;
+}
+
+/**
+ * Per-(card,user) FSRS scheduling state (slice 5) — kept as its own type
+ * rather than widening ReviewState, since {difficulty,stability} don't mean
+ * the same thing as SM-2's {easiness,interval,repetitions} even though both
+ * pairs serve the same role. See core/ports/schedulerPort.ts and fsrs.ts.
+ */
+export interface FsrsReviewState {
+  cardId: string;
+  userId: string;
+  difficulty: number;
+  stability: number;
+  reps: number;
   dueAt: Date;
   lastReviewedAt: Date | null;
 }

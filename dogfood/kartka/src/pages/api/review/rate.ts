@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const current = Number(form.get("current") ?? 1);
   const locale = (String(form.get("lang") ?? "") as Locale) || resolveLocale({ queryLang: null, acceptLanguage: request.headers.get("accept-language") });
 
-  const { scheduler, cardRepo, setRepo } = await getContainer();
+  const { scheduler, fsrsScheduler, cardRepo, setRepo } = await getContainer();
   try {
     await getOwnedCard(cardRepo, setRepo, cardId, user.id);
   } catch (err) {
@@ -28,7 +28,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     if (err instanceof ForbiddenError) return new Response("Forbidden", { status: 403 });
     throw err;
   }
-  await submitReview(scheduler, { cardId, userId: user.id, quality: qualityFromSelfRating(rating) });
+  await submitReview(
+    { sm2: scheduler, fsrs: fsrsScheduler },
+    { cardId, userId: user.id, quality: qualityFromSelfRating(rating), schedulerPreference: user.schedulerPreference },
+  );
 
   const html = await renderNext(cardRepo, queue, total, current, locale);
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8" } });

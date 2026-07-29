@@ -12,6 +12,10 @@ export const users = sqliteTable("users", {
   role: text("role", { enum: ["student", "admin"] }).notNull().default("student"),
   banned: integer("banned", { mode: "boolean" }).notNull().default(false),
   locale: text("locale", { enum: ["pl", "en"] }).notNull().default("pl"),
+  // Slice 5: per-user scheduler choice (SM-2 vs FSRS). Added via ALTER in
+  // migrateSqlite.ts — see the comment there for why a shared literal
+  // default doesn't need the slug column's nullable+backfill dance.
+  schedulerPreference: text("scheduler_preference", { enum: ["sm2", "fsrs"] }).notNull().default("sm2"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
@@ -54,6 +58,24 @@ export const reviewStates = sqliteTable(
     easiness: real("easiness").notNull().default(2.5),
     interval: integer("interval").notNull().default(0),
     repetitions: integer("repetitions").notNull().default(0),
+    dueAt: integer("due_at", { mode: "timestamp_ms" }).notNull(),
+    lastReviewedAt: integer("last_reviewed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [primaryKey({ columns: [t.cardId, t.userId] })],
+);
+
+// Slice 5: per-(card,user) FSRS scheduling state, alongside review_states
+// (SM-2's table, unchanged). Deliberately a separate table rather than
+// widening review_states — {difficulty,stability} aren't the same thing as
+// {easiness,interval,repetitions}, see FsrsReviewState / SchedulerPort.
+export const fsrsReviewStates = sqliteTable(
+  "fsrs_review_states",
+  {
+    cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    difficulty: real("difficulty").notNull(),
+    stability: real("stability").notNull(),
+    reps: integer("reps").notNull().default(0),
     dueAt: integer("due_at", { mode: "timestamp_ms" }).notNull(),
     lastReviewedAt: integer("last_reviewed_at", { mode: "timestamp_ms" }),
   },

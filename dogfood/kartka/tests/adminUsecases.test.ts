@@ -8,6 +8,7 @@ import { createSetRepoSqlite } from "../src/adapters/db/setRepo.sqlite";
 import { createCardRepoSqlite } from "../src/adapters/db/cardRepo.sqlite";
 import { createUserRepoSqlite } from "../src/adapters/db/userRepo.sqlite";
 import { createSchedulerRepoSqlite } from "../src/adapters/db/schedulerRepo.sqlite";
+import { createFsrsSchedulerRepoSqlite } from "../src/adapters/db/fsrsSchedulerRepo.sqlite";
 import { createLlmCallLogRepoSqlite } from "../src/adapters/db/llmCallLogRepo.sqlite";
 import { createAuthAdapterSqlite } from "../src/adapters/auth/authAdapter.sqlite";
 import { createSet } from "../src/core/usecases/setUsecases";
@@ -44,6 +45,7 @@ const userRepo = createUserRepoSqlite(db as never);
 const setRepo = createSetRepoSqlite(db as never);
 const cardRepo = createCardRepoSqlite(db as never);
 const scheduler = createSchedulerRepoSqlite(db as never);
+const fsrsScheduler = createFsrsSchedulerRepoSqlite(db as never);
 const llmCallLogRepo = createLlmCallLogRepoSqlite(db as never);
 const auth = createAuthAdapterSqlite(db as never, "test-secret");
 
@@ -69,7 +71,7 @@ describe("adminUsecases (sqlite driver, temp db)", () => {
     await expect(deleteSetAsAdmin(setRepo, studentActor, set.id)).rejects.toThrow(ForbiddenError);
     await expect(listCardsForAdmin(cardRepo, setRepo, studentActor, set.id, query)).rejects.toThrow(ForbiddenError);
     await expect(deleteCardAsAdmin(cardRepo, studentActor, card.id)).rejects.toThrow(ForbiddenError);
-    await expect(getAdminAnalytics(scheduler, llmCallLogRepo, studentActor)).rejects.toThrow(ForbiddenError);
+    await expect(getAdminAnalytics(scheduler, fsrsScheduler, llmCallLogRepo, studentActor)).rejects.toThrow(ForbiddenError);
 
     // Nothing was actually touched by the rejected calls.
     expect(await setRepo.findById(set.id)).not.toBeNull();
@@ -285,7 +287,7 @@ describe("adminUsecases (sqlite driver, temp db)", () => {
         errorMessage: null,
       });
 
-      const analytics = await getAdminAnalytics(scheduler, llmCallLogRepo, asActor(admin), now);
+      const analytics = await getAdminAnalytics(scheduler, fsrsScheduler, llmCallLogRepo, asActor(admin), now);
 
       expect(analytics.activeUsers7d).toBe(1); // reviewer1 only
       expect(analytics.activeUsers30d).toBe(2); // reviewer1 + reviewer2
