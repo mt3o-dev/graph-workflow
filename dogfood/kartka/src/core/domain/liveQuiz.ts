@@ -144,6 +144,13 @@ export interface RoomPlayer {
   score: number;
   /** Keyed by cardId — at most one recorded answer per question per player. */
   answers: Record<string, RoomPlayerAnswer>;
+  /**
+   * Slice 12 (teams): null while team mode isn't configured for this room
+   * (or a player joined after teams were cleared/never set up) — see
+   * RoomState.teamIds' header comment. Teams are opt-in and additive: a
+   * room that never calls configureTeams behaves exactly like slice 11.
+   */
+  teamId: string | null;
 }
 
 export interface RoomState {
@@ -158,12 +165,39 @@ export interface RoomState {
   /** ms epoch the current question went live; null in lobby/finished. */
   questionStartedAtMs: number | null;
   createdAt: Date;
+  /**
+   * Slice 12 (teams): the ordered list of team ids currently configured for
+   * this room, e.g. ["team-1", "team-2", "team-3"]. Empty means "team mode
+   * not configured" — individual-only, exactly slice 11's behavior. Ids are
+   * plain positional slugs (not translated display strings) because the
+   * domain layer must stay framework/locale-free; the UI derives a
+   * human label ("Team {n}") from the id's position via i18n at render time
+   * (see liveFragments.ts), the same way every other UI string in this app
+   * is kept out of core/domain.
+   */
+  teamIds: string[];
 }
 
 export interface ScoreboardEntry {
   userId: string;
   displayName: string;
   score: number;
+}
+
+/**
+ * Slice 12: one row of the team-ranked leaderboard. `score` is the SUM of
+ * its members' individual scores (not an average) — chosen because this is
+ * a classroom tool: a team that recruits/keeps more engaged players should
+ * rank higher, which rewards participation the same way a real team-based
+ * classroom activity would. An average would instead reward small teams
+ * for having one strong player, which undermines the "get everyone
+ * playing" point of team mode. Per-player scores are completely unaffected
+ * by team mode (see recordAnswer) — this is purely a read-side aggregation.
+ */
+export interface TeamScoreboardEntry {
+  teamId: string;
+  score: number;
+  playerCount: number;
 }
 
 // --- Room codes -------------------------------------------------------
@@ -214,15 +248,16 @@ export function createRoomState(input: {
     players: {},
     questionStartedAtMs: null,
     createdAt: input.now ?? new Date(),
+    teamIds: [],
   };
 }
 
-/** Idempotent: rejoining (e.g. after a reconnect) keeps the existing score. */
+/** Idempotent: rejoining (e.g. after a reconnect) keeps the existing score and team assignment. */
 export function addPlayer(room: RoomState, player: { userId: string; displayName: string }): RoomState {
   const existing = room.players[player.userId];
   const nextPlayer: RoomPlayer = existing
     ? { ...existing, displayName: player.displayName }
-    : { userId: player.userId, displayName: player.displayName, score: 0, answers: {} };
+    : { userId: player.userId, displayName: player.displayName, score: 0, answers: {}, teamId: null };
   return { ...room, players: { ...room.players, [player.userId]: nextPlayer } };
 }
 
@@ -294,4 +329,106 @@ export function scoreboard(room: RoomState): ScoreboardEntry[] {
   return Object.values(room.players)
     .map((p) => ({ userId: p.userId, displayName: p.displayName, score: p.score }))
     .sort((a, b) => b.score - a.score || a.displayName.localeCompare(b.displayName));
+}
+
+// --- Teams (slice 12) ---------------------------------------------------
+// Opt-in, host-configured grouping of joined players. Nothing here is
+// enforced as an ownership/host-only check — that's the usecase layer's job
+// (liveQuizUsecases.setLiveTeams/assignPlayerTeam), matching the exact
+// pattern advancePhase/advanceLiveQuestion already use: the domain function
+// is a pure transition, the usecase is where hostId gets checked against
+// room.hostId. Both team functions additionally reject any call once the
+// room has left "lobby" — team composition is a pre-game setup step, not
+// something that can be changed mid-round (roadmap's "before the round
+// starts, during the lobby phase" scope cut).
+
+/** Fisher-Yates using the same crypto.getRandomValues source as generateRoomCode, for real (non-test) randomness. */
+function cryptoShuffle<T>(items: readonly T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const rand = new Uint32Array(1);
+    crypto.getRandomValues(rand);
+    const j = rand[0]! % (i + 1);
+    [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+  }
+  return arr;
+}
+
+/**
+ * Host-only (enforced by the caller — see usecase): splits every currently
+ * joined player into `teamCount` teams as evenly as possible via a shuffle +
+ * round-robin assignment. Safe to call more than once before the round
+ * starts — each call replaces the previous team configuration and
+ * re-shuffles, which is exactly the "shuffle/rebalance before starting" UX
+ * the roadmap asks for; there's no separate "shuffle" action; re-running
+ * this one does it.
+ *
+ * `shuffle` is injectable so tests can pass an identity function and assert
+ * an exact, deterministic distribution (see tests/liveQuiz.test.ts) instead
+ * of asserting on randomness.
+ */
+export function configureTeams(
+  room: RoomState,
+  teamCount: number,
+  shuffle: <T>(items: readonly T[]) => T[] = cryptoShuffle,
+): RoomState {
+  if (room.phase !== "lobby") {
+    throw new ValidationError("Teams can only be configured during the lobby phase");
+  }
+  if (!Number.isInteger(teamCount) || teamCount < 1) {
+    throw new ValidationError("Team count must be a positive integer");
+  }
+  const teamIds = Array.from({ length: teamCount }, (_, i) => `team-${i + 1}`);
+  const shuffledPlayerIds = shuffle(Object.keys(room.players));
+
+  const nextPlayers: Record<string, RoomPlayer> = { ...room.players };
+  shuffledPlayerIds.forEach((userId, i) => {
+    const player = nextPlayers[userId];
+    if (!player) return;
+    nextPlayers[userId] = { ...player, teamId: teamIds[i % teamCount]! };
+  });
+
+  return { ...room, teamIds, players: nextPlayers };
+}
+
+/**
+ * Host-only (enforced by the caller): moves a single player to a different
+ * (or no) team, for manual fine-tuning after the auto-split. `teamId` must
+ * be one of `room.teamIds`, or `null` to unassign the player from any team.
+ */
+export function assignPlayerTeam(room: RoomState, userId: string, teamId: string | null): RoomState {
+  if (room.phase !== "lobby") {
+    throw new ValidationError("Teams can only be reassigned during the lobby phase");
+  }
+  const player = room.players[userId];
+  if (!player) throw new NotFoundError("Player");
+  if (teamId !== null && !room.teamIds.includes(teamId)) {
+    throw new ValidationError("Unknown team");
+  }
+  return { ...room, players: { ...room.players, [userId]: { ...player, teamId } } };
+}
+
+/**
+ * Team-ranked leaderboard: each team's score is the SUM of its members'
+ * individual scores (see TeamScoreboardEntry's doc comment for why sum over
+ * average). Returns `[]` if team mode isn't configured (room.teamIds is
+ * empty) — callers should treat that as "no team leaderboard to show", not
+ * an error. Teams with no players currently assigned still appear, with
+ * score 0 and playerCount 0, so the host can see an empty team needs
+ * rebalancing.
+ */
+export function teamScoreboard(room: RoomState): TeamScoreboardEntry[] {
+  if (room.teamIds.length === 0) return [];
+  const totals = new Map<string, { score: number; playerCount: number }>();
+  for (const teamId of room.teamIds) totals.set(teamId, { score: 0, playerCount: 0 });
+  for (const player of Object.values(room.players)) {
+    if (player.teamId === null) continue;
+    const bucket = totals.get(player.teamId);
+    if (!bucket) continue; // defensive: stale teamId no longer configured
+    bucket.score += player.score;
+    bucket.playerCount += 1;
+  }
+  return [...totals.entries()]
+    .map(([teamId, v]) => ({ teamId, score: v.score, playerCount: v.playerCount }))
+    .sort((a, b) => b.score - a.score || a.teamId.localeCompare(b.teamId));
 }

@@ -516,6 +516,32 @@ zero `ReviewState`/`FsrsReviewState` writes, and a clean hexagonal boundary
 real-browser WS QA remains honestly disclosed as outstanding (`docs/TODO.md`)
 rather than claimed as tested — same disclosure discipline as slices 6/9.
 
+## Slice 12 result — kartka-live-teams
+
+Team grouping (auto-split + manual override), sum-based team scoring, a
+team leaderboard alongside the individual one. Review found and fixed a
+real blocker of a different shape than any prior slice: **the manual
+per-player team override was fully implemented and correctly host-gated at
+the domain and usecase layers, with real passing tests — and was completely
+unreachable in the running app.** `live-server.ts`'s WS message handler had
+no `"assignTeam"` branch, and the lobby UI only rendered a read-only roster
+with no per-player control. The backend was done; the last wire was never
+connected, and nothing caught it because the tests exercised the usecase
+function directly, never the transport surface a real host would actually
+use. Fixed by adding the missing WS handler (same double-gated host-only
+pattern as the existing `advance`/`configureTeams` actions) and a per-player
+team-select control in the roster. Also fixed a real, reproduced test flake:
+the room-code-uniqueness test drew 3000 codes from a 31^5-sized keyspace and
+asserted *exact* uniqueness — a ~14% birthday-collision probability, which
+the review run actually hit once. Fixed by drawing fewer codes and
+tolerating one collision rather than demanding statistical perfection (room
+codes are explicitly not a security boundary). Everything else — double-
+gated host enforcement on the pre-existing actions, live-recomputed team
+scoring with no double-counting on reassignment, genuine individual-mode
+regression testing (not just "team functions return empty"), sane auto-split
+edge cases, zero new persistent state — reviewed clean. 247/247 tests stable
+across repeated runs, build green after both fixes.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

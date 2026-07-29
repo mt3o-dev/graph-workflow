@@ -2,6 +2,8 @@ import { describe, test, expect } from "bun:test";
 import {
   addPlayer,
   advancePhase,
+  assignPlayerTeam,
+  configureTeams,
   createRoomState,
   generateRoomCode,
   isAnswerCorrect,
@@ -10,11 +12,13 @@ import {
   recordAnswer,
   scoreAnswer,
   scoreboard,
+  teamScoreboard,
   toPublicQuestion,
   BASE_POINTS,
   MAX_SPEED_BONUS,
   QUESTION_TIME_LIMIT_MS,
   type LiveQuestion,
+  type RoomState,
 } from "../src/core/domain/liveQuiz";
 import { ValidationError, NotFoundError } from "../src/core/domain/errors";
 
@@ -53,9 +57,21 @@ describe("room codes", () => {
   });
 
   test("is practically unique across many calls", () => {
+    // 5 chars from a 31-char alphabet = 31^5 ≈ 28.6M possible codes. At
+    // n=3000 draws the birthday-collision probability is ~14% — a real test
+    // flake this project's slice-12 review actually hit, not a hypothetical.
+    // Two independent mitigations instead of just picking "a bigger n" (that
+    // only lowers, never eliminates, the flake probability): draw fewer
+    // codes (n=300 → ~0.16% collision chance) AND tolerate at most one
+    // collision rather than demanding perfect uniqueness — room codes are
+    // deliberately not a security boundary (see generateRoomCode's own
+    // header comment / docs/ADR-live-transport.md), a rare collision is a
+    // theoretical annoyance (two rooms briefly sharing a joinable code), not
+    // a correctness bug worth a flaky assertion.
+    const n = 300;
     const seen = new Set<string>();
-    for (let i = 0; i < 3000; i++) seen.add(generateRoomCode());
-    expect(seen.size).toBe(3000);
+    for (let i = 0; i < n; i++) seen.add(generateRoomCode());
+    expect(seen.size).toBeGreaterThanOrEqual(n - 1);
   });
 });
 
@@ -255,5 +271,122 @@ describe("scoreboard", () => {
 
     const board = scoreboard(room);
     expect(board.map((e) => e.userId)).toEqual(["p2", "p3", "p1"]); // p2 (300) first, then p3/p1 tie broken alphabetically
+  });
+});
+
+// Slice 12: team grouping, team scoring, team leaderboard. Host-only
+// enforcement lives at the usecase layer (see
+// tests/liveQuizUsecases.test.ts's "teams (host-only)" describe block) —
+// these tests cover the pure domain transitions only.
+describe("teams (slice 12)", () => {
+  const identityShuffle = <T>(items: readonly T[]): T[] => [...items];
+
+  function roomWithPlayers(count: number): RoomState {
+    let room = createRoomState({ code: "ABCDE", hostId: "host-1", setId: "set-1", questions: [mcQuestion] });
+    for (let i = 1; i <= count; i++) {
+      room = addPlayer(room, { userId: `p${i}`, displayName: `Player ${i}` });
+    }
+    return room;
+  }
+
+  test("a fresh room has no teams configured (individual-only, matches slice 11)", () => {
+    const room = roomWithPlayers(3);
+    expect(room.teamIds).toEqual([]);
+    expect(Object.values(room.players).every((p) => p.teamId === null)).toBe(true);
+    expect(teamScoreboard(room)).toEqual([]);
+  });
+
+  test("configureTeams auto-splits joined players evenly (7 players into 3 teams, deterministic shuffle)", () => {
+    const room = configureTeams(roomWithPlayers(7), 3, identityShuffle);
+    expect(room.teamIds).toEqual(["team-1", "team-2", "team-3"]);
+
+    const counts = room.teamIds.map((teamId) => Object.values(room.players).filter((p) => p.teamId === teamId).length);
+    // Round-robin over 7 players / 3 teams: sizes 3/2/2, every team non-empty.
+    expect(counts.sort()).toEqual([2, 2, 3]);
+    expect(counts.every((c) => c > 0)).toBe(true);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(7);
+  });
+
+  test("more teams than players is allowed and CAN produce an empty team (documented edge case)", () => {
+    const room = configureTeams(roomWithPlayers(2), 5, identityShuffle);
+    expect(room.teamIds).toHaveLength(5);
+    const counts = room.teamIds.map((teamId) => Object.values(room.players).filter((p) => p.teamId === teamId).length);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(2);
+    expect(counts.filter((c) => c === 0).length).toBeGreaterThan(0);
+  });
+
+  test("configureTeams rejects a non-positive/non-integer team count", () => {
+    const room = roomWithPlayers(3);
+    expect(() => configureTeams(room, 0)).toThrow(ValidationError);
+    expect(() => configureTeams(room, -1)).toThrow(ValidationError);
+    expect(() => configureTeams(room, 1.5)).toThrow(ValidationError);
+  });
+
+  test("configureTeams can only run during the lobby phase", () => {
+    let room = roomWithPlayers(3);
+    room = advancePhase(room, new Date()); // -> question-live
+    expect(() => configureTeams(room, 2, identityShuffle)).toThrow(ValidationError);
+  });
+
+  test("re-running configureTeams reshuffles/rebalances (replaces the previous assignment)", () => {
+    let room = configureTeams(roomWithPlayers(6), 2, identityShuffle);
+    const firstAssignment = Object.fromEntries(Object.values(room.players).map((p) => [p.userId, p.teamId]));
+
+    // Reverse the shuffle order this time -> different assignment.
+    room = configureTeams(room, 2, (items) => [...items].reverse());
+    const secondAssignment = Object.fromEntries(Object.values(room.players).map((p) => [p.userId, p.teamId]));
+
+    expect(secondAssignment).not.toEqual(firstAssignment);
+    expect(room.teamIds).toEqual(["team-1", "team-2"]);
+  });
+
+  test("assignPlayerTeam manually moves one player, rejects an unknown team, requires lobby phase", () => {
+    let room = configureTeams(roomWithPlayers(2), 2, identityShuffle);
+    room = assignPlayerTeam(room, "p1", "team-2");
+    expect(room.players["p1"]?.teamId).toBe("team-2");
+
+    room = assignPlayerTeam(room, "p1", null); // unassign
+    expect(room.players["p1"]?.teamId).toBeNull();
+
+    expect(() => assignPlayerTeam(room, "p1", "team-nope")).toThrow(ValidationError);
+    expect(() => assignPlayerTeam(room, "ghost", "team-1")).toThrow(NotFoundError);
+
+    const inQuestion = advancePhase(room, new Date());
+    expect(() => assignPlayerTeam(inQuestion, "p1", "team-1")).toThrow(ValidationError);
+  });
+
+  test("teamScoreboard sums each team's members' scores (concrete fixture) and is sorted highest-first", () => {
+    let room = configureTeams(roomWithPlayers(4), 2, identityShuffle);
+    // identity shuffle over p1..p4 into 2 teams: p1,p3 -> team-1; p2,p4 -> team-2.
+    room = {
+      ...room,
+      players: {
+        ...room.players,
+        p1: { ...room.players["p1"]!, score: 300 },
+        p2: { ...room.players["p2"]!, score: 100 },
+        p3: { ...room.players["p3"]!, score: 200 },
+        p4: { ...room.players["p4"]!, score: 50 },
+      },
+    };
+
+    const board = teamScoreboard(room);
+    expect(board).toEqual([
+      { teamId: "team-1", score: 500, playerCount: 2 }, // 300 + 200, sum not average
+      { teamId: "team-2", score: 150, playerCount: 2 }, // 100 + 50
+    ]);
+  });
+
+  test("individual scoring and the individual scoreboard are completely unaffected by team mode (regression)", () => {
+    let room = configureTeams(roomWithPlayers(2), 2, identityShuffle);
+    room = advancePhase(room, new Date("2026-01-01T00:00:00.000Z")); // question-live
+
+    const { room: afterAnswer, result } = recordAnswer(room, "p1", mcQuestion.cardId, "1", new Date("2026-01-01T00:00:01.000Z"));
+    expect(result.correct).toBe(true);
+    expect(afterAnswer.players["p1"]?.score).toBe(result.points);
+
+    // Same scoring formula, same scoreboard shape/order as the no-teams case.
+    const board = scoreboard(afterAnswer);
+    expect(board[0]!.userId).toBe("p1");
+    expect(board[0]!.score).toBe(result.points);
   });
 });

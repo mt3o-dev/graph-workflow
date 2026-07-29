@@ -1,4 +1,4 @@
-import type { LiveAnswerResult, LiveQuestion, RoomState, ScoreboardEntry } from "../domain/liveQuiz";
+import type { LiveAnswerResult, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
 
 /**
  * Storage/lifecycle port for live-quiz rooms (slice 11). The only
@@ -24,4 +24,14 @@ export interface LiveSessionPort {
   /** Advances lobby/reveal -> next question-live, or question-live -> reveal. See domain.advancePhase. */
   advanceQuestion(code: string, now: Date): Promise<RoomState>;
   getScoreboard(code: string): Promise<ScoreboardEntry[]>;
+  /**
+   * Slice 12 (teams). Auto-splits currently joined players into `teamCount`
+   * teams (shuffle + round-robin — see domain.configureTeams). Safe to call
+   * again before the round starts to reshuffle/rebalance.
+   */
+  configureTeams(code: string, teamCount: number): Promise<RoomState>;
+  /** Slice 12 (teams): manual override of one player's team, see domain.assignPlayerTeam. */
+  assignPlayerTeam(code: string, userId: string, teamId: string | null): Promise<RoomState>;
+  /** Slice 12 (teams): team-ranked leaderboard, see domain.teamScoreboard. Empty array if teams aren't configured. */
+  getTeamScoreboard(code: string): Promise<TeamScoreboardEntry[]>;
 }

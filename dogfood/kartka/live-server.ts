@@ -18,6 +18,9 @@
 //   JSON-encoded automatically by the extension):
 //     {"type": "answer", "cardId": "...", "rawAnswer": "..."}
 //     {"type": "advance"}                                     (host only)
+//     {"type": "configureTeams", "teamCount": 3}               (host only,
+//       slice 12 — lobby-phase only, see core/domain/liveQuiz.ts's
+//       configureTeams; re-sending reshuffles)
 //   server -> client: raw HTML fragments (hx-swap-oob), the same
 //   "HTML over the wire" model as every other htmx interaction in this app —
 //   NOT JSON, since the client just swaps whatever markup it's given. Two
@@ -38,7 +41,10 @@ import {
   submitLiveAnswer,
   advanceLiveQuestion,
   computeScoreboard,
+  computeTeamScoreboard,
   getLiveRoom,
+  setLiveTeams,
+  assignLiveTeam,
 } from "./src/core/usecases/liveQuizUsecases";
 import { currentQuestion, type RoomState } from "./src/core/domain/liveQuiz";
 import { NotFoundError, ForbiddenError, ValidationError } from "./src/core/domain/errors";
@@ -104,7 +110,8 @@ async function broadcastRoomState(code: string, room: RoomState): Promise<void> 
   for (const ws of sockets) {
     if (room.phase === "finished") {
       const entries = await computeScoreboard(liveSessionPort, code);
-      ws.send(renderFinishedFragment({ entries, locale: ws.data.locale }));
+      const teamEntries = await computeTeamScoreboard(liveSessionPort, code);
+      ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
     } else {
       ws.send(renderRoomFragment(room, ws.data.locale, ws.data.isHost));
     }
@@ -212,7 +219,8 @@ const server = Bun.serve<SocketData>({
         // Unicast current state to the joiner (covers late joins mid-question)...
         if (room.phase === "finished") {
           const entries = await computeScoreboard(liveSessionPort, ws.data.code);
-          ws.send(renderFinishedFragment({ entries, locale: ws.data.locale }));
+          const teamEntries = await computeTeamScoreboard(liveSessionPort, ws.data.code);
+          ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
         } else {
           ws.send(renderRoomFragment(room, ws.data.locale, ws.data.isHost));
         }
@@ -266,6 +274,49 @@ const server = Bun.serve<SocketData>({
           // ForbiddenError can't actually happen here (isHost already
           // checked above), but NotFoundError could if the room somehow
           // vanished — nothing sensible to do but drop the message.
+        }
+        return;
+      }
+
+      if (parsed.type === "configureTeams") {
+        // Slice 12 (teams): same double-gated host-only pattern as "advance"
+        // above — the client-side hidden button is a UX nicety, this
+        // transport-layer check AND setLiveTeams' own independent hostId
+        // check (see liveQuizUsecases.ts) are the real enforcement.
+        if (!ws.data.isHost) return;
+        const teamCount = Number.parseInt(String(parsed.teamCount ?? ""), 10);
+        if (!Number.isInteger(teamCount) || teamCount < 1) return; // ignore malformed input, ungraded setup step
+        try {
+          const room = await setLiveTeams(liveSessionPort, { code: ws.data.code, hostId: ws.data.userId, teamCount });
+          await broadcastRoomState(ws.data.code, room);
+        } catch {
+          // ForbiddenError can't happen here (isHost already checked);
+          // ValidationError (e.g. round already started) or NotFoundError
+          // (room vanished) both just drop the message — team setup is a
+          // pre-game step, not something worth surfacing a hard error for.
+        }
+        return;
+      }
+
+      if (parsed.type === "assignTeam") {
+        // Manual per-player override on top of configureTeams' auto-split —
+        // same double-gated host-only pattern (transport check here AND
+        // assignLiveTeam's own independent hostId check).
+        if (!ws.data.isHost) return;
+        const targetUserId = String(parsed.userId ?? "");
+        const teamId = parsed.teamId === null || parsed.teamId === "" ? null : String(parsed.teamId ?? "");
+        if (!targetUserId) return; // ignore malformed input
+        try {
+          const room = await assignLiveTeam(liveSessionPort, {
+            code: ws.data.code,
+            hostId: ws.data.userId,
+            userId: targetUserId,
+            teamId,
+          });
+          await broadcastRoomState(ws.data.code, room);
+        } catch {
+          // Same reasoning as configureTeams above — a pre-game setup step,
+          // drop silently on Forbidden/Validation/NotFound.
         }
       }
     },

@@ -2,10 +2,13 @@ import type { LiveSessionPort } from "../../core/ports/liveSessionPort";
 import {
   addPlayer,
   advancePhase,
+  assignPlayerTeam,
+  configureTeams,
   createRoomState,
   generateRoomCode,
   recordAnswer,
   scoreboard,
+  teamScoreboard,
   type RoomState,
 } from "../../core/domain/liveQuiz";
 import { NotFoundError } from "../../core/domain/errors";
@@ -79,6 +82,25 @@ export function createInMemoryLiveSessionPort(): LiveSessionPort {
     async getScoreboard(code) {
       const room = getOrThrow(code);
       return scoreboard(room);
+    },
+
+    async configureTeams(code, teamCount) {
+      const room = getOrThrow(code);
+      const updated = configureTeams(room, teamCount);
+      rooms.set(code, updated);
+      return updated;
+    },
+
+    async assignPlayerTeam(code, userId, teamId) {
+      const room = getOrThrow(code);
+      const updated = assignPlayerTeam(room, userId, teamId);
+      rooms.set(code, updated);
+      return updated;
+    },
+
+    async getTeamScoreboard(code) {
+      const room = getOrThrow(code);
+      return teamScoreboard(room);
     },
   };
 }

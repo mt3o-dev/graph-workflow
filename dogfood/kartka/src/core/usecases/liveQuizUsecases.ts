@@ -1,7 +1,7 @@
 import type { LiveSessionPort } from "../ports/liveSessionPort";
 import type { CardRepoPort } from "../ports/cardRepoPort";
 import type { SetRepoPort } from "../ports/setRepoPort";
-import type { LiveAnswerResult, LiveCardType, LiveQuestion, RoomState, ScoreboardEntry } from "../domain/liveQuiz";
+import type { LiveAnswerResult, LiveCardType, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
 import { isLiveEligibleType } from "../domain/liveQuiz";
 import { getOwnedSet } from "./setUsecases";
 import { ForbiddenError, NotFoundError, ValidationError } from "../domain/errors";
@@ -119,4 +119,51 @@ export async function getLiveRoom(port: LiveSessionPort, code: string): Promise<
   const room = await port.getRoom(code);
   if (!room) throw new NotFoundError("Room");
   return room;
+}
+
+// --- Teams (slice 12) ---------------------------------------------------
+
+export interface SetLiveTeamsInput {
+  code: string;
+  hostId: string;
+  teamCount: number;
+}
+
+/**
+ * Host-only: auto-splits the room's currently joined players into
+ * `teamCount` teams (see domain.configureTeams). Reuses the exact
+ * "check hostId against room.hostId, throw ForbiddenError otherwise"
+ * pattern advanceLiveQuestion already uses — this is the single most
+ * common review finding across this project, see roadmap.md/architecture.md.
+ * Safe to call repeatedly before the round starts to reshuffle/rebalance;
+ * domain.configureTeams itself rejects the call once the room has left
+ * "lobby".
+ */
+export async function setLiveTeams(port: LiveSessionPort, input: SetLiveTeamsInput): Promise<RoomState> {
+  const room = await port.getRoom(input.code);
+  if (!room) throw new NotFoundError("Room");
+  if (room.hostId !== input.hostId) throw new ForbiddenError("Only the host can configure teams");
+  return port.configureTeams(input.code, input.teamCount);
+}
+
+export interface AssignLiveTeamInput {
+  code: string;
+  hostId: string;
+  userId: string;
+  teamId: string | null;
+}
+
+/** Host-only: manual override of one player's team (see domain.assignPlayerTeam). Same ownership pattern as setLiveTeams. */
+export async function assignLiveTeam(port: LiveSessionPort, input: AssignLiveTeamInput): Promise<RoomState> {
+  const room = await port.getRoom(input.code);
+  if (!room) throw new NotFoundError("Room");
+  if (room.hostId !== input.hostId) throw new ForbiddenError("Only the host can reassign teams");
+  return port.assignPlayerTeam(input.code, input.userId, input.teamId);
+}
+
+/** Anyone in the room can read the team leaderboard — same visibility as the individual scoreboard. */
+export async function computeTeamScoreboard(port: LiveSessionPort, code: string): Promise<TeamScoreboardEntry[]> {
+  const room = await port.getRoom(code);
+  if (!room) throw new NotFoundError("Room");
+  return port.getTeamScoreboard(code);
 }

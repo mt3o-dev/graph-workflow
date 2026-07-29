@@ -16,6 +16,9 @@ import {
   advanceLiveQuestion,
   computeScoreboard,
   getLiveRoom,
+  setLiveTeams,
+  assignLiveTeam,
+  computeTeamScoreboard,
 } from "../src/core/usecases/liveQuizUsecases";
 import { createInMemoryLiveSessionPort } from "../src/adapters/liveQuiz/inMemoryLiveSessionPort";
 import type { LiveSessionPort } from "../src/core/ports/liveSessionPort";
@@ -318,6 +321,88 @@ describe("computeScoreboard", () => {
   test("an unknown room code 404s", async () => {
     const port = createInMemoryLiveSessionPort();
     await expect(computeScoreboard(port, "ZZZZZ")).rejects.toThrow(NotFoundError);
+  });
+});
+
+// Slice 12: team usecases. Pure domain assignment/aggregation math is
+// covered in tests/liveQuiz.test.ts; this describe block is specifically
+// about the host-only enforcement pattern (transport-independent — no
+// socket involved, matching every other usecase test in this file) plus
+// the port wiring for the new methods.
+describe("teams (host-only)", () => {
+  async function setupRoomWithPlayers(playerCount: number) {
+    const port = createInMemoryLiveSessionPort();
+    const owner = await makeUser(`teams-owner-${crypto.randomUUID()}@example.com`);
+    const { set } = await makeMixedSet(owner.id);
+    const room = await createLiveSession(port, setRepo, cardRepo, { setId: set.id, hostId: owner.id });
+    const players = [];
+    for (let i = 0; i < playerCount; i++) {
+      const p = await makeUser(`teams-player-${i}-${crypto.randomUUID()}@example.com`);
+      await joinLiveSession(port, { code: room.code, userId: p.id, displayName: p.displayName });
+      players.push(p);
+    }
+    return { port, code: room.code, hostId: owner.id, players };
+  }
+
+  test("only the host can configure teams", async () => {
+    const { port, code, hostId, players } = await setupRoomWithPlayers(4);
+    await expect(setLiveTeams(port, { code, hostId: players[0]!.id, teamCount: 2 })).rejects.toThrow(ForbiddenError);
+
+    const room = await setLiveTeams(port, { code, hostId, teamCount: 2 });
+    expect(room.teamIds).toEqual(["team-1", "team-2"]);
+    expect(Object.values(room.players).every((p) => p.teamId !== null)).toBe(true);
+  });
+
+  test("only the host can manually reassign a player's team", async () => {
+    const { port, code, hostId, players } = await setupRoomWithPlayers(3);
+    await setLiveTeams(port, { code, hostId, teamCount: 2 });
+
+    await expect(
+      assignLiveTeam(port, { code, hostId: players[0]!.id, userId: players[0]!.id, teamId: "team-1" }),
+    ).rejects.toThrow(ForbiddenError);
+
+    const room = await assignLiveTeam(port, { code, hostId, userId: players[0]!.id, teamId: "team-1" });
+    expect(room.players[players[0]!.id]?.teamId).toBe("team-1");
+  });
+
+  test("configuring teams on an unknown room code fails cleanly", async () => {
+    const port = createInMemoryLiveSessionPort();
+    const owner = await makeUser(`teams-unknown-${crypto.randomUUID()}@example.com`);
+    await expect(setLiveTeams(port, { code: "ZZZZZ", hostId: owner.id, teamCount: 2 })).rejects.toThrow(NotFoundError);
+  });
+
+  test("computeTeamScoreboard returns [] before teams are configured, and aggregated sums after (via the port)", async () => {
+    const { port, code, hostId, players } = await setupRoomWithPlayers(2);
+    expect(await computeTeamScoreboard(port, code)).toEqual([]);
+
+    await setLiveTeams(port, { code, hostId, teamCount: 2 });
+    await advanceLiveQuestion(port, { code, hostId }); // -> question-live
+
+    const room = await getLiveRoom(port, code);
+    const q = room.questions[0]!;
+    await submitLiveAnswer(port, { code, userId: players[0]!.id, cardId: q.cardId, rawAnswer: "1" });
+
+    const teamBoard = await computeTeamScoreboard(port, code);
+    expect(teamBoard.reduce((sum, t) => sum + t.playerCount, 0)).toBe(2);
+    const totalTeamScore = teamBoard.reduce((sum, t) => sum + t.score, 0);
+    const individualBoard = await computeScoreboard(port, code);
+    const totalIndividualScore = individualBoard.reduce((sum, e) => sum + e.score, 0);
+    // Sum-based team aggregation: total across all teams equals total across all players.
+    expect(totalTeamScore).toBe(totalIndividualScore);
+  });
+
+  test("individual scoreboard/scoring is unaffected by team mode being configured (regression, through the port)", async () => {
+    const { port, code, hostId, players } = await setupRoomWithPlayers(2);
+    await setLiveTeams(port, { code, hostId, teamCount: 2 });
+    await advanceLiveQuestion(port, { code, hostId });
+    const room = await getLiveRoom(port, code);
+    const q = room.questions[0]!;
+
+    const { result } = await submitLiveAnswer(port, { code, userId: players[0]!.id, cardId: q.cardId, rawAnswer: "1" });
+    expect(result.correct).toBe(true);
+
+    const board = await computeScoreboard(port, code);
+    expect(board.find((e) => e.userId === players[0]!.id)?.score).toBe(result.points);
   });
 });
 

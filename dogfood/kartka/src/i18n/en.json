@@ -314,5 +314,14 @@
   "live.room.scoreboard.title": "Scoreboard",
   "live.room.scoreboard.points": "{score} pts",
   "live.room.disconnected": "Connection lost — trying to reconnect…",
-  "live.room.errorUnknownRoom": "This room no longer exists."
+  "live.room.errorUnknownRoom": "This room no longer exists.",
+  "live.teams.title": "Teams",
+  "live.teams.countLabel": "Number of teams",
+  "live.teams.setButton": "Set / reshuffle teams",
+  "live.teams.teamLabel": "Team {number}",
+  "live.teams.playerCount": "{count} player(s)",
+  "live.teams.unassigned": "Unassigned",
+  "live.teams.moveButton": "Move",
+  "live.teams.leaderboard.title": "Team leaderboard",
+  "live.teams.leaderboard.points": "{score} pts ({count} players)"
 }
