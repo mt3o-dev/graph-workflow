@@ -465,6 +465,57 @@ found no actual breakage from, flagged for product sign-off. This is the
 9 reminders, 10 a11y) — 190/190 tests, build green, zero code changes
 needed post-review. Full-Kahoot arc (slices 11-13) is next.
 
+## Slice 11 result — kartka-live-quiz (new signal #31)
+
+The hardest slice on the roadmap: real-time multiplayer bolted onto an
+SSR/htmx app via a second `Bun.serve()` process (a WebSocket sidecar sharing
+the main app's sqlite file), with htmx-ext-ws keeping the client
+declarative and a hexagonal `LiveSessionPort` (in-memory `Map`, documented
+single-instance MVP limit) keeping room logic testable without sockets.
+Review found and fixed a real **blocker** — and it's a process-level
+finding, not a slice-11-authored code bug:
+
+31. **A dormant migration bug since slice 3, invisible until a second
+    process touched an already-migrated database.** `migrateSqlite.ts`'s
+    `ALTER TABLE ... ADD COLUMN` "catch duplicate-column, ignore" guards
+    checked only `err.message` — but Drizzle's `db.run()` wraps the
+    underlying bun:sqlite error in its own `DrizzleQueryError`, whose own
+    message is a generic "Failed to run the query" string; the real
+    `"duplicate column name"` text lives one level down, on
+    `err.cause.message`. Every guard's check was silently dead code since
+    slice 3 introduced the pattern. `bun test` never caught it because every
+    test file gets a fresh, never-migrated sqlite file and `migrate()` runs
+    exactly once per process — the bug requires a *second* process to open
+    an *already-migrated* file and migrate again, which nothing in this
+    codebase did until slice 11's WebSocket sidecar. The reviewer reproduced
+    it live (not just by reading code): booted the sidecar against a
+    DB the main app had already migrated, watched its first `getContainer()`
+    call throw uncaught, the memoized container promise cache the rejection,
+    and every subsequent request — including a trivial existence check —
+    500 forever with no recovery short of a full restart. **The general
+    lesson: a bug that only manifests on the *second* process/connection to
+    touch shared state is exactly the class single-fresh-boot smoke tests
+    (and single-process test suites) structurally cannot catch — worth a
+    standing question at any future review touching shared persistent
+    state: "has anything besides the main process's first boot ever
+    exercised this path?"** Fixed centrally (one shared
+    `isDuplicateColumnError()` helper checking both message levels),
+    verified with a real two-connection reproduction before/after, and
+    captured as a permanent regression test.
+
+Everything specific to slice 11's own design — the cross-port cookie-auth
+re-verification (checked side-by-side against the main app's version, not
+assumed equivalent), host-only "advance" enforced server-side (not just
+UI-hidden — a raw WS client sending the message directly is rejected),
+room-creation ownership, an answer-integrity state machine that rejects
+stale/future-question replay and double-scoring, scoring that reuses the
+real domain functions with the correct answer never leaked before reveal,
+private card-type exclusion tested against a genuinely mixed-type fixture,
+zero `ReviewState`/`FsrsReviewState` writes, and a clean hexagonal boundary
+— reviewed clean. 233/233 tests, build green after the fix. Multi-client
+real-browser WS QA remains honestly disclosed as outstanding (`docs/TODO.md`)
+rather than claimed as tested — same disclosure discipline as slices 6/9.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

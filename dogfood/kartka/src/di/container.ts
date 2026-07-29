@@ -10,6 +10,8 @@ import type { LlmCallLogRepoPort } from "../core/ports/llmCallLogRepoPort";
 import type { LlmGeneratorPort } from "../core/ports/llmGeneratorPort";
 import type { PushSubscriptionRepoPort } from "../core/ports/pushSubscriptionRepoPort";
 import type { WebPushPort } from "../core/ports/webPushPort";
+import type { LiveSessionPort } from "../core/ports/liveSessionPort";
+import { createInMemoryLiveSessionPort } from "../adapters/liveQuiz/inMemoryLiveSessionPort";
 
 export interface Container {
   setRepo: SetRepoPort;
@@ -27,6 +29,15 @@ export interface Container {
   pushSubscriptionRepo: PushSubscriptionRepoPort;
   /** Slice 9 — VAPID-signed push delivery, always configured (VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are @required in .env.schema, dev defaults ship). */
   webPush: WebPushPort;
+  /**
+   * Slice 11 (live quiz) — in-memory room storage, single-instance MVP (see
+   * docs/ADR-live-transport.md). IMPORTANT: this Map lives in whichever
+   * process calls getContainer() first. Room create/join/answer/advance
+   * must all be handled by the SAME process (the WebSocket sidecar,
+   * live-server.ts) — never split between it and the main Astro server, or
+   * rooms silently "don't exist" in the other process.
+   */
+  liveSessionPort: LiveSessionPort;
   seedAdminIfNeeded(): Promise<void>;
 }
 
@@ -133,6 +144,8 @@ async function buildContainer(): Promise<Container> {
 
   await seedAdminIfNeeded();
 
+  const liveSessionPort = createInMemoryLiveSessionPort();
+
   return {
     setRepo,
     cardRepo,
@@ -144,6 +157,7 @@ async function buildContainer(): Promise<Container> {
     llmGenerator,
     pushSubscriptionRepo,
     webPush,
+    liveSessionPort,
     seedAdminIfNeeded,
   };
 }

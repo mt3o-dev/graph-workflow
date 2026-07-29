@@ -1,0 +1,63 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+import { isValidRoomCode } from "../../core/domain/liveQuiz";
+import { ENV } from "../../env";
+
+// Slice 11 (live quiz): the room page — same shell for host and players (no
+// separate host big-screen view yet, that's slice 13's job, see roadmap.md).
+// All the real-time behavior (question/reveal/scoreboard swaps) comes from
+// htmx-ext-ws's `ws-connect`, pointed at the WebSocket sidecar process on its
+// own port — see docs/ADR-live-transport.md.
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const code = (Astro.params.code ?? "").toUpperCase();
+if (!isValidRoomCode(code)) return Astro.redirect(`/live/join?error=notfound&lang=${locale}`);
+
+const liveWsPort = ENV.LIVE_WS_PORT || "4322";
+const httpProtocol = Astro.url.protocol === "https:" ? "https:" : "http:";
+const wsProtocol = Astro.url.protocol === "https:" ? "wss:" : "ws:";
+const sidecarHost = `${Astro.url.hostname}:${liveWsPort}`;
+
+// Server-side existence pre-check (not a client-side fetch — no CORS
+// involved) so an unknown/expired code shows a clean message instead of the
+// browser opening a WebSocket that htmx-ext-ws would just retry forever on
+// (its default reconnect-on-abnormal-closure behavior). If the sidecar
+// itself isn't reachable (e.g. `bun run live` wasn't started), we fail open
+// here and let the WS connection attempt surface that instead — see
+// docs/ADR-live-transport.md's "what could/couldn't be verified" note.
+let roomExists = true;
+try {
+  const res = await fetch(`${httpProtocol}//${sidecarHost}/live/${code}/exists`);
+  roomExists = res.ok;
+} catch {
+  roomExists = true;
+}
+
+const wsUrl = `${wsProtocol}//${sidecarHost}/live/${code}?lang=${locale}`;
+---
+
+<BaseLayout title={t("live.room.title", locale)} locale={locale}>
+  {
+    !roomExists ? (
+      <p role="alert">{t("live.room.errorUnknownRoom", locale)}</p>
+    ) : (
+      <div id="live-socket" hx-ext="ws" ws-connect={wsUrl}>
+        <div id="live-room" class="stack">
+          <p>{t("live.room.lobby.waiting", locale)}</p>
+        </div>
+      </div>
+    )
+  }
+</BaseLayout>
+
+<script>
+  import "htmx-ext-ws";
+</script>

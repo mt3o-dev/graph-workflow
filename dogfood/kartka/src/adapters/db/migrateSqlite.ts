@@ -3,6 +3,25 @@ import type { SqliteDb } from "./index";
 import { sets } from "./schema.sqlite";
 import { generateSlug } from "../../core/domain/slug";
 
+// Drizzle's `db.run()` wraps the underlying bun:sqlite driver error in its
+// own DrizzleQueryError, whose OWN `.message` is a generic "Failed to run
+// the query '...'" string — the real "duplicate column name: x" text from
+// SQLite lives on `err.cause.message`, one level down. Checking only
+// `err.message` (as every ALTER-TABLE guard below originally did) never
+// matches, so the "already exists, ignore" branch is silently dead and the
+// real duplicate-column error rethrows on every second call to this
+// function against an already-migrated database — invisible in `bun test`
+// (fresh per-file DBs, migrate() runs exactly once per process) but fatal
+// the moment a second process (e.g. slice 11's live-quiz WebSocket sidecar)
+// opens the same already-migrated file. Check both levels.
+function isDuplicateColumnError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const pattern = /duplicate column name/i;
+  if (pattern.test(err.message)) return true;
+  const cause = (err as { cause?: unknown }).cause;
+  return cause instanceof Error && pattern.test(cause.message);
+}
+
 export async function migrateSqlite(db: SqliteDb): Promise<void> {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -113,7 +132,7 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   try {
     db.run(`ALTER TABLE users ADD COLUMN scheduler_preference TEXT NOT NULL DEFAULT 'sm2';`);
   } catch (err) {
-    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    if (!isDuplicateColumnError(err)) throw err;
   }
 
   // Slice 3: `sets` already existed from slice 1, so the slug column is added
@@ -125,7 +144,7 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   try {
     db.run(`ALTER TABLE sets ADD COLUMN slug TEXT;`);
   } catch (err) {
-    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    if (!isDuplicateColumnError(err)) throw err;
   }
   const unslugged = await db.select({ id: sets.id }).from(sets).where(isNull(sets.slug));
   const seen = new Set<string>();
@@ -144,7 +163,7 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   try {
     db.run(`ALTER TABLE sets ADD COLUMN exam_date INTEGER;`);
   } catch (err) {
-    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    if (!isDuplicateColumnError(err)) throw err;
   }
 
   // Slice 9: due-card reminders' opt-in quiet-hours window. Nullable, no
@@ -153,12 +172,12 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   try {
     db.run(`ALTER TABLE users ADD COLUMN quiet_hours_start TEXT;`);
   } catch (err) {
-    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    if (!isDuplicateColumnError(err)) throw err;
   }
   try {
     db.run(`ALTER TABLE users ADD COLUMN quiet_hours_end TEXT;`);
   } catch (err) {
-    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+    if (!isDuplicateColumnError(err)) throw err;
   }
 
   // Slice 10: per-user reading/accessibility profile. Every existing user
@@ -173,7 +192,7 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
     try {
       db.run(`ALTER TABLE users ADD COLUMN ${col} TEXT NOT NULL DEFAULT '${def}';`);
     } catch (err) {
-      if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+      if (!isDuplicateColumnError(err)) throw err;
     }
   }
 }

@@ -9,6 +9,8 @@ import { previewCramSession } from "../../core/usecases/cramUsecases";
 import { parsePageQuery } from "../../lib/pageQuery";
 import { renderCardsTableFragment, renderVisibilityControlFragment, renderCramControlFragment } from "../../lib/fragments";
 import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
+import { isLiveEligibleType } from "../../core/domain/liveQuiz";
+import { ENV } from "../../env";
 
 const user = await getCurrentUser(Astro.cookies);
 if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
@@ -39,6 +41,17 @@ const cramSummary = await previewCramSession(cardRepo, setRepo, { sm2: scheduler
 const cramHtml = renderCramControlFragment({ summary: cramSummary, locale });
 
 const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"] as const;
+
+// Slice 11 (live quiz): "start live session" entry point. Only shown when the
+// set has at least one live-eligible card (multiple_choice/true_false/
+// type_answer) — see core/domain/liveQuiz.ts's scope cut. The form posts
+// directly (full page navigation, no fetch/CORS involved) to the WebSocket
+// sidecar process's own HTTP endpoint on LIVE_WS_PORT — see
+// docs/ADR-live-transport.md for why room creation lives there rather than
+// in this Astro app's own /api routes.
+const allCards = await cardRepo.listAllBySet(setId);
+const hasLiveEligibleCards = allCards.some((c) => isLiveEligibleType(c.type));
+const liveCreateUrl = `${Astro.url.protocol}//${Astro.url.hostname}:${ENV.LIVE_WS_PORT || "4322"}/live/create`;
 ---
 
 <BaseLayout title={t("cards.title", locale, { setTitle: set.title })} locale={locale}>
@@ -47,6 +60,24 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
   {set.description && <p>{set.description}</p>}
 
   <Fragment set:html={visibilityHtml} />
+
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("live.start.button", locale)}</summary>
+    <div style="margin-top: var(--space-4)">
+      {
+        hasLiveEligibleCards ? (
+          <form method="post" action={liveCreateUrl}>
+            <input type="hidden" name="setId" value={setId} />
+            <button type="submit" class="btn-primary">
+              {t("live.start.button", locale)}
+            </button>
+          </form>
+        ) : (
+          <p class="empty-state">{t("live.start.noEligibleCards", locale)}</p>
+        )
+      }
+    </div>
+  </details>
 
   <details class="card" style="margin-bottom: var(--space-6)">
     <summary class="btn btn-primary" style="display:inline-block">{t("cram.examDate.label", locale)}</summary>

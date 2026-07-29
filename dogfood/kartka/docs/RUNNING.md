@@ -22,6 +22,19 @@ bun run dev
 Starts Astro's dev server under Bun via `varlock run` (required — see
 `docs/ADR-varlock.md` point 2). Visit http://localhost:4321.
 
+### Live quiz (slice 11)
+
+Live quiz needs a second process — the WebSocket sidecar:
+
+```bash
+bun run live
+```
+
+Listens on `LIVE_WS_PORT` (default 4322, see `.env.schema`). Both `bun run
+dev` and `bun run live` need to be running for "Start live session" /
+joining a room to work — see `docs/ADR-live-transport.md` for why this is a
+separate process and why no reverse proxy is required.
+
 ## Tests
 
 ```bash

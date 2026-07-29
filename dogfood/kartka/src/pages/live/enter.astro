@@ -1,0 +1,24 @@
+---
+import { getCurrentUser } from "../../lib/session";
+import { resolveLocale } from "../../i18n";
+import { isValidRoomCode } from "../../core/domain/liveQuiz";
+
+// Plain GET redirect target for the "enter room code" form (see join.astro).
+// No JS involved: the form's GET turns `code` into a query param here, and
+// this page just validates the shape and redirects to the canonical
+// /live/{CODE} path (which does the real existence check).
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=/live/join`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const rawCode = (Astro.url.searchParams.get("code") ?? "").trim().toUpperCase();
+if (!isValidRoomCode(rawCode)) {
+  return Astro.redirect(`/live/join?error=notfound&lang=${locale}`);
+}
+
+return Astro.redirect(`/live/${rawCode}?lang=${locale}`);
+---

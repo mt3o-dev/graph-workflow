@@ -4,6 +4,31 @@ Things deliberately left unfinished or simplified, grouped by the slice that
 introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
 items" guidance:
 
+## Slice 11 (live quiz core)
+
+- **No multi-client real-browser QA yet.** The actual WebSocket wire
+  protocol (join → question → answer → advance → reveal → scoreboard
+  broadcast across multiple real concurrent sockets) was verified only at
+  the usecase layer (against a fake in-memory port, no sockets) plus a
+  single-client curl/manual smoke test of the sidecar's HTTP-level
+  auth/ownership boundary — no multi-client WebSocket test harness was
+  available in build or review. Needs real QA: two+ browser tabs, one host
+  one player, full round played end to end. Same disclosed-gap shape as
+  slices 6/9's browser-only-verifiable parts.
+- **Single-instance only** — the in-memory `LiveSessionPort` doesn't survive
+  a sidecar restart and can't scale across multiple processes/machines. A
+  `Bun.redis` pub/sub-backed adapter is the documented upgrade path
+  (`docs/ADR-live-transport.md`), zero changes needed in `core/domain`/
+  `core/usecases` to support it — not built yet.
+- **No reverse proxy** — the sidecar is reachable on its own port
+  (`LIVE_WS_PORT`); works correctly today (cookies are host-scoped, not
+  port-scoped) but a real multi-user deployment should proxy it under one
+  origin so end users never see two ports. Follow-up, not a blocker.
+- **No room expiry/cleanup** — rooms live for the sidecar process's
+  lifetime and are never explicitly deleted from the in-memory Map; a
+  restart clears everything. Fine at dogfood scale; a TTL sweep is a small
+  follow-up if this matters later.
+
 ## Slice 9 (due-card reminders / Web Push)
 
 - **Quiet hours are interpreted in UTC, not the user's own local timezone.**

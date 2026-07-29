@@ -13,8 +13,11 @@ src/env.gen.d.ts
 
 # scratch/probe files agents leave behind (rm is policy-denied in this
 # environment) — underscore-prefixed test files are scratch, never real
-# suite members; see docs/DOGFOODING.md issue #30
+# suite members; see docs/DOGFOODING.md issue #30. Also cover root-level
+# tmp_*/probe* scripts some review agents drop outside tests/.
 tests/_*
+/tmp_*
+/probe*
 
 # code coverage
 coverage

@@ -21,6 +21,7 @@ const { user, locale } = Astro.props;
           <>
             <a href="/sets">{t("nav.sets", locale)}</a>
             <a href="/review">{t("nav.review", locale)}</a>
+            <a href="/live/join">{t("nav.live", locale)}</a>
             {user.role === "admin" && <a href="/admin">{t("nav.admin", locale)}</a>}
             <a href="/account/settings">{t("nav.settings", locale)}</a>
             <span class="nav-greeting">{t("nav.greeting", locale, { name: user.displayName })}</span>

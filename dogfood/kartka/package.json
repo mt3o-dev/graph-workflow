@@ -11,7 +11,8 @@
     "start": "varlock run -- bun ./dist/server/entry.mjs",
     "test": "varlock run -- bun test",
     "astro": "astro",
-    "send-reminders": "varlock run -- bun scripts/send-reminders.ts"
+    "send-reminders": "varlock run -- bun scripts/send-reminders.ts",
+    "live": "varlock run -- bun live-server.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -28,6 +29,7 @@
     "@wyattjoh/astro-bun-adapter": "^2.1.1",
     "astro": "6.4.8",
     "drizzle-orm": "^0.45.2",
+    "htmx-ext-ws": "^2.0.4",
     "htmx.org": "^2.0.10",
     "katex": "^0.18.1",
     "marked": "^18.0.7",
