@@ -88,3 +88,36 @@ export async function changeSchedulerPreference(
   }
   return userRepo.updateSchedulerPreference(requestingUserId, preference);
 }
+
+const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Self-service quiet-hours update (slice 9), same ownership pattern as
+ * changeSchedulerPreference above: `requestingUserId` is always the id
+ * written to, never a value taken from the request body. See
+ * pages/api/account/quiet-hours.ts.
+ *
+ * Both fields null clears quiet hours entirely (the default: reminders can
+ * fire any time of day). Both must otherwise be well-formed "HH:MM" 24h
+ * strings — a null/non-null mix is rejected as ValidationError, since a
+ * one-sided window has no sensible meaning (see
+ * core/domain/reminderPlanner.ts for how the window itself is interpreted,
+ * including the UTC-not-local-timezone simplification).
+ */
+export async function changeQuietHours(
+  userRepo: UserRepoPort,
+  requestingUserId: string,
+  quietHoursStart: string | null,
+  quietHoursEnd: string | null,
+): Promise<User> {
+  if (quietHoursStart === null && quietHoursEnd === null) {
+    return userRepo.updateQuietHours(requestingUserId, null, null);
+  }
+  if (quietHoursStart === null || quietHoursEnd === null) {
+    throw new ValidationError("Quiet hours start and end must be set together");
+  }
+  if (!HHMM_RE.test(quietHoursStart) || !HHMM_RE.test(quietHoursEnd)) {
+    throw new ValidationError("Quiet hours must be in HH:MM 24h format");
+  }
+  return userRepo.updateQuietHours(requestingUserId, quietHoursStart, quietHoursEnd);
+}

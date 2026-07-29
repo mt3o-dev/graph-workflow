@@ -16,6 +16,15 @@ export interface User {
   locale: Locale;
   /** Defaults to "sm2" — switching to "fsrs" never resets existing progress, see reviewUsecases.ts / fsrs.ts bootstrap. */
   schedulerPreference: SchedulerPreference;
+  /**
+   * Slice 9 (due-card reminders): opt-in quiet-hours window, "HH:MM" 24h
+   * strings. Both null (default, no quiet hours) or both set — see
+   * authUsecases.changeQuietHours for the validation. SIMPLIFICATION:
+   * interpreted in UTC, not this user's own local timezone — see
+   * core/domain/reminderPlanner.ts's header comment and docs/TODO.md.
+   */
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
   createdAt: Date;
 }
 
@@ -197,4 +206,20 @@ export interface LlmCallLog {
   estimatedCostUsd: number | null;
   status: "success" | "error";
   errorMessage: string | null;
+}
+
+/**
+ * One browser/device's Web Push subscription (slice 9). A user can have
+ * several (multiple devices/browsers) — see pushSubscriptionRepoPort.ts.
+ * `endpoint` is the push service URL the browser handed back from
+ * `pushManager.subscribe()`; unique per browser+device registration, used as
+ * the natural key for unsubscribe (see reminderUsecases.unsubscribeFromPush).
+ */
+export interface PushSubscription {
+  id: string;
+  userId: string;
+  endpoint: string;
+  p256dhKey: string;
+  authKey: string;
+  createdAt: Date;
 }

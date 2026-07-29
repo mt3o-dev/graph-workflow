@@ -172,3 +172,47 @@ self.addEventListener("sync", (event) => {
     event.waitUntil(backgroundSyncQueue());
   }
 });
+
+// --- Slice 9: Web Push due-card reminders ---
+// The payload is the plain JSON string built server-side by
+// scripts/send-reminders.ts's buildPayload() (via reminderUsecases.ts) —
+// {title, body, url}. Kept intentionally tiny; no rich media/actions.
+self.addEventListener("push", (event) => {
+  let data = { title: "Kartka", body: "", url: "/review" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    // Malformed/non-JSON payload — fall back to the generic defaults above
+    // rather than dropping the notification entirely.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/branding/icon.svg",
+      badge: "/branding/icon.svg",
+      data: { url: data.url || "/review" },
+    }),
+  );
+});
+
+// Focuses an already-open Kartka tab if one exists, otherwise opens a new
+// one at the notification's target URL (defaults to /review — where due
+// cards live).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/review";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsList) => {
+      for (const client of clientsList) {
+        const clientUrl = new URL(client.url);
+        if (clientUrl.origin === self.location.origin && "focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
+    }),
+  );
+});

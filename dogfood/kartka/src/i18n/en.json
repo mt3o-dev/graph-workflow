@@ -245,5 +245,23 @@
   "settings.scheduler.sm2": "SM-2 (default)",
   "settings.scheduler.sm2Hint": "The classic SuperMemo-2 algorithm. What every account uses unless changed.",
   "settings.scheduler.fsrs": "FSRS",
-  "settings.scheduler.fsrsHint": "Free Spaced Repetition Scheduler — the algorithm Anki now defaults to. Usually schedules reviews more efficiently. Switching keeps your existing progress; it does not reset any card."
+  "settings.scheduler.fsrsHint": "Free Spaced Repetition Scheduler — the algorithm Anki now defaults to. Usually schedules reviews more efficiently. Switching keeps your existing progress; it does not reset any card.",
+
+  "settings.reminders.title": "Due-card reminders",
+  "settings.reminders.intro": "Turn on browser push notifications to get reminded when you have cards due for review.",
+  "settings.reminders.enable": "Enable reminders",
+  "settings.reminders.disable": "Disable reminders",
+  "settings.reminders.enabled": "Reminders are on for this device.",
+  "settings.reminders.disabled": "Reminders are off for this device.",
+  "settings.reminders.unsupported": "This browser doesn't support push notifications.",
+  "settings.reminders.permissionDenied": "Notification permission was denied. Enable it in your browser settings to get reminders.",
+  "settings.reminders.error": "Couldn't save the notification subscription. Please try again.",
+
+  "settings.quietHours.label": "Quiet hours",
+  "settings.quietHours.hint": "Reminders won't be sent during this window. Simplification in this release: the times are interpreted in the server's UTC clock, not your own local timezone.",
+  "settings.quietHours.enable": "Enable quiet hours",
+  "settings.quietHours.start": "Start (UTC)",
+  "settings.quietHours.end": "End (UTC)",
+
+  "reminders.notification.body": "You have {count} cards due for review."
 }

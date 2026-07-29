@@ -9,7 +9,9 @@ src/core/domain/     pure types + logic. Zero imports from adapters/*, astro:*,
                      cardValidation.ts, quality.ts, errors.ts, types.ts.
 src/core/ports/      interfaces the domain/usecases depend on:
                      SetRepoPort, CardRepoPort, UserRepoPort, SchedulerPort,
-                     AuthPort, LlmGeneratorPort (slice 2 seam, unimplemented).
+                     AuthPort, LlmGeneratorPort (slice 2 seam, unimplemented),
+                     PushSubscriptionRepoPort + WebPushPort (slice 9, Web
+                     Push reminders — see reminderUsecases.ts).
 src/core/usecases/   orchestration functions. Take ports as arguments (or via
                      a small object), no framework imports, no astro:* imports.
 src/adapters/db/     Drizzle implementations of the repo ports, split by

@@ -81,12 +81,24 @@ export async function migratePg(db: PgDb): Promise<void> {
       error_message TEXT
     );
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT NOT NULL,
+      p256dh_key TEXT NOT NULL,
+      auth_key TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL
+    );
+  `);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_fsrs_review_states_user_due ON fsrs_review_states(user_id, due_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);`);
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
   // preference column via ALTER, same pattern as sets.slug in slice 3. No
@@ -112,4 +124,9 @@ export async function migratePg(db: PgDb): Promise<void> {
   // Slice 8: cram mode's opt-in exam date. Nullable, no backfill needed — see
   // the matching comment in migrateSqlite.ts.
   await db.execute(`ALTER TABLE sets ADD COLUMN IF NOT EXISTS exam_date TIMESTAMP;`);
+
+  // Slice 9: due-card reminders' opt-in quiet-hours window. Nullable, no
+  // backfill needed — see the matching comment in migrateSqlite.ts.
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_hours_start TEXT;`);
+  await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_hours_end TEXT;`);
 }

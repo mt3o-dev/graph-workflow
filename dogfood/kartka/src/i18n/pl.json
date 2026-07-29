@@ -245,5 +245,23 @@
   "settings.scheduler.sm2": "SM-2 (domyślny)",
   "settings.scheduler.sm2Hint": "Klasyczny algorytm SuperMemo-2. Używany domyślnie na każdym koncie, dopóki nie zostanie zmieniony.",
   "settings.scheduler.fsrs": "FSRS",
-  "settings.scheduler.fsrsHint": "Free Spaced Repetition Scheduler — algorytm, który Anki obecnie stosuje domyślnie. Zwykle planuje powtórki efektywniej. Zmiana zachowuje dotychczasowe postępy — żadna fiszka nie zostaje zresetowana."
+  "settings.scheduler.fsrsHint": "Free Spaced Repetition Scheduler — algorytm, który Anki obecnie stosuje domyślnie. Zwykle planuje powtórki efektywniej. Zmiana zachowuje dotychczasowe postępy — żadna fiszka nie zostaje zresetowana.",
+
+  "settings.reminders.title": "Przypomnienia o powtórkach",
+  "settings.reminders.intro": "Włącz powiadomienia push w przeglądarce, aby dostawać przypomnienie, gdy masz fiszki do powtórki.",
+  "settings.reminders.enable": "Włącz przypomnienia",
+  "settings.reminders.disable": "Wyłącz przypomnienia",
+  "settings.reminders.enabled": "Przypomnienia są włączone na tym urządzeniu.",
+  "settings.reminders.disabled": "Przypomnienia są wyłączone na tym urządzeniu.",
+  "settings.reminders.unsupported": "Ta przeglądarka nie obsługuje powiadomień push.",
+  "settings.reminders.permissionDenied": "Zgoda na powiadomienia została odrzucona. Włącz ją w ustawieniach przeglądarki, aby otrzymywać przypomnienia.",
+  "settings.reminders.error": "Nie udało się zapisać subskrypcji powiadomień. Spróbuj ponownie.",
+
+  "settings.quietHours.label": "Godziny ciszy",
+  "settings.quietHours.hint": "W tych godzinach przypomnienia nie będą wysyłane. Uproszczenie tego wydania: godziny są interpretowane w czasie UTC serwera, a nie w Twojej lokalnej strefie czasowej.",
+  "settings.quietHours.enable": "Włącz godziny ciszy",
+  "settings.quietHours.start": "Początek (UTC)",
+  "settings.quietHours.end": "Koniec (UTC)",
+
+  "reminders.notification.body": "Masz {count} fiszek do powtórki."
 }

@@ -18,4 +18,6 @@ export interface UserRepoPort {
   countActiveAdmins(excludingUserId?: string): Promise<number>;
   /** Self-service scheduler switch (slice 5) — see authUsecases.changeSchedulerPreference for the ownership-check wrapper callers must use. */
   updateSchedulerPreference(id: string, preference: SchedulerPreference): Promise<User>;
+  /** Self-service quiet-hours update (slice 9) — see authUsecases.changeQuietHours for the ownership-check wrapper callers must use. */
+  updateQuietHours(id: string, quietHoursStart: string | null, quietHoursEnd: string | null): Promise<User>;
 }

@@ -2,6 +2,7 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { t, resolveLocale } from "../../i18n";
 import { getCurrentUser } from "../../lib/session";
+import { ENV } from "../../env";
 
 const user = await getCurrentUser(Astro.cookies);
 if (!user) return Astro.redirect("/login?next=/account/settings");
@@ -12,6 +13,13 @@ const locale = resolveLocale({
 });
 
 const saved = Astro.url.searchParams.get("saved") === "1";
+
+// Slice 9: the VAPID *public* key is safe to expose to the client — that's
+// the entire point of VAPID's public/private split (see .env.schema's
+// comment on VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). Passed via a data
+// attribute rather than a template literal so it never needs HTML-escaping.
+const vapidPublicKey = ENV.VAPID_PUBLIC_KEY;
+const quietHoursEnabled = !!(user.quietHoursStart && user.quietHoursEnd);
 ---
 
 <BaseLayout title={t("settings.title", locale)} locale={locale}>
@@ -46,4 +54,43 @@ const saved = Astro.url.searchParams.get("saved") === "1";
 
     <button type="submit" class="btn-primary">{t("common.save", locale)}</button>
   </form>
+
+  <div id="push-reminders" class="stack card" data-vapid-public-key={vapidPublicKey}>
+    <h2>{t("settings.reminders.title", locale)}</h2>
+    <p class="empty-state">{t("settings.reminders.intro", locale)}</p>
+    <p role="status" aria-live="polite" data-push-status></p>
+    <button type="button" class="btn-primary" data-push-toggle disabled>
+      {t("settings.reminders.enable", locale)}
+    </button>
+  </div>
+
+  <form method="post" action="/api/account/quiet-hours" class="stack card">
+    <h2>{t("settings.quietHours.label", locale)}</h2>
+    <p class="empty-state">{t("settings.quietHours.hint", locale)}</p>
+
+    <div class="field">
+      <label class="row">
+        <input type="checkbox" name="quietHoursEnabled" value="1" checked={quietHoursEnabled} id="quiet-hours-enabled" />
+        <span>{t("settings.quietHours.enable", locale)}</span>
+      </label>
+    </div>
+
+    <div class="field row">
+      <label>
+        {t("settings.quietHours.start", locale)}
+        <input type="time" name="quietHoursStart" value={user.quietHoursStart ?? "22:00"} />
+      </label>
+      <label>
+        {t("settings.quietHours.end", locale)}
+        <input type="time" name="quietHoursEnd" value={user.quietHoursEnd ?? "07:00"} />
+      </label>
+    </div>
+
+    <button type="submit" class="btn-primary">{t("common.save", locale)}</button>
+  </form>
+
+  <script>
+    import { initPushReminders } from "../../client/push/register";
+    initPushReminders();
+  </script>
 </BaseLayout>

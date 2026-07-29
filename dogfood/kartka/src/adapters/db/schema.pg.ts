@@ -15,6 +15,10 @@ export const users = pgTable("users", {
   // Slice 5: per-user scheduler choice (SM-2 vs FSRS). Added via ALTER in
   // migratePg.ts.
   schedulerPreference: text("scheduler_preference", { enum: ["sm2", "fsrs"] }).notNull().default("sm2"),
+  // Slice 9: opt-in quiet-hours window for due-card reminders, "HH:MM" 24h
+  // strings, both null by default. Added via ALTER in migratePg.ts.
+  quietHoursStart: text("quiet_hours_start"),
+  quietHoursEnd: text("quiet_hours_end"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 
@@ -96,4 +100,15 @@ export const llmCallLog = pgTable("llm_call_log", {
   estimatedCostUsd: real("estimated_cost_usd"),
   status: text("status", { enum: ["success", "error"] }).notNull(),
   errorMessage: text("error_message"),
+});
+
+// Slice 9: one row per browser/device Web Push subscription. A user can have
+// several (multiple devices) — see PushSubscriptionRepoPort.
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dhKey: text("p256dh_key").notNull(),
+  authKey: text("auth_key").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });

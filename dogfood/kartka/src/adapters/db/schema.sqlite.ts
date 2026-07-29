@@ -16,6 +16,11 @@ export const users = sqliteTable("users", {
   // migrateSqlite.ts — see the comment there for why a shared literal
   // default doesn't need the slug column's nullable+backfill dance.
   schedulerPreference: text("scheduler_preference", { enum: ["sm2", "fsrs"] }).notNull().default("sm2"),
+  // Slice 9: opt-in quiet-hours window for due-card reminders, "HH:MM" 24h
+  // strings, both null by default (no quiet hours). Added via ALTER in
+  // migrateSqlite.ts, same no-backfill-needed pattern as exam_date.
+  quietHoursStart: text("quiet_hours_start"),
+  quietHoursEnd: text("quiet_hours_end"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
@@ -99,4 +104,15 @@ export const llmCallLog = sqliteTable("llm_call_log", {
   estimatedCostUsd: real("estimated_cost_usd"),
   status: text("status", { enum: ["success", "error"] }).notNull(),
   errorMessage: text("error_message"),
+});
+
+// Slice 9: one row per browser/device Web Push subscription. A user can have
+// several (multiple devices) — see PushSubscriptionRepoPort.
+export const pushSubscriptions = sqliteTable("push_subscriptions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull(),
+  p256dhKey: text("p256dh_key").notNull(),
+  authKey: text("auth_key").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });

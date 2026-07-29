@@ -4,6 +4,47 @@ Things deliberately left unfinished or simplified, grouped by the slice that
 introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
 items" guidance:
 
+## Slice 9 (due-card reminders / Web Push)
+
+- **Quiet hours are interpreted in UTC, not the user's own local timezone.**
+  `core/domain/reminderPlanner.ts` reads `now.getUTCHours()/getUTCMinutes()`
+  and compares against the stored `"HH:MM"` strings as-is. A user who sets
+  "22:00-07:00" expecting their own local evening is actually quiet during
+  those hours *in UTC* — for anyone not in UTC+0, the real local window is
+  offset by their timezone. This is disclosed in the settings page copy
+  (`settings.quietHours.hint`, both locales) and in
+  `core/domain/reminderPlanner.ts`'s header comment, not silently pretended
+  to be correct. Real per-user timezone handling would need a stored IANA
+  zone name (e.g. `Europe/Warsaw`) plus a timezone-database dependency
+  (`Intl.DateTimeFormat` with a `timeZone` option can do the offset math
+  without an extra package, but per-user DST transitions still need care) —
+  out of scope for this slice.
+- **No real-browser QA of the push path**, same disclosed-limitation shape
+  as slice 6's offline review: `Notification.requestPermission()`,
+  `pushManager.subscribe()`, actual push delivery, and the service worker's
+  `push`/`notificationclick` handlers in `public/sw.js` cannot be
+  meaningfully exercised by `bun test` — there's no headless browser with
+  real push-service connectivity in this environment. What *is* covered by
+  `bun test`: the pure quiet-hours selection logic
+  (`tests/reminderPlanner.test.ts`), subscription ownership
+  (`tests/reminderUsecases.test.ts`), and the expired-subscription (410)
+  cleanup path (same file, with a fake `WebPushPort`). Needs real-browser QA
+  (grant notification permission, subscribe, trigger `scripts/send-reminders.ts`
+  against a real push service, confirm the notification shows and
+  `notificationclick` opens/focuses `/review`) before shipping to users.
+- **No in-process scheduler** — by design, not an oversight. This app is
+  request/response SSR with nothing long-running; `scripts/send-reminders.ts`
+  must be invoked periodically by an external cron (see `docs/RUNNING.md`).
+  If that cron isn't set up, no reminders are ever sent — there's no
+  fallback or self-check that notices a misconfigured/missing cron job.
+- **`sendDueReminders` re-derives every subscribed user's due-card count on
+  every run** via the same `startReviewSession` usecase `/review` uses —
+  correct (single source of truth for "what counts as due"), but means cron
+  frequency directly multiplies read load against `cardRepo`/scheduler
+  tables. Fine at this app's scale; would need caching or a coarser signal
+  (e.g. a materialized "has due cards" flag) if the user base or cron
+  frequency grew significantly.
+
 ## Slice 7 (rich content)
 
 - **Offline-reviewed cards render as plain escaped text, not rich

@@ -81,12 +81,28 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       error_message TEXT
     );
   `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT NOT NULL,
+      p256dh_key TEXT NOT NULL,
+      auth_key TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_fsrs_review_states_user_due ON fsrs_review_states(user_id, due_at);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);`);
+  // Not a UNIQUE index (would forbid a legitimate re-subscribe upsert race
+  // producing a duplicate endpoint momentarily); ownership + lookup are
+  // scoped by (user_id, endpoint) together in pushSubscriptionRepo, and a
+  // stray duplicate row is harmless (both get cleaned up on the same 410).
+  db.run(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);`);
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
   // preference column via ALTER, same pattern as sets.slug in slice 3.
@@ -127,6 +143,20 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   // scheduler_preference's ALTER above but without a literal default.
   try {
     db.run(`ALTER TABLE sets ADD COLUMN exam_date INTEGER;`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+  }
+
+  // Slice 9: due-card reminders' opt-in quiet-hours window. Nullable, no
+  // backfill needed — NULL means "no quiet hours" for every user that
+  // existed before this slice, same pattern as sets.exam_date above.
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN quiet_hours_start TEXT;`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+  }
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN quiet_hours_end TEXT;`);
   } catch (err) {
     if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
   }

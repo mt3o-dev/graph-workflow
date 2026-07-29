@@ -431,6 +431,24 @@ second slice in a row (after #29's fix) where the independent review caught
 a real, non-hypothetical bug the implementer's own — otherwise thorough —
 test suite didn't cover. 160/160 tests, build green after the fix.
 
+## Slice 9 result — kartka-reminders
+
+Web Push for due cards: VAPID keys, a subscription table, quiet hours
+(deliberately UTC-only, disclosed rather than pretended timezone-aware), and
+`scripts/send-reminders.ts` as a standalone script for external cron — no
+in-process scheduler exists in this SSR app, by design, not an oversight.
+Reviewed **clean**, no fixes needed — after two slices in a row (#offline,
+#cram-mode) where review caught a real bug, this one held. Notably the
+implementer's own tests didn't just happen to pass on the security-critical
+paths: `tests/reminderUsecases.test.ts` explicitly constructs an attacker-
+guesses-victim's-push-endpoint scenario and asserts it fails, and
+`tests/reminderPlanner.test.ts` deliberately tests a midnight-wrapping quiet-
+hours window (e.g. `22:00`–`07:00`), not just the easy same-day case. Due-
+card counts in the notification payload reuse the exact same
+`startReviewSession` usecase `/review` itself calls, so there's no parallel
+count query that could silently drift from what a student actually sees.
+183/183 tests, build green, zero changes needed post-review.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

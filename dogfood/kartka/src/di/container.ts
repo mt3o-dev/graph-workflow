@@ -8,6 +8,8 @@ import type { Sm2SchedulerPort, FsrsSchedulerPort } from "../core/ports/schedule
 import type { AuthPort } from "../core/ports/authPort";
 import type { LlmCallLogRepoPort } from "../core/ports/llmCallLogRepoPort";
 import type { LlmGeneratorPort } from "../core/ports/llmGeneratorPort";
+import type { PushSubscriptionRepoPort } from "../core/ports/pushSubscriptionRepoPort";
+import type { WebPushPort } from "../core/ports/webPushPort";
 
 export interface Container {
   setRepo: SetRepoPort;
@@ -21,6 +23,10 @@ export interface Container {
   llmCallLogRepo: LlmCallLogRepoPort;
   /** undefined when OPENROUTER_API_KEY isn't set — callers must show a "not configured" state, not crash. */
   llmGenerator: LlmGeneratorPort | undefined;
+  /** Slice 9 (due-card reminders) — Web Push subscription storage. */
+  pushSubscriptionRepo: PushSubscriptionRepoPort;
+  /** Slice 9 — VAPID-signed push delivery, always configured (VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are @required in .env.schema, dev defaults ship). */
+  webPush: WebPushPort;
   seedAdminIfNeeded(): Promise<void>;
 }
 
@@ -38,6 +44,7 @@ async function buildContainer(): Promise<Container> {
   let fsrsScheduler: FsrsSchedulerPort;
   let auth: AuthPort;
   let llmCallLogRepo: LlmCallLogRepoPort;
+  let pushSubscriptionRepo: PushSubscriptionRepoPort;
 
   if (driver === "postgres") {
     const { createSetRepoPg } = await import("../adapters/db/setRepo.pg");
@@ -47,6 +54,7 @@ async function buildContainer(): Promise<Container> {
     const { createFsrsSchedulerRepoPg } = await import("../adapters/db/fsrsSchedulerRepo.pg");
     const { createAuthAdapterPg } = await import("../adapters/auth/authAdapter.pg");
     const { createLlmCallLogRepoPg } = await import("../adapters/db/llmCallLogRepo.pg");
+    const { createPushSubscriptionRepoPg } = await import("../adapters/db/pushSubscriptionRepo.pg");
     const pgDb = db as PgDb;
     setRepo = createSetRepoPg(pgDb);
     cardRepo = createCardRepoPg(pgDb);
@@ -55,6 +63,7 @@ async function buildContainer(): Promise<Container> {
     fsrsScheduler = createFsrsSchedulerRepoPg(pgDb);
     auth = createAuthAdapterPg(pgDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoPg(pgDb);
+    pushSubscriptionRepo = createPushSubscriptionRepoPg(pgDb);
   } else {
     const { createSetRepoSqlite } = await import("../adapters/db/setRepo.sqlite");
     const { createCardRepoSqlite } = await import("../adapters/db/cardRepo.sqlite");
@@ -63,6 +72,7 @@ async function buildContainer(): Promise<Container> {
     const { createFsrsSchedulerRepoSqlite } = await import("../adapters/db/fsrsSchedulerRepo.sqlite");
     const { createAuthAdapterSqlite } = await import("../adapters/auth/authAdapter.sqlite");
     const { createLlmCallLogRepoSqlite } = await import("../adapters/db/llmCallLogRepo.sqlite");
+    const { createPushSubscriptionRepoSqlite } = await import("../adapters/db/pushSubscriptionRepo.sqlite");
     const sqliteDb = db as SqliteDb;
     setRepo = createSetRepoSqlite(sqliteDb);
     cardRepo = createCardRepoSqlite(sqliteDb);
@@ -71,7 +81,15 @@ async function buildContainer(): Promise<Container> {
     fsrsScheduler = createFsrsSchedulerRepoSqlite(sqliteDb);
     auth = createAuthAdapterSqlite(sqliteDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoSqlite(sqliteDb);
+    pushSubscriptionRepo = createPushSubscriptionRepoSqlite(sqliteDb);
   }
+
+  const { createWebPushAdapter } = await import("../adapters/push/webPushAdapter");
+  const webPush = createWebPushAdapter({
+    subject: ENV.VAPID_CONTACT || "mailto:admin@kartka.local",
+    publicKey: ENV.VAPID_PUBLIC_KEY,
+    privateKey: ENV.VAPID_PRIVATE_KEY,
+  });
 
   let llmGenerator: LlmGeneratorPort | undefined;
   if (ENV.OPENROUTER_API_KEY) {
@@ -115,7 +133,19 @@ async function buildContainer(): Promise<Container> {
 
   await seedAdminIfNeeded();
 
-  return { setRepo, cardRepo, userRepo, scheduler, fsrsScheduler, auth, llmCallLogRepo, llmGenerator, seedAdminIfNeeded };
+  return {
+    setRepo,
+    cardRepo,
+    userRepo,
+    scheduler,
+    fsrsScheduler,
+    auth,
+    llmCallLogRepo,
+    llmGenerator,
+    pushSubscriptionRepo,
+    webPush,
+    seedAdminIfNeeded,
+  };
 }
 
 /** The composition root singleton. Astro pages import `getContainer()`, never adapters directly. */
