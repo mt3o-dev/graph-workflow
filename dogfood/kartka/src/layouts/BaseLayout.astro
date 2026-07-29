@@ -23,7 +23,7 @@ const locale: Locale =
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} data-scheduler-preference={user?.schedulerPreference ?? "sm2"}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -49,6 +49,19 @@ const locale: Locale =
         });
       }
     </script>
+    {
+      // Slice 6 (offline review): the sync-status indicator + reliable
+      // online-event/app-load sync fallback run on every page (not just
+      // /review), since a queued-offline review can be pending sync while
+      // the user browses elsewhere. Logged-out visitors never queue
+      // anything, so this is a harmless no-op for them.
+      user && (
+        <script>
+          import { initSyncIndicator } from "../client/offline/sync";
+          initSyncIndicator();
+        </script>
+      )
+    }
   </body>
 </html>
 

@@ -132,6 +132,12 @@
   "review.trueFalse.false": "False",
   "review.typeAnswer.placeholder": "Type your answer…",
 
+  "offline.reviewingOffline": "Offline mode — this review will sync once you're back online.",
+  "offline.bundleUnavailable": "No offline cards cached yet. Connect once to enable offline review.",
+  "offline.doneOfflineNotice": "Your results are saved on this device and will sync automatically once you're back online.",
+  "offline.pendingSync": "{count} reviews pending sync",
+  "offline.syncComplete": "Synced",
+
   "admin.title": "Admin panel",
   "admin.forbidden": "You don't have permission to view this page.",
   "admin.tabs.analytics": "Analytics",

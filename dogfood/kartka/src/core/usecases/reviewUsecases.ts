@@ -1,8 +1,10 @@
 import type { CardRepoPort } from "../ports/cardRepoPort";
+import type { SetRepoPort } from "../ports/setRepoPort";
 import type { Sm2SchedulerPort, FsrsSchedulerPort } from "../ports/schedulerPort";
 import type { Card, ReviewQuality, ReviewState, FsrsReviewState, SchedulerPreference } from "../domain/types";
 import { sm2, sm2InitialState, addDays } from "../domain/sm2";
 import { fsrs, fsrsInitialState, fsrsGradeFromQuality, bootstrapFsrsFromSm2 } from "../domain/fsrs";
+import { getOwnedCard } from "./cardUsecases";
 
 /** Both scheduler implementations, bundled — see schedulerPort.ts for why there are two. */
 export interface Schedulers {
@@ -130,4 +132,147 @@ async function submitFsrsReview(
   };
 
   return fsrsScheduler.upsert(next);
+}
+
+/** Default cap for GET /api/review/offline-bundle — see reviewUsecases.getOfflineBundle. */
+export const OFFLINE_BUNDLE_LIMIT = 50;
+
+/**
+ * Slice 6 (offline review): the same due-card selection as startReviewSession,
+ * capped to `limit` cards, for the client to cache in IndexedDB and score
+ * itself while offline. Ownership is implicit — cardRepo.listAllForOwner is
+ * already scoped to `userId`'s own cards (see startReviewSession), so this
+ * never leaks another user's cards or answers.
+ */
+export async function getOfflineBundle(
+  cardRepo: CardRepoPort,
+  schedulers: Schedulers,
+  userId: string,
+  schedulerPreference: SchedulerPreference,
+  limit: number = OFFLINE_BUNDLE_LIMIT,
+  now: Date = new Date(),
+): Promise<Card[]> {
+  const due = await startReviewSession(cardRepo, schedulers, userId, schedulerPreference, now);
+  return due.slice(0, limit).map((d) => d.card);
+}
+
+/** One offline-completed review, as queued client-side (see src/client/offline/db.ts) and posted to POST /api/review/sync. */
+export interface OfflineReviewItem {
+  cardId: string;
+  quality: ReviewQuality;
+  answeredAt: Date;
+}
+
+export interface SyncOutcome {
+  cardId: string;
+  answeredAt: Date;
+}
+
+export interface SyncSkip {
+  cardId: string;
+  reason: "not_owned" | "invalid_quality" | "invalid_timestamp";
+}
+
+export interface SyncResult {
+  applied: SyncOutcome[];
+  skipped: SyncSkip[];
+}
+
+/**
+ * Replays a batch of offline-queued reviews server-side (POST /api/review/sync).
+ *
+ * Ownership: every cardId is ownership-checked via getOwnedCard before any of
+ * its reviews are applied (paranoid — this class of bug has been the most
+ * common review finding across prior slices). An unowned/unknown card skips
+ * *all* of its queued reviews rather than applying some and dropping others.
+ *
+ * Chronological replay: reviews for the same card can arrive out of order in
+ * one batch (multiple offline reviews of the same due card before
+ * reconnecting) — SM-2/FSRS state is sequential, so each card's reviews are
+ * sorted by client-supplied `answeredAt` and replayed one at a time through
+ * submitReview, oldest first, exactly mirroring what would have happened had
+ * each review gone straight to the server when it happened.
+ *
+ * Timestamp clamping (exact rule, and why):
+ *  - `answeredAt` is never allowed to be after `serverNow` — clamp down to
+ *    serverNow. A client clock can't be trusted to not be skewed into the
+ *    future; scheduling a card as "reviewed in the future" would let a user
+ *    manipulate their own due dates outward.
+ *  - `answeredAt` is never allowed to be before this card's last *known*
+ *    lastReviewedAt for this user — clamped *up* to that floor, not
+ *    rejected outright. The floor starts as whatever is already persisted
+ *    (scheduler.get before replay begins) and advances to each replayed
+ *    review's own (already-clamped) timestamp as the batch is applied, so a
+ *    second offline review of the same card can never be scheduled as
+ *    happening before the first one in the same batch either. Clamping
+ *    (rather than rejecting) is chosen over dropping the review entirely:
+ *    the user did do the review, and SM-2/FSRS can't sensibly rewind time,
+ *    but silently discarding a completed review would lose real study
+ *    signal for no benefit over just treating it as "reviewed right after
+ *    the previous one."
+ *  - Invalid/unparseable timestamps and out-of-range (non-0..5 integer)
+ *    quality values are skipped outright (skip reason invalid_timestamp /
+ *    invalid_quality) rather than clamped/coerced, since there's no sensible
+ *    default for genuinely malformed input.
+ */
+export async function syncOfflineReviews(
+  cardRepo: CardRepoPort,
+  setRepo: SetRepoPort,
+  schedulers: Schedulers,
+  userId: string,
+  schedulerPreference: SchedulerPreference,
+  items: OfflineReviewItem[],
+  serverNow: Date = new Date(),
+): Promise<SyncResult> {
+  const applied: SyncOutcome[] = [];
+  const skipped: SyncSkip[] = [];
+
+  const byCard = new Map<string, OfflineReviewItem[]>();
+  for (const item of items) {
+    const bucket = byCard.get(item.cardId);
+    if (bucket) bucket.push(item);
+    else byCard.set(item.cardId, [item]);
+  }
+
+  for (const [cardId, cardItems] of byCard) {
+    try {
+      await getOwnedCard(cardRepo, setRepo, cardId, userId);
+    } catch {
+      for (const _item of cardItems) skipped.push({ cardId, reason: "not_owned" });
+      continue;
+    }
+
+    const sorted = [...cardItems].sort((a, b) => a.answeredAt.getTime() - b.answeredAt.getTime());
+    const scheduler = schedulerPreference === "fsrs" ? schedulers.fsrs : schedulers.sm2;
+    const existing = await scheduler.get(cardId, userId);
+    let floor = existing?.lastReviewedAt ?? null;
+
+    for (const item of sorted) {
+      if (!Number.isInteger(item.quality) || item.quality < 0 || item.quality > 5) {
+        skipped.push({ cardId, reason: "invalid_quality" });
+        continue;
+      }
+      if (Number.isNaN(item.answeredAt.getTime())) {
+        skipped.push({ cardId, reason: "invalid_timestamp" });
+        continue;
+      }
+
+      let ts = item.answeredAt;
+      if (ts.getTime() > serverNow.getTime()) ts = serverNow;
+      if (floor && ts.getTime() < floor.getTime()) ts = floor;
+
+      await submitReview(schedulers, {
+        cardId,
+        userId,
+        quality: item.quality as ReviewQuality,
+        schedulerPreference,
+        now: ts,
+      });
+
+      floor = ts;
+      applied.push({ cardId, answeredAt: ts });
+    }
+  }
+
+  return { applied, skipped };
 }

@@ -132,6 +132,12 @@
   "review.trueFalse.false": "Fałsz",
   "review.typeAnswer.placeholder": "Wpisz odpowiedź…",
 
+  "offline.reviewingOffline": "Tryb offline — powtórka zostanie zsynchronizowana po odzyskaniu połączenia.",
+  "offline.bundleUnavailable": "Brak zapisanych fiszek do powtórki offline. Połącz się z internetem raz, aby włączyć tryb offline.",
+  "offline.doneOfflineNotice": "Wyniki zostały zapisane na urządzeniu i zsynchronizują się automatycznie po odzyskaniu połączenia.",
+  "offline.pendingSync": "{count} powtórek oczekuje na synchronizację",
+  "offline.syncComplete": "Zsynchronizowano",
+
   "admin.title": "Panel administracyjny",
   "admin.forbidden": "Nie masz uprawnień, aby zobaczyć tę stronę.",
   "admin.tabs.analytics": "Analityka",

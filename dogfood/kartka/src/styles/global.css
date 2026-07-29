@@ -265,3 +265,34 @@ th button {
   color: var(--color-text-muted);
   font-size: 0.875rem;
 }
+
+/* Slice 6: site-wide offline-review sync-status indicator. Mounted on every
+   page (not just /review) by src/client/offline/sync.ts, since a review
+   queued offline can still be pending sync after the user navigates away
+   from /review. The project-wide prefers-reduced-motion override above
+   already zeroes its transition duration; kept undecorated (no
+   animation/motion of its own) by design. */
+.offline-sync-indicator {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 40;
+  max-width: min(320px, calc(100vw - 2 * var(--space-4)));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2) var(--space-3);
+  transition:
+    background-color var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard);
+}
+
+.offline-sync-indicator.is-success {
+  color: var(--color-success);
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}

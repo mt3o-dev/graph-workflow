@@ -36,4 +36,12 @@ const html =
 <BaseLayout title={t("review.title", locale)} locale={locale}>
   <h1>{t("review.title", locale)}</h1>
   <div id="review-area" set:html={html} />
+  <script>
+    // Slice 6 (offline review): scoped exception to "no client JS" — see
+    // docs/architecture.md and context/changes note in the slice spec. Only
+    // activates the client-driven flow when actually offline; normal online
+    // review stays exactly the SSR+htmx flow it always was.
+    import { initOfflineReview } from "../../client/offline/controller";
+    initOfflineReview();
+  </script>
 </BaseLayout>

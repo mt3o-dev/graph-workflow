@@ -108,3 +108,21 @@
   border-color: var(--color-danger);
   background: var(--color-danger-bg);
 }
+
+/* Slice 6 (offline review) */
+
+.offline-banner {
+  display: inline-block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-indigo-strong);
+  background: color-mix(in srgb, var(--color-indigo) 12%, transparent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* The site-wide sync-status indicator (.offline-sync-indicator) lives in
+   global.css, not here — it's mounted on every page via BaseLayout, not
+   just /review, since a review can be queued offline while the user then
+   navigates elsewhere. See src/client/offline/sync.ts. */

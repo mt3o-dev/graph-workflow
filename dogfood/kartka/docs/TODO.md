@@ -4,6 +4,24 @@ Things deliberately left unfinished or simplified, grouped by the slice that
 introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
 items" guidance:
 
+## Slice 6 (offline review)
+
+- **No real-browser QA yet.** The client-side IndexedDB/service-worker/DOM
+  path (`src/client/offline/*.ts`, `public/sw.js`'s `sync` handler) was
+  verified only by code inspection — no Playwright/Puppeteer/headless
+  browser was available in either the build or review environment. Server-
+  side logic (ownership, chronological replay, timestamp clamping) *was*
+  independently verified, including an adversarial 3-review scrambled-order
+  case now in `tests/offlineSync.test.ts`. Needs real browser QA (go
+  offline, complete a review, reconnect, confirm sync) before shipping to
+  users.
+- **`syncOfflineReviews` isn't idempotent against a lost response.** If the
+  server applies a batch but the 2xx response is lost in transit (timeout,
+  tab closed mid-response), the client retries and resubmits already-applied
+  reviews, double-applying an SM-2/FSRS update. Low-probability window, no
+  idempotency key exists to detect a re-send. Follow-up: an idempotency key
+  per queued review, checked before replay.
+
 ## Slice 5 (FSRS)
 
 - **No per-user FSRS parameter fitting.** `fsrs.ts` uses the published

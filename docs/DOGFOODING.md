@@ -347,6 +347,42 @@ One should-fix, docs-only: `docs/TODO.md` hadn't recorded the deferred
 per-user parameter-fitting gap that was only living in a code comment and
 the roadmap note — fixed. 96/96 tests, build green.
 
+## Slice 6 result — kartka-offline
+
+The hardest slice on the roadmap: a service-worker-cached due-card bundle,
+client-side scoring reusing the real pure domain functions (not a
+reimplementation), an IndexedDB pending-review queue, and a sync endpoint
+that replays queued reviews chronologically per card with timestamp
+clamping (future-dated clamps down to server time; a rewound/skewed
+timestamp clamps up to the card's last known review rather than being
+silently accepted or dropped). One real should-fix, and the reviewer
+explicitly disagreed with the implementer's own "harmless" framing of it:
+`public/sw.js` eagerly precached `/review` at install time, but `/review`
+302-redirects to `/login` for a logged-out visitor, and `cache.addAll`
+*throws* on a redirected response per spec — since `addAll` is all-or-
+nothing, this silently broke the entire app-shell precache (not just
+`/review`) for every visitor who hadn't logged in yet, a real regression
+vs. pre-slice-6 behavior. Fixed by dropping `/review` from the eager
+precache list — it now caches the normal way, opportunistically, the first
+time an authenticated visit actually returns a real 200. The reviewer also
+constructed their own adversarial 3-review scrambled-order/future-dated
+test case to stress the replay/clamp logic beyond what the implementer had
+written, confirmed it held (the floor-chaining makes the monotonic-clamp
+guarantee structural, not incidental), and that case was folded into the
+permanent suite. **New signal (#30):** a review agent left a stray
+uncommitted scratch test file behind because `rm` is policy-denied to
+agents in this environment — same class as dogfood #2's issue #22
+("inert-leftover litter"), recurring here in a *review* agent rather than
+an implementer. The established fix (scratch artifacts go to a gitignored
+path, never into tracked source) apparently isn't being generalized to
+review agents automatically; worth reinforcing in the review-gate
+instructions specifically, not just implementer instructions. **Disclosed,
+not fixed:** no Playwright/Puppeteer/headless browser was available in
+either the build or review environment, so the client-side IndexedDB/
+service-worker/DOM path was verified only by code inspection on both
+passes — recorded honestly in `docs/TODO.md` as outstanding real-browser QA
+rather than claimed as tested. 104/104 tests, build green after the fix.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

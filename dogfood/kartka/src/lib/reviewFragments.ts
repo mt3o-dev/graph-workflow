@@ -4,7 +4,9 @@ import { t, type Locale } from "../i18n";
 import { escapeHtml } from "./html";
 import { renderClozeHidden } from "../core/domain/cloze";
 
-const AUTO_CHECKED = new Set(["multiple_choice", "true_false", "type_answer"]);
+// Exported so src/client/offline/render.ts (slice 6) can reuse the exact same
+// auto-checked/self-rated split client-side, instead of re-deciding it.
+export const AUTO_CHECKED = new Set(["multiple_choice", "true_false", "type_answer"]);
 
 function progressLine(current: number, total: number, locale: Locale): string {
   return `<p class="review-progress">${escapeHtml(t("review.progress", locale, { current, total }))}</p>`;
