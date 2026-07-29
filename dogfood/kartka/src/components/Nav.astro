@@ -15,6 +15,7 @@ const { user, locale } = Astro.props;
       <img src="/branding/logo.svg" alt={t("app.name", locale)} height="32" />
     </a>
     <nav class="row">
+      <a href="/discover">{t("nav.discover", locale)}</a>
       {
         user && (
           <>

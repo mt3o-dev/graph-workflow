@@ -302,6 +302,20 @@ guarded, with a test asserting the port is never invoked for a non-owner.
 First evidence that the review-gate discipline (#29) generalizes: once it's
 standard practice rather than skipped, a slice can genuinely pass clean.
 
+## Slice 3 result — kartka-sharing
+
+Visibility (private/unlisted/public), a public `/s/{slug}` share page, a
+discover/browse page, and clone-on-import. Reviewed **clean on first pass**
+again — 55/55 tests, build green. Security-critical surface (the
+owner/other-user/anonymous × private/unlisted/public access matrix, slug
+unguessability, DB-enforced uniqueness, clone ownership correctness) was
+covered by real tests and held up under independent review. Deliberate
+design call worth keeping as a pattern: `/s/{slug}` collapses "unknown slug"
+and "exists but private" into the same 404, so the route can never confirm a
+slug's validity to a prober — noted explicitly by the implementer and
+verified consistent by the reviewer. Two slices in a row now reviewed clean;
+the review-gate discipline from #29 is holding.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

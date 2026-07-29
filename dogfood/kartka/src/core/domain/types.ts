@@ -2,7 +2,7 @@
 
 export type Role = "student" | "admin";
 export type Locale = "pl" | "en";
-export type Visibility = "private"; // slice 3 adds "unlisted" | "public"
+export type Visibility = "private" | "unlisted" | "public";
 
 export interface User {
   id: string;
@@ -28,6 +28,8 @@ export interface CardSet {
   title: string;
   description: string;
   visibility: Visibility;
+  /** Stable, unguessable, URL-safe share-link identifier. Immutable once set. See core/domain/slug.ts. */
+  slug: string;
   createdAt: Date;
 }
 

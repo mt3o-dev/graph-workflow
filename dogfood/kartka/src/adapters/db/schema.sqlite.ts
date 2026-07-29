@@ -27,7 +27,12 @@ export const sets = sqliteTable("sets", {
   ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
-  visibility: text("visibility", { enum: ["private"] }).notNull().default("private"),
+  visibility: text("visibility", { enum: ["private", "unlisted", "public"] }).notNull().default("private"),
+  // Slice 3: share-by-slug. Not marked .unique() here — SQLite's ALTER TABLE
+  // ADD COLUMN forbids UNIQUE-constrained columns, so uniqueness is enforced
+  // by a separate `CREATE UNIQUE INDEX` in migrateSqlite.ts/migratePg.ts
+  // instead (see the comment there for why).
+  slug: text("slug").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

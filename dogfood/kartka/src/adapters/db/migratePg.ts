@@ -1,4 +1,7 @@
+import { eq, isNull } from "drizzle-orm";
 import type { PgDb } from "./index";
+import { sets } from "./schema.pg";
+import { generateSlug } from "../../core/domain/slug";
 
 export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`
@@ -71,4 +74,19 @@ export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+
+  // Slice 3: `sets` already existed from slice 1 — see the matching comment
+  // in migrateSqlite.ts for why this is an ALTER + backfill + separate
+  // unique index rather than a column constraint. Postgres supports
+  // "ADD COLUMN IF NOT EXISTS" natively, unlike SQLite.
+  await db.execute(`ALTER TABLE sets ADD COLUMN IF NOT EXISTS slug TEXT;`);
+  const unslugged = await db.select({ id: sets.id }).from(sets).where(isNull(sets.slug));
+  const seen = new Set<string>();
+  for (const row of unslugged) {
+    let slug = generateSlug();
+    while (seen.has(slug)) slug = generateSlug();
+    seen.add(slug);
+    await db.update(sets).set({ slug }).where(eq(sets.id, row.id));
+  }
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_slug ON sets(slug);`);
 }

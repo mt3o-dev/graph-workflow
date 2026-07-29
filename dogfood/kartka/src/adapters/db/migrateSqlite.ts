@@ -1,4 +1,7 @@
+import { eq, isNull } from "drizzle-orm";
 import type { SqliteDb } from "./index";
+import { sets } from "./schema.sqlite";
+import { generateSlug } from "../../core/domain/slug";
 
 export async function migrateSqlite(db: SqliteDb): Promise<void> {
   db.run(`
@@ -71,4 +74,25 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
+
+  // Slice 3: `sets` already existed from slice 1, so the slug column is added
+  // via ALTER rather than baked into the CREATE TABLE above (keeps one
+  // migration path for both fresh and pre-existing databases). SQLite's
+  // ALTER TABLE ADD COLUMN forbids UNIQUE/PRIMARY KEY constraints, and has no
+  // "IF NOT EXISTS" clause, so: add nullable, catch-and-ignore if it already
+  // exists, backfill any NULLs, then enforce uniqueness with a separate index.
+  try {
+    db.run(`ALTER TABLE sets ADD COLUMN slug TEXT;`);
+  } catch (err) {
+    if (!(err instanceof Error) || !/duplicate column name/i.test(err.message)) throw err;
+  }
+  const unslugged = await db.select({ id: sets.id }).from(sets).where(isNull(sets.slug));
+  const seen = new Set<string>();
+  for (const row of unslugged) {
+    let slug = generateSlug();
+    while (seen.has(slug)) slug = generateSlug();
+    seen.add(slug);
+    await db.update(sets).set({ slug }).where(eq(sets.id, row.id));
+  }
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_slug ON sets(slug);`);
 }

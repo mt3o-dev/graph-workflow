@@ -6,7 +6,7 @@ import { getContainer } from "../../di/container";
 import { getOwnedSet } from "../../core/usecases/setUsecases";
 import { listCardsInSet } from "../../core/usecases/cardUsecases";
 import { parsePageQuery } from "../../lib/pageQuery";
-import { renderCardsTableFragment } from "../../lib/fragments";
+import { renderCardsTableFragment, renderVisibilityControlFragment } from "../../lib/fragments";
 import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
 
 const user = await getCurrentUser(Astro.cookies);
@@ -32,6 +32,7 @@ try {
 const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
 const data = await listCardsInSet(cardRepo, setRepo, setId, user.id, query);
 const tableHtml = await renderCardsTableFragment({ setId, data, sortBy: query.sortBy, sortDir: query.sortDir, locale });
+const visibilityHtml = renderVisibilityControlFragment({ set, locale });
 
 const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"] as const;
 ---
@@ -40,6 +41,8 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
   <a href="/sets">&larr; {t("sets.title", locale)}</a>
   <h1>{t("cards.title", locale, { setTitle: set.title })}</h1>
   {set.description && <p>{set.description}</p>}
+
+  <Fragment set:html={visibilityHtml} />
 
   <details class="card" style="margin-bottom: var(--space-6)">
     <summary class="btn btn-primary" style="display:inline-block">{t("cards.add", locale)}</summary>

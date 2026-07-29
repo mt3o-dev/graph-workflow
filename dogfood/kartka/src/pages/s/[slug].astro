@@ -1,0 +1,81 @@
+---
+// Public share page (slice 3). Deliberately does NOT require login — this
+// route is the whole point of "unlisted"/"public" visibility: a link that
+// works for a logged-out visitor.
+//
+// Private-set / unknown-slug decision: both return a bare 404, same as an
+// unknown route. We do NOT distinguish "slug doesn't exist" (404) from
+// "slug exists but the set is private" (which could instead be a 403) on
+// purpose: a 403 confirms a slug is *valid but forbidden*, which is itself
+// an information leak (e.g. "yes, a set called <embarrassing title> at this
+// link exists, you're just not allowed to see it"). Collapsing both cases
+// into 404 costs us nothing (there is no legitimate reason for a client to
+// need to tell them apart) and avoids letting someone probe/guess slugs to
+// learn which ones are "real but private" vs "never existed". getSharedSet()
+// in core/usecases/setUsecases.ts implements this by throwing the same
+// NotFoundError for both cases.
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+import { getContainer } from "../../di/container";
+import { getSharedSet } from "../../core/usecases/setUsecases";
+import { NotFoundError } from "../../core/domain/errors";
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const user = await getCurrentUser(Astro.cookies);
+const { setRepo, cardRepo, userRepo } = await getContainer();
+const slug = Astro.params.slug!;
+
+let view;
+try {
+  view = await getSharedSet(setRepo, cardRepo, userRepo, slug);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  throw err;
+}
+
+const { set, ownerDisplayName, cardCount, typeBreakdown } = view;
+const cardTypes = Object.keys(typeBreakdown) as Array<keyof typeof typeBreakdown>;
+---
+
+<BaseLayout title={set.title} locale={locale}>
+  <a href="/discover">&larr; {t("discover.title", locale)}</a>
+  <h1>{set.title}</h1>
+  {set.description && <p>{set.description}</p>}
+  <p class="row" style="gap: var(--space-4)">
+    <span>{t("share.owner", locale, { name: ownerDisplayName })}</span>
+    <span>{t("share.cardCount", locale, { count: cardCount })}</span>
+  </p>
+
+  {
+    cardTypes.length > 0 && (
+      <ul>
+        {cardTypes.map((ct) => (
+          <li>
+            {t(`cards.type.${ct}`, locale)}: {typeBreakdown[ct]}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <div class="card" style="max-width: fit-content">
+    {
+      user ? (
+        <form method="post" action={`/api/s/${set.slug}/clone`}>
+          <button type="submit" class="btn-primary">
+            {t("share.clone", locale)}
+          </button>
+        </form>
+      ) : (
+        <a href={`/login?next=${encodeURIComponent(Astro.url.pathname)}`} class="btn btn-primary">
+          {t("share.cloneLoginPrompt", locale)}
+        </a>
+      )
+    }
+  </div>
+</BaseLayout>

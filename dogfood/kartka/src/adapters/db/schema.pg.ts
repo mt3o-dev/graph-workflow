@@ -27,7 +27,11 @@ export const sets = pgTable("sets", {
   ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
-  visibility: text("visibility", { enum: ["private"] }).notNull().default("private"),
+  visibility: text("visibility", { enum: ["private", "unlisted", "public"] }).notNull().default("private"),
+  // Slice 3: share-by-slug. Not marked .unique() here to mirror
+  // schema.sqlite.ts field-for-field (see the note there); uniqueness is
+  // enforced by a separate `CREATE UNIQUE INDEX` in migratePg.ts.
+  slug: text("slug").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 

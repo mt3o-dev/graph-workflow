@@ -4,6 +4,7 @@
 
   "nav.sets": "My sets",
   "nav.review": "Review",
+  "nav.discover": "Discover",
   "nav.admin": "Admin",
   "nav.login": "Log in",
   "nav.signup": "Sign up",
@@ -42,6 +43,25 @@
   "sets.error.titleRequired": "Title is required.",
   "sets.error.titleTooLong": "Title is too long.",
   "sets.deleteConfirm": "Delete this set and all its cards? This cannot be undone.",
+  "sets.visibility.label": "Visibility",
+  "sets.visibility.private": "Private",
+  "sets.visibility.unlisted": "Unlisted link",
+  "sets.visibility.public": "Public",
+  "sets.visibility.shareLink": "Share link",
+  "sets.visibility.privateHint": "This set is private — only visible to you.",
+
+  "discover.title": "Discover public sets",
+  "discover.empty": "There aren't any public sets yet.",
+  "discover.column.title": "Title",
+  "discover.column.owner": "Owner",
+  "discover.column.created": "Created",
+  "discover.column.actions": "Actions",
+  "discover.action.view": "View",
+
+  "share.owner": "By {name}",
+  "share.cardCount": "Card count: {count}",
+  "share.clone": "Clone to my sets",
+  "share.cloneLoginPrompt": "Log in to clone this set",
 
   "cards.title": "Cards in {setTitle}",
   "cards.empty": "No cards in this set yet. Add your first card below.",

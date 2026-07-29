@@ -1,9 +1,10 @@
 import { eq, asc, desc, count } from "drizzle-orm";
 import type { PgDb } from "./index";
-import { sets } from "./schema.pg";
-import type { SetRepoPort } from "../../core/ports/setRepoPort";
-import type { CardSet, PageQuery, Paginated } from "../../core/domain/types";
+import { sets, users } from "./schema.pg";
+import type { SetRepoPort, SetWithOwner } from "../../core/ports/setRepoPort";
+import type { CardSet, PageQuery, Paginated, Visibility } from "../../core/domain/types";
 import { newId } from "./ids";
+import { generateSlug } from "../../core/domain/slug";
 
 const SORTABLE = { title: sets.title, createdAt: sets.createdAt } as const;
 type SortKey = keyof typeof SORTABLE;
@@ -15,8 +16,20 @@ function toDomain(row: typeof sets.$inferSelect): CardSet {
     title: row.title,
     description: row.description,
     visibility: row.visibility,
+    slug: row.slug,
     createdAt: row.createdAt,
   };
+}
+
+// See setRepo.sqlite.ts for why this is a check-then-insert loop rather than
+// catching a driver-specific unique-constraint error.
+async function uniqueSlug(db: PgDb): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateSlug();
+    const [existing] = await db.select({ id: sets.id }).from(sets).where(eq(sets.slug, candidate)).limit(1);
+    if (!existing) return candidate;
+  }
+  throw new Error("Could not generate a unique slug after 5 attempts");
 }
 
 export function createSetRepoPg(db: PgDb): SetRepoPort {
@@ -28,6 +41,7 @@ export function createSetRepoPg(db: PgDb): SetRepoPort {
         title: input.title,
         description: input.description,
         visibility: "private" as const,
+        slug: await uniqueSlug(db),
         createdAt: new Date(),
       };
       await db.insert(sets).values(row);
@@ -36,6 +50,11 @@ export function createSetRepoPg(db: PgDb): SetRepoPort {
 
     async findById(id) {
       const [row] = await db.select().from(sets).where(eq(sets.id, id)).limit(1);
+      return row ? toDomain(row) : null;
+    },
+
+    async findBySlug(slug) {
+      const [row] = await db.select().from(sets).where(eq(sets.slug, slug)).limit(1);
       return row ? toDomain(row) : null;
     },
 
@@ -59,6 +78,41 @@ export function createSetRepoPg(db: PgDb): SetRepoPort {
         .offset((page - 1) * pageSize);
 
       return { items: rows.map(toDomain), total, page, pageSize };
+    },
+
+    async listPublic(query: PageQuery): Promise<Paginated<SetWithOwner>> {
+      const page = Math.max(1, query.page);
+      const pageSize = Math.min(100, Math.max(1, query.pageSize));
+      const sortCol = SORTABLE[(query.sortBy as SortKey) in SORTABLE ? (query.sortBy as SortKey) : "createdAt"];
+      const order = query.sortDir === "asc" ? asc(sortCol) : desc(sortCol);
+
+      const [{ value: total }] = await db
+        .select({ value: count() })
+        .from(sets)
+        .where(eq(sets.visibility, "public"));
+
+      const rows = await db
+        .select({ set: sets, ownerDisplayName: users.displayName })
+        .from(sets)
+        .innerJoin(users, eq(sets.ownerId, users.id))
+        .where(eq(sets.visibility, "public"))
+        .orderBy(order)
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      return {
+        items: rows.map((r) => ({ ...toDomain(r.set), ownerDisplayName: r.ownerDisplayName })),
+        total,
+        page,
+        pageSize,
+      };
+    },
+
+    async updateVisibility(id: string, visibility: Visibility): Promise<CardSet> {
+      await db.update(sets).set({ visibility }).where(eq(sets.id, id));
+      const [row] = await db.select().from(sets).where(eq(sets.id, id)).limit(1);
+      if (!row) throw new Error("Set disappeared during visibility update");
+      return toDomain(row);
     },
 
     async delete(id) {

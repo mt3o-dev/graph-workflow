@@ -1,0 +1,25 @@
+---
+// Public browse page (slice 3). No auth required to view — see docs/architecture.md
+// and setUsecases.listPublicSets, which only ever returns visibility:"public" sets.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../i18n";
+import { getContainer } from "../di/container";
+import { listPublicSets } from "../core/usecases/setUsecases";
+import { parsePageQuery } from "../lib/pageQuery";
+import { renderPublicSetsFragment } from "../lib/fragments";
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const { setRepo } = await getContainer();
+const query = parsePageQuery(Astro.url.searchParams, { defaultSortBy: "createdAt" });
+const data = await listPublicSets(setRepo, query);
+const tableHtml = await renderPublicSetsFragment({ data, sortBy: query.sortBy, sortDir: query.sortDir, locale });
+---
+
+<BaseLayout title={t("discover.title", locale)} locale={locale}>
+  <h1>{t("discover.title", locale)}</h1>
+  <Fragment set:html={tableHtml} />
+</BaseLayout>

@@ -79,5 +79,15 @@ export function createCardRepoPg(db: PgDb): CardRepoPort {
         .where(inArray(cards.setId, ownerSetIds.map((s) => s.id)));
       return rows.map(toDomain);
     },
+
+    async listAllBySet(setId) {
+      const rows = await db.select().from(cards).where(eq(cards.setId, setId));
+      return rows.map(toDomain);
+    },
+
+    async countBySet(setId) {
+      const [{ value }] = await db.select({ value: count() }).from(cards).where(eq(cards.setId, setId));
+      return value;
+    },
   };
 }

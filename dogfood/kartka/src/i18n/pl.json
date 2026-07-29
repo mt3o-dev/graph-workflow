@@ -4,6 +4,7 @@
 
   "nav.sets": "Moje zestawy",
   "nav.review": "Powtórka",
+  "nav.discover": "Odkrywaj",
   "nav.admin": "Administracja",
   "nav.login": "Zaloguj się",
   "nav.signup": "Zarejestruj się",
@@ -42,6 +43,25 @@
   "sets.error.titleRequired": "Tytuł jest wymagany.",
   "sets.error.titleTooLong": "Tytuł jest zbyt długi.",
   "sets.deleteConfirm": "Usunąć ten zestaw i wszystkie jego fiszki? Tej operacji nie można cofnąć.",
+  "sets.visibility.label": "Widoczność",
+  "sets.visibility.private": "Prywatny",
+  "sets.visibility.unlisted": "Niepubliczny link",
+  "sets.visibility.public": "Publiczny",
+  "sets.visibility.shareLink": "Link do udostępnienia",
+  "sets.visibility.privateHint": "Ten zestaw jest prywatny — widoczny tylko dla Ciebie.",
+
+  "discover.title": "Odkrywaj publiczne zestawy",
+  "discover.empty": "Nie ma jeszcze żadnych publicznych zestawów.",
+  "discover.column.title": "Tytuł",
+  "discover.column.owner": "Autor",
+  "discover.column.created": "Utworzono",
+  "discover.column.actions": "Akcje",
+  "discover.action.view": "Zobacz",
+
+  "share.owner": "Autor: {name}",
+  "share.cardCount": "Liczba fiszek: {count}",
+  "share.clone": "Klonuj do moich zestawów",
+  "share.cloneLoginPrompt": "Zaloguj się, aby sklonować ten zestaw",
 
   "cards.title": "Fiszki w zestawie {setTitle}",
   "cards.empty": "Ten zestaw nie ma jeszcze żadnych fiszek. Dodaj pierwszą poniżej.",
