@@ -600,6 +600,42 @@ adversarial fixtures, not just happy-path cases. 288/288 tests, build green,
 zero changes needed post-review — the most delicate integration point in
 the project so far held up without a single finding.
 
+## Slice 15 result — kartka-live-post-game-review
+
+The load-bearing slice for the whole full-Kahoot-mode condition: missed or
+slow live-quiz questions get cloned into a personal auto-created practice
+set and seeded with a shortened-due review state, right after the round
+ends. The riskiest part of this slice was a deliberate, disclosed expansion
+of the safety-constraint whitelist introduced in slice 8 (only
+`reviewUsecases.ts` may call a scheduler's `.upsert()`) to also permit this
+slice's new seed-only writer — reviewed with maximum adversarial tracing
+(does the seed path ever construct a state that could plausibly overwrite
+an existing row? could any client-suppliable input reach it? does it use
+the real initial-state constructors or hand-rolled equivalents?) and found
+sound: every seed targets a card id created moments earlier in the same
+call, so it structurally cannot touch a card the player was already
+reviewing, and every identity/provenance input traces back to the
+server-authenticated WS connection.
+
+The review did find a real, bounded (non-corrupting) concurrent-render race
+— two finished-room broadcasts could both read "not yet imported" for the
+same card before either wrote, producing a duplicate clone. Investigating
+that fix surfaced a second, more serious instance of the identical
+read-then-create pattern one level up: `findOrCreatePracticeSet` had the
+same gap, so concurrent calls on a player's very first live round could
+each create their own separate practice set entirely — at which point the
+card-level fix alone wouldn't even have triggered, since the two duplicate
+sets would have different ids. Both closed with DB-level partial unique
+indexes (not in-process locks, which wouldn't help across the WS sidecar's
+concurrent handlers) plus graceful conflict handling in the usecases, and
+proven with a genuine concurrency test (5 real concurrent calls via
+`Promise.all`, stable across repeated runs) rather than just a sequential
+happy-path test. This is a good example of "fixing the reported symptom
+surfaces the real root cause one layer up" — worth remembering as a general
+review-fix discipline: when a race is found, check whether the same
+read-then-create shape exists anywhere upstream of the fix, not just at the
+reported call site. 302/302 tests, build green after both fixes.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

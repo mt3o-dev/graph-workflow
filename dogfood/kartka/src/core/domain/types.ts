@@ -133,6 +133,17 @@ export interface Card<TType extends CardType = CardType> {
   id: string;
   setId: string;
   type: TType;
+  /**
+   * Slice 15 (live-quiz post-game review import): nullable provenance link
+   * to the card this one was CLONED from (see cloneSharedSet's slice-3
+   * pattern and liveQuizPostGameUsecases.ts's reuse of it). null for every
+   * ordinary hand-authored/LLM-generated card and for slice-3 shared-set
+   * clones (which don't track provenance) — only set on cards cloned into a
+   * player's personal "live quiz review" practice set. Doubles as the
+   * dedupe key so the same source card seen across multiple live rounds is
+   * only ever cloned+seeded once — see importPostGameReviewForRoom.
+   */
+  sourceCardId: string | null;
   payload: TType extends "basic"
     ? BasicPayload
     : TType extends "cloze"

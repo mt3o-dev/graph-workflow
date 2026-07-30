@@ -63,6 +63,14 @@ export const cards = sqliteTable("cards", {
     enum: ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"],
   }).notNull(),
   payload: text("payload", { mode: "json" }).notNull(),
+  // Slice 15 (live-quiz post-game review import): nullable provenance link
+  // to the card this one was cloned from — see Card.sourceCardId's doc
+  // comment. Added via ALTER in migrateSqlite.ts (same nullable/no-backfill
+  // pattern as sets.exam_date) since `cards` already existed from slice 1.
+  // No FK constraint (mirrors sets.slug/exam_date's own lack of one) — a
+  // self-referencing FK on a column added via ALTER is unnecessary
+  // complexity for what's purely an informational/dedupe link.
+  sourceCardId: text("source_card_id"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 

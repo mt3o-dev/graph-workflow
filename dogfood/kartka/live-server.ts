@@ -51,9 +51,10 @@ import {
   isLiveHost,
   requestLiveHint,
 } from "./src/core/usecases/liveQuizUsecases";
+import { importPostGameReviewForRoom } from "./src/core/usecases/liveQuizPostGameUsecases";
 import { currentQuestion, type RoomState } from "./src/core/domain/liveQuiz";
 import { NotFoundError, ForbiddenError, ValidationError } from "./src/core/domain/errors";
-import type { Locale } from "./src/i18n";
+import { t, type Locale } from "./src/i18n";
 import { buildLiveJoinUrl } from "./src/lib/liveJoinUrl";
 import {
   renderLobbyFragment,
@@ -148,14 +149,27 @@ function renderHostScreenFragment(room: RoomState, locale: Locale, joinUrl: stri
 
 /** Renders+sends whichever fragment set `ws` subscribes to (player or host-screen), for the room's CURRENT phase. */
 async function sendCurrentRoomState(ws: Bun.ServerWebSocket<SocketData>, room: RoomState): Promise<void> {
-  const { liveSessionPort } = await getContainer();
+  const { liveSessionPort, setRepo, cardRepo, userRepo, scheduler, fsrsScheduler } = await getContainer();
   if (room.phase === "finished") {
     const entries = await computeScoreboard(liveSessionPort, ws.data.code);
     const teamEntries = await computeTeamScoreboard(liveSessionPort, ws.data.code);
+    // Slice 15: every missed/slow question this room's players hit gets
+    // cloned+seeded into their own personal review queue right here — see
+    // core/usecases/liveQuizPostGameUsecases.ts. Deliberately re-run on
+    // EVERY finished-fragment render (not just once at the phase
+    // transition): it's idempotent by construction (dedupe against each
+    // player's practice set), so this also correctly covers a late-joining
+    // socket that only connects after the round already finished.
+    const importResults = await importPostGameReviewForRoom(
+      { liveSessionPort, setRepo, cardRepo, userRepo, schedulers: { sm2: scheduler, fsrs: fsrsScheduler } },
+      ws.data.code,
+      { pl: t("live.postGame.practiceSetTitle", "pl"), en: t("live.postGame.practiceSetTitle", "en") },
+    );
+    const myImport = importResults.find((r) => r.userId === ws.data.userId);
     if (ws.data.view === "host") {
       ws.send(renderHostFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
     } else {
-      ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
+      ws.send(renderFinishedFragment({ entries, teamEntries, locale: ws.data.locale, importedCount: myImport?.importedCount ?? 0 }));
     }
     return;
   }

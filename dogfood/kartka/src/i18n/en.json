@@ -350,5 +350,8 @@
   "live.host.finished.podium.first": "1st",
   "live.host.finished.podium.second": "2nd",
   "live.host.finished.podium.third": "3rd",
-  "live.host.finished.teamPodium.title": "Top team"
+  "live.host.finished.teamPodium.title": "Top team",
+
+  "live.postGame.practiceSetTitle": "Live quiz review",
+  "live.postGame.summary": "{count} card(s) added to your review queue."
 }

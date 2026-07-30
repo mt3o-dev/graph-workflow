@@ -350,5 +350,8 @@
   "live.host.finished.podium.first": "1. miejsce",
   "live.host.finished.podium.second": "2. miejsce",
   "live.host.finished.podium.third": "3. miejsce",
-  "live.host.finished.teamPodium.title": "Najlepsza drużyna"
+  "live.host.finished.teamPodium.title": "Najlepsza drużyna",
+
+  "live.postGame.practiceSetTitle": "Powtórka z quizu na żywo",
+  "live.postGame.summary": "Dodano {count} fiszek do Twojej kolejki powtórek."
 }

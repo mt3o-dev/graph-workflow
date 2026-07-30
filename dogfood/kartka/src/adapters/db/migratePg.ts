@@ -154,4 +154,22 @@ export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS text_size TEXT NOT NULL DEFAULT 'normal';`);
   await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS line_spacing TEXT NOT NULL DEFAULT 'normal';`);
   await db.execute(`ALTER TABLE users ADD COLUMN IF NOT EXISTS contrast TEXT NOT NULL DEFAULT 'normal';`);
+
+  // Slice 15: nullable provenance link — see the matching comment in
+  // migrateSqlite.ts / Card.sourceCardId's doc comment.
+  await db.execute(`ALTER TABLE cards ADD COLUMN IF NOT EXISTS source_card_id TEXT;`);
+  // Review found a real (bounded, non-corrupting) race between concurrent
+  // finished-room renders that could both clone the same source card into
+  // the same practice set — see the matching comment in migrateSqlite.ts.
+  // Postgres partial unique indexes use the same WHERE syntax as SQLite.
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_set_source_unique ON cards(set_id, source_card_id) WHERE source_card_id IS NOT NULL;`,
+  );
+  // findOrCreatePracticeSet's own read-then-create gap, one level above the
+  // card-level race — see the matching comment in migrateSqlite.ts. Marker
+  // string must stay in sync with PRACTICE_SET_MARKER in
+  // liveQuizPostGameUsecases.ts.
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_owner_practice_marker ON sets(owner_id) WHERE description = 'kartka:live-quiz-review-practice-set';`,
+  );
 }

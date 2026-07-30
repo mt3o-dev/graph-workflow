@@ -189,3 +189,20 @@ items" guidance:
   `LiveSessionPort` rooms (see `docs/ADR-live-transport.md`): resolved
   (confirmed/forfeited) rows are never pruned. Fine at this scale; a
   retention sweep would be a small addition if the table grows large.
+- **Post-game review import re-runs the dedupe scan on every finished
+  render (slice 15)**: `live-server.ts` calls
+  `importPostGameReviewForRoom` every time a finished-room fragment is sent
+  to a socket (idempotent by design, see that function's header comment),
+  rather than once at the phase-transition moment with a cached result.
+  Correct, but does one extra `cardRepo.listAllBySet` scan of the player's
+  practice set per render — fine at this scale; a per-room "already
+  imported" cache would avoid the repeat work if this becomes a hot path.
+- **Practice-set find-or-create is a linear `listAllBySet` scan, and the
+  once-created title is never re-localized (slice 15)**: the personal "live
+  quiz review" set is found by an exact `description` marker match (see
+  `SetRepoPort.findByOwnerAndDescription`), and its `title` is whatever
+  locale the player was using the very first time they had something
+  imported — it does not update if they later switch locale. Acceptable at
+  this scale (matches this app's existing "no self-service rename" gap for
+  every other auto-created content); revisit if locale-switching becomes a
+  common flow.

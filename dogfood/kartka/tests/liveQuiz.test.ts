@@ -4,6 +4,7 @@ import {
   advancePhase,
   answeredCount,
   assignPlayerTeam,
+  computeMissedQuestionsForPlayer,
   configureTeams,
   correctAnswererCount,
   createRoomState,
@@ -19,6 +20,7 @@ import {
   BASE_POINTS,
   MAX_SPEED_BONUS,
   QUESTION_TIME_LIMIT_MS,
+  SLOW_ANSWER_THRESHOLD_RATIO,
   type LiveQuestion,
   type RoomState,
 } from "../src/core/domain/liveQuiz";
@@ -438,5 +440,94 @@ describe("host screen derived counts (slice 13)", () => {
 
     expect(correctAnswererCount(room)).toBe(2);
     expect(answeredCount(room)).toEqual({ answered: 3, total: 4 }); // regression: unaffected by correctness
+  });
+});
+
+// Slice 15 (live-quiz post-game review import): pure "what should be
+// scheduled into this player's real review queue" detection. The impure
+// clone+seed side effects are covered separately in
+// tests/liveQuizPostGameReview.test.ts — this only exercises the domain fn.
+describe("computeMissedQuestionsForPlayer (slice 15)", () => {
+  const unansweredQuestion: LiveQuestion = {
+    cardId: "card-unanswered",
+    type: "multiple_choice",
+    payload: { question: "1+1?", options: ["1", "2"], correctIndex: 1 },
+  };
+
+  function playThroughFourQuestions(): RoomState {
+    let room = createRoomState({
+      code: "ABCDE",
+      hostId: "host-1",
+      setId: "set-1",
+      questions: [mcQuestion, tfQuestion, taQuestion, unansweredQuestion],
+    });
+    room = addPlayer(room, { userId: "p1", displayName: "Alice" });
+
+    // Q0 (mc): answered WRONG.
+    room = advancePhase(room, new Date("2026-01-01T00:00:00.000Z"));
+    ({ room } = recordAnswer(room, "p1", mcQuestion.cardId, "0", new Date("2026-01-01T00:00:01.000Z")));
+    room = advancePhase(room, new Date("2026-01-01T00:00:05.000Z")); // -> reveal
+
+    // Q1 (tf): answered CORRECT and FAST (1s in, well under the 14s slow cutoff).
+    room = advancePhase(room, new Date("2026-01-01T00:01:00.000Z")); // -> question-live, started at :01:00
+    ({ room } = recordAnswer(room, "p1", tfQuestion.cardId, "true", new Date("2026-01-01T00:01:01.000Z")));
+    room = advancePhase(room, new Date("2026-01-01T00:01:05.000Z")); // -> reveal
+
+    // Q2 (ta): answered CORRECT but SLOW (15s in, past the 14s/70% cutoff).
+    room = advancePhase(room, new Date("2026-01-01T00:02:00.000Z")); // -> question-live, started at :02:00
+    ({ room } = recordAnswer(room, "p1", taQuestion.cardId, "Paris", new Date("2026-01-01T00:02:15.000Z")));
+    room = advancePhase(room, new Date("2026-01-01T00:02:16.000Z")); // -> reveal
+
+    // Q3 (unanswered): never answered at all.
+    room = advancePhase(room, new Date("2026-01-01T00:03:00.000Z")); // -> question-live
+    room = advancePhase(room, new Date("2026-01-01T00:03:20.000Z")); // -> reveal (timed out)
+    room = advancePhase(room, new Date("2026-01-01T00:03:21.000Z")); // -> finished
+
+    return room;
+  }
+
+  test("wrong = missed, correct-but-slow past the threshold = missed, correct-and-fast = NOT missed, never-answered = missed", () => {
+    const room = playThroughFourQuestions();
+    const missed = computeMissedQuestionsForPlayer(room, "p1");
+
+    expect(missed.map((m) => m.cardId).sort()).toEqual(
+      [mcQuestion.cardId, taQuestion.cardId, unansweredQuestion.cardId].sort(),
+    );
+    expect(missed.find((m) => m.cardId === mcQuestion.cardId)?.reason).toBe("wrong");
+    expect(missed.find((m) => m.cardId === taQuestion.cardId)?.reason).toBe("slow");
+    expect(missed.find((m) => m.cardId === unansweredQuestion.cardId)?.reason).toBe("unanswered");
+    // The fast-and-correct answer must NOT appear at all.
+    expect(missed.some((m) => m.cardId === tfQuestion.cardId)).toBe(false);
+  });
+
+  test("the slow-threshold boundary: exactly at the ratio is NOT slow, one ms past it IS", () => {
+    let room = createRoomState({ code: "ABCDE", hostId: "host-1", setId: "set-1", questions: [taQuestion] });
+    room = addPlayer(room, { userId: "p1", displayName: "Alice" });
+    const start = new Date("2026-01-01T00:00:00.000Z");
+    room = advancePhase(room, start);
+
+    const cutoffMs = SLOW_ANSWER_THRESHOLD_RATIO * QUESTION_TIME_LIMIT_MS;
+
+    const atCutoff = recordAnswer(room, "p1", taQuestion.cardId, "Paris", new Date(start.getTime() + cutoffMs)).room;
+    expect(computeMissedQuestionsForPlayer(atCutoff, "p1")).toEqual([]);
+
+    const pastCutoff = recordAnswer(room, "p1", taQuestion.cardId, "Paris", new Date(start.getTime() + cutoffMs + 1)).room;
+    expect(computeMissedQuestionsForPlayer(pastCutoff, "p1")).toEqual([{ cardId: taQuestion.cardId, reason: "slow" }]);
+  });
+
+  test("returns [] for a userId that never joined the room", () => {
+    const room = playThroughFourQuestions();
+    expect(computeMissedQuestionsForPlayer(room, "never-joined")).toEqual([]);
+  });
+
+  test("defensively treats a correct answer as NOT slow if no timing history exists for that question index (hand-built fixture)", () => {
+    let room = createRoomState({ code: "ABCDE", hostId: "host-1", setId: "set-1", questions: [taQuestion] });
+    room = addPlayer(room, { userId: "p1", displayName: "Alice" });
+    room = advancePhase(room, new Date("2026-01-01T00:00:00.000Z"));
+    ({ room } = recordAnswer(room, "p1", taQuestion.cardId, "Paris", new Date("2026-01-01T01:00:00.000Z"))); // absurdly "slow" by elapsed time alone
+
+    // Strip the timing history a hand-built fixture might omit — no crash, no false "slow".
+    const roomWithoutHistory: RoomState = { ...room, questionStartedAtMsHistory: {} };
+    expect(computeMissedQuestionsForPlayer(roomWithoutHistory, "p1")).toEqual([]);
   });
 });

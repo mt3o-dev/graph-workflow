@@ -13,6 +13,7 @@ function toDomain(row: typeof cards.$inferSelect): Card {
     id: row.id,
     setId: row.setId,
     type: row.type as CardType,
+    sourceCardId: row.sourceCardId ?? null,
     payload: row.payload as never,
     createdAt: row.createdAt,
   };
@@ -26,6 +27,7 @@ export function createCardRepoSqlite(db: SqliteDb): CardRepoPort {
         setId: input.setId,
         type: input.type,
         payload: input.payload as object,
+        sourceCardId: input.sourceCardId ?? null,
         createdAt: new Date(),
       };
       await db.insert(cards).values(row);

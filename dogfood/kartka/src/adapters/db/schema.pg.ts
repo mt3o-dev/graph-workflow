@@ -59,6 +59,10 @@ export const cards = pgTable("cards", {
     enum: ["basic", "cloze", "multiple_choice", "true_false", "type_answer", "image_occlusion"],
   }).notNull(),
   payload: jsonb("payload").notNull(),
+  // Slice 15: nullable provenance link — see the matching comment in
+  // schema.sqlite.ts and Card.sourceCardId's doc comment. Added via ALTER in
+  // migratePg.ts.
+  sourceCardId: text("source_card_id"),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 

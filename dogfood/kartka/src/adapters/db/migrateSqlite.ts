@@ -217,4 +217,48 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       if (!isDuplicateColumnError(err)) throw err;
     }
   }
+
+  // Slice 15 (live-quiz post-game review import): nullable provenance link
+  // from a cloned review-queue card back to its source card. Nullable, no
+  // backfill needed — NULL is the correct value for every card that existed
+  // before this slice (means "not a post-game import clone"), same pattern
+  // as sets.exam_date/users.quiet_hours_* above. Reuses THIS FILE's shared
+  // isDuplicateColumnError guard (see its header comment for why a fresh
+  // ad-hoc `err.message` regex would silently be dead code the moment a
+  // second process — e.g. live-server.ts — opens an already-migrated DB).
+  try {
+    db.run(`ALTER TABLE cards ADD COLUMN source_card_id TEXT;`);
+  } catch (err) {
+    if (!isDuplicateColumnError(err)) throw err;
+  }
+  // Review found a real (bounded, non-corrupting) race: two concurrent
+  // finished-room renders (e.g. a broadcast in flight plus a reconnecting
+  // socket) can both read "not yet imported" for the same (set, source
+  // card) pair before either writes, producing two clone cards instead of
+  // one. A DB-level constraint closes this properly instead of an
+  // in-process lock, which wouldn't help across the sidecar's concurrent
+  // WS handlers. Partial index (SQLite supports WHERE on CREATE INDEX)
+  // since most cards have a NULL source_card_id and NULLs never collide in
+  // a unique index anyway — this only constrains actual clone rows.
+  db.run(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_set_source_unique ON cards(set_id, source_card_id) WHERE source_card_id IS NOT NULL;`,
+  );
+
+  // The card-level race above wasn't the whole story: findOrCreatePracticeSet
+  // (liveQuizPostGameUsecases.ts) has the identical read-then-create gap one
+  // level up — two concurrent import calls for a player's FIRST live round
+  // ever can each see "no practice set yet" and each create their own,
+  // producing two separate practice sets (each then getting its own clone
+  // cards, so the cards-level unique index above never even triggers, since
+  // set_id differs between them). A literal-value partial unique index
+  // enforces "at most one set per owner with this exact marker description"
+  // without constraining ordinary sets, whose descriptions are frequently
+  // identical/blank across a user's normal sets (a blanket unique index on
+  // (owner_id, description) would wrongly break that). The marker string
+  // must stay in sync with PRACTICE_SET_MARKER in
+  // liveQuizPostGameUsecases.ts — duplicated here deliberately since a
+  // migration can't import application code.
+  db.run(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_sets_owner_practice_marker ON sets(owner_id) WHERE description = 'kartka:live-quiz-review-practice-set';`,
+  );
 }

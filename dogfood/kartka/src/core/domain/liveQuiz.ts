@@ -273,6 +273,17 @@ export interface RoomState {
   players: Record<string, RoomPlayer>;
   /** ms epoch the current question went live; null in lobby/finished. */
   questionStartedAtMs: number | null;
+  /**
+   * Slice 15: ms epoch each question INDEX went live, populated by
+   * advancePhase every time it moves into a new "question-live" phase.
+   * questionStartedAtMs above is overwritten every question and reset to
+   * null once the round finishes — this history is what lets post-game
+   * "missed or slow" detection (see computeMissedQuestionsForPlayer) still
+   * compute how long a question took, after the round is over. Keyed by
+   * `currentQuestionIndex`, not cardId, matching how `questions` itself is
+   * addressed everywhere else in this file.
+   */
+  questionStartedAtMsHistory: Record<number, number>;
   createdAt: Date;
   /**
    * Slice 12 (teams): the ordered list of team ids currently configured for
@@ -356,6 +367,7 @@ export function createRoomState(input: {
     phase: "lobby",
     players: {},
     questionStartedAtMs: null,
+    questionStartedAtMsHistory: {},
     createdAt: input.now ?? new Date(),
     teamIds: [],
   };
@@ -391,7 +403,13 @@ export function advancePhase(room: RoomState, now: Date): RoomState {
   if (nextIndex >= room.questions.length) {
     return { ...room, phase: "finished", currentQuestionIndex: room.questions.length, questionStartedAtMs: null };
   }
-  return { ...room, phase: "question-live", currentQuestionIndex: nextIndex, questionStartedAtMs: now.getTime() };
+  return {
+    ...room,
+    phase: "question-live",
+    currentQuestionIndex: nextIndex,
+    questionStartedAtMs: now.getTime(),
+    questionStartedAtMsHistory: { ...room.questionStartedAtMsHistory, [nextIndex]: now.getTime() },
+  };
 }
 
 /**
@@ -640,4 +658,80 @@ export function teamScoreboard(room: RoomState): TeamScoreboardEntry[] {
   return [...totals.entries()]
     .map(([teamId, v]) => ({ teamId, score: v.score, playerCount: v.playerCount }))
     .sort((a, b) => b.score - a.score || a.teamId.localeCompare(b.teamId));
+}
+
+// --- Post-game review import (slice 15) ---------------------------------
+// Pure "what should be scheduled into this player's real review queue"
+// detection. Everything below only READS RoomState — no mutation, no I/O —
+// per the roadmap's explicit split: the impure clone+seed work (creating a
+// Set/Card, writing ReviewState) lives in core/usecases/liveQuizPostGameUsecases.ts,
+// which calls computeMissedQuestionsForPlayer below to decide WHAT to import.
+
+/**
+ * A correct-but-slow answer counts as "missed" for post-game review purposes
+ * once it took more than 70% of the question's time budget. Picked because:
+ * it's comfortably past the midpoint (so genuinely slow, not just "not
+ * instant"), but still leaves real margin before the 100%/timeout cutoff —
+ * a player who nearly ran out of time clearly wasn't confident, even though
+ * `isAnswerCorrect` gave them credit for the round's score. See
+ * QUESTION_TIME_LIMIT_MS (20s) — 70% of that is 14s.
+ */
+export const SLOW_ANSWER_THRESHOLD_RATIO = 0.7;
+
+/** Why a question is being scheduled into the player's real review queue. */
+export type MissedReason = "wrong" | "unanswered" | "slow";
+
+export interface MissedQuestion {
+  cardId: string;
+  reason: MissedReason;
+}
+
+/**
+ * For one player in `room`, returns every question they either got wrong,
+ * never answered at all, or answered correctly but slowly (see
+ * SLOW_ANSWER_THRESHOLD_RATIO) — the set of cards
+ * liveQuizPostGameUsecases.importPostGameReviewForRoom clones+seeds into
+ * that player's personal review queue. Intended to be called once the room
+ * has reached "finished" (the usecase layer enforces that; this pure
+ * function itself doesn't check `room.phase`, so it stays trivially testable
+ * against any fixture room, mid-round or finished).
+ *
+ * Returns `[]` for a userId that never joined this room (nothing to import
+ * for someone who wasn't a player) — callers iterate `room.players`, so this
+ * is a defensive fallback, not the primary path.
+ *
+ * "Slow" is only evaluated when this question's start time is known (see
+ * RoomState.questionStartedAtMsHistory) — a defensive fallback for a
+ * hand-built fixture room that never went through advancePhase; in that case
+ * a correct answer is simply never flagged "slow" (still counted "wrong" if
+ * incorrect, "unanswered" if absent, exactly as normal).
+ */
+export function computeMissedQuestionsForPlayer(
+  room: RoomState,
+  userId: string,
+  slowRatio: number = SLOW_ANSWER_THRESHOLD_RATIO,
+  questionTimeLimitMs: number = QUESTION_TIME_LIMIT_MS,
+): MissedQuestion[] {
+  const player = room.players[userId];
+  if (!player) return [];
+
+  const missed: MissedQuestion[] = [];
+  room.questions.forEach((question, index) => {
+    const answer = player.answers[question.cardId];
+    if (!answer) {
+      missed.push({ cardId: question.cardId, reason: "unanswered" });
+      return;
+    }
+    if (!answer.correct) {
+      missed.push({ cardId: question.cardId, reason: "wrong" });
+      return;
+    }
+    const startedAtMs = room.questionStartedAtMsHistory[index];
+    if (startedAtMs === undefined) return; // no timing signal available — can't judge "slow"
+    const elapsedMs = answer.submittedAtMs - startedAtMs;
+    if (elapsedMs > slowRatio * questionTimeLimitMs) {
+      missed.push({ cardId: question.cardId, reason: "slow" });
+    }
+  });
+  return missed;
 }

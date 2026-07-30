@@ -1,4 +1,4 @@
-import { eq, asc, desc, count } from "drizzle-orm";
+import { eq, and, asc, desc, count } from "drizzle-orm";
 import type { SqliteDb } from "./index";
 import { sets, users, cards } from "./schema.sqlite";
 import type { SetRepoPort, SetWithOwner, SetWithOwnerAndCardCount } from "../../core/ports/setRepoPort";
@@ -58,6 +58,15 @@ export function createSetRepoSqlite(db: SqliteDb): SetRepoPort {
 
     async findBySlug(slug) {
       const [row] = await db.select().from(sets).where(eq(sets.slug, slug)).limit(1);
+      return row ? toDomain(row) : null;
+    },
+
+    async findByOwnerAndDescription(ownerId, description) {
+      const [row] = await db
+        .select()
+        .from(sets)
+        .where(and(eq(sets.ownerId, ownerId), eq(sets.description, description)))
+        .limit(1);
       return row ? toDomain(row) : null;
     },
 

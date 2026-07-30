@@ -1,7 +1,13 @@
 import type { Card, CardPayload, CardType, Paginated, PageQuery } from "../domain/types";
 
 export interface CardRepoPort {
-  create(input: { setId: string; type: CardType; payload: CardPayload }): Promise<Card>;
+  /**
+   * `sourceCardId` (slice 15) is optional and omitted/undefined for every
+   * ordinary create call (every pre-slice-15 call site) — only
+   * liveQuizPostGameUsecases.ts's import path passes it, to record which
+   * source card a review-queue clone came from. See Card.sourceCardId.
+   */
+  create(input: { setId: string; type: CardType; payload: CardPayload; sourceCardId?: string | null }): Promise<Card>;
   findById(id: string): Promise<Card | null>;
   update(id: string, input: { payload: CardPayload }): Promise<Card>;
   delete(id: string): Promise<void>;

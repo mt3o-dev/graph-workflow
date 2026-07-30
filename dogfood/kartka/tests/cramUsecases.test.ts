@@ -162,14 +162,27 @@ describe("cramUsecases (sqlite driver, temp db)", () => {
 });
 
 describe("cramUsecases: static safety-constraint check", () => {
-  test("neither cramUsecases.ts nor cramPlanner.ts ever calls scheduler.upsert — only reviewUsecases.ts's submitReview writes ReviewState/FsrsReviewState", async () => {
+  test("neither cramUsecases.ts nor cramPlanner.ts ever calls scheduler.upsert — only reviewUsecases.ts's submitReview writes ReviewState/FsrsReviewState from an ANSWER", async () => {
     const cramUsecasesSrc = await Bun.file(new URL("../src/core/usecases/cramUsecases.ts", import.meta.url)).text();
     const cramPlannerSrc = await Bun.file(new URL("../src/core/domain/cramPlanner.ts", import.meta.url)).text();
     expect(cramUsecasesSrc).not.toContain(".upsert(");
     expect(cramPlannerSrc).not.toContain(".upsert(");
 
-    // Confirm .upsert( on a SchedulerPort only appears in reviewUsecases.ts
-    // across the whole usecases layer (the one sanctioned write path).
+    // Confirm .upsert( on a SchedulerPort only appears in the sanctioned
+    // writer(s) across the whole usecases layer. reviewUsecases.ts's
+    // submitReview is the one answer-driven scheduling-update path (this
+    // is what cram mode — the slice this file was written for — must never
+    // duplicate: card *selection* only, never a second scoring path).
+    //
+    // Slice 15 adds ONE more sanctioned writer, liveQuizPostGameUsecases.ts,
+    // for a DIFFERENT reason that doesn't weaken this constraint: it never
+    // grades an answer or computes an SM-2/FSRS quality-based transition —
+    // it only SEEDS a brand-new card's initial state (the same
+    // sm2InitialState()/fsrsInitialState() baseline a genuinely
+    // never-reviewed card already has), with nothing but a shortened
+    // `dueAt`. The card behaves completely normally through the real
+    // submitReview path on its next actual review afterward — see
+    // tests/liveQuizPostGameReview.test.ts's explicit regression proof.
     const glob = new Bun.Glob("*.ts");
     const writers: string[] = [];
     for await (const file of glob.scan({ cwd: new URL("../src/core/usecases/", import.meta.url).pathname })) {
@@ -178,6 +191,6 @@ describe("cramUsecases: static safety-constraint check", () => {
         writers.push(file);
       }
     }
-    expect(writers).toEqual(["reviewUsecases.ts"]);
+    expect(writers.sort()).toEqual(["liveQuizPostGameUsecases.ts", "reviewUsecases.ts"]);
   });
 });

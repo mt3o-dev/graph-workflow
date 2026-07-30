@@ -263,16 +263,33 @@ export function renderRevealFragment(opts: { room: RoomState; question: LiveQues
   );
 }
 
-export function renderFinishedFragment(opts: { entries: ScoreboardEntry[]; teamEntries?: TeamScoreboardEntry[]; locale: Locale }): string {
-  const { entries, teamEntries, locale } = opts;
+/**
+ * `importedCount` (slice 15): how many missed/slow questions THIS viewer's
+ * own answers just got cloned+seeded into their personal review queue (see
+ * core/usecases/liveQuizPostGameUsecases.ts) — personalized per socket, same
+ * as every other per-viewer render in this file. Omitted, or 0, renders no
+ * summary line at all (nothing to report — either they got everything right
+ * and fast, or they never joined/answered).
+ */
+export function renderFinishedFragment(opts: {
+  entries: ScoreboardEntry[];
+  teamEntries?: TeamScoreboardEntry[];
+  locale: Locale;
+  importedCount?: number;
+}): string {
+  const { entries, teamEntries, locale, importedCount } = opts;
   const teamBoard = teamEntries && teamEntries.length
     ? `<h3>${escapeHtml(t("live.teams.leaderboard.title", locale))}</h3>${teamScoreboardListHtml(teamEntries, locale)}`
+    : "";
+  const postGameSummary = importedCount
+    ? `<p class="live-postgame-summary">${escapeHtml(t("live.postGame.summary", locale, { count: importedCount }))}</p>`
     : "";
   return oob(
     `<h2>${escapeHtml(t("live.room.finished.title", locale))}</h2>
      <h3>${escapeHtml(t("live.room.finished.podium", locale))}</h3>
      ${scoreboardListHtml(entries, locale)}
-     ${teamBoard}`,
+     ${teamBoard}
+     ${postGameSummary}`,
   );
 }
 
