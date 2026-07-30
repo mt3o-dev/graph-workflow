@@ -150,3 +150,31 @@ export const liveQuizAnswerRecords = pgTable("live_quiz_answer_records", {
   correct: boolean("correct").notNull(),
   finishedAt: timestamp("finished_at", { mode: "date" }).notNull(),
 });
+
+// Slice 17 (async homework mode) — mirrors schema.sqlite.ts field-for-field.
+// See the matching comments there and docs/ADR-homework-mode.md.
+export const liveHomeworkAssignments = pgTable("live_homework_assignments", {
+  id: text("id").primaryKey(),
+  setId: text("set_id").notNull().references(() => sets.id, { onDelete: "cascade" }),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  deadline: timestamp("deadline", { mode: "date" }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+});
+
+export const liveHomeworkAttempts = pgTable("live_homework_attempts", {
+  id: text("id").primaryKey(),
+  assignmentId: text("assignment_id").notNull().references(() => liveHomeworkAssignments.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  score: integer("score").notNull().default(0),
+  completedAt: timestamp("completed_at", { mode: "date" }),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+});
+
+export const liveHomeworkAnswers = pgTable("live_homework_answers", {
+  id: text("id").primaryKey(),
+  attemptId: text("attempt_id").notNull().references(() => liveHomeworkAttempts.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  correct: boolean("correct").notNull(),
+  answeredAt: timestamp("answered_at", { mode: "date" }).notNull(),
+});

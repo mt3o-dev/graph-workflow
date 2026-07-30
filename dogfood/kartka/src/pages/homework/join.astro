@@ -1,0 +1,39 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+
+// Student entry point (slice 17): enter an assignment's shared code to join.
+// Mirrors live/join.astro exactly — the code shape is the same generator.
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+const error = Astro.url.searchParams.get("error");
+---
+
+<BaseLayout title={t("homework.join.title", locale)} locale={locale}>
+  <div class="card" style="max-width:420px;margin-inline:auto">
+    <h1>{t("homework.join.title", locale)}</h1>
+    {error === "notfound" && <p class="field-error">{t("homework.join.notFound", locale)}</p>}
+    <form method="get" action="/homework/enter" class="stack">
+      <div class="field">
+        <label for="code">{t("homework.join.codeLabel", locale)}</label>
+        <input
+          id="code"
+          name="code"
+          required
+          maxlength="5"
+          minlength="5"
+          autocapitalize="characters"
+          placeholder={t("homework.join.codePlaceholder", locale)}
+          style="text-transform:uppercase;letter-spacing:0.2em;font-size:1.5rem;text-align:center"
+        />
+      </div>
+      <button type="submit" class="btn-primary">{t("homework.join.submit", locale)}</button>
+    </form>
+  </div>
+</BaseLayout>

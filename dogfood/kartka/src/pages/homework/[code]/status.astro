@@ -1,0 +1,82 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../../i18n";
+import { getCurrentUser } from "../../../lib/session";
+import { getContainer } from "../../../di/container";
+import { getHomeworkStatus } from "../../../core/usecases/liveHomeworkUsecases";
+import { NotFoundError, ForbiddenError } from "../../../core/domain/errors";
+
+// Host status page (slice 17): owner-only. Completion count, time remaining,
+// and the leaderboard. Owner-gated by the SAME getOwnedSet every other
+// owner-only route uses (re-checked inside getHomeworkStatus, not just here) —
+// see docs/ADR-homework-mode.md. NO WebSocket / big-screen experience: this is
+// async homework, there is no live moment to watch, so a normal page reload
+// showing current data is the whole design (a deliberate scope cut vs slice
+// 13's host screen).
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const code = Astro.params.code!;
+const { setRepo, cardRepo, userRepo, liveHomeworkRepo } = await getContainer();
+
+let status;
+try {
+  status = await getHomeworkStatus({ homeworkRepo: liveHomeworkRepo, setRepo, cardRepo, userRepo }, code, user.id);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  if (err instanceof ForbiddenError) return new Response(null, { status: 403 });
+  throw err;
+}
+
+const joinUrl = `${Astro.url.protocol}//${Astro.url.host}/homework/join`;
+---
+
+<BaseLayout title={t("homework.status.title", locale)} locale={locale}>
+  <a href={`/sets/${status.assignment.setId}?lang=${locale}`}>{t("homework.status.backToSet", locale)}</a>
+  <h1>{t("homework.status.title", locale)}</h1>
+
+  <div class="card stack" style="margin-bottom: var(--space-6)">
+    <p><strong>{t("homework.status.code", locale, { code: status.assignment.code })}</strong></p>
+    <p><small>{t("homework.status.shareHint", locale, { url: joinUrl })}</small></p>
+    <p>
+      {status.deadlinePassed
+        ? t("homework.status.deadlinePassed", locale)
+        : t("homework.status.timeRemaining", locale, { days: status.daysRemaining })}
+    </p>
+    <p>{t("homework.status.completion", locale, { completed: status.completedCount, total: status.attemptCount })}</p>
+  </div>
+
+  <h2>{t("homework.leaderboard.title", locale)}</h2>
+  <p>{status.deadlinePassed ? t("homework.leaderboard.final", locale) : t("homework.leaderboard.stillOpen", locale)}</p>
+  {
+    status.leaderboard.length === 0 ? (
+      <p class="empty-state">{t("homework.leaderboard.empty", locale)}</p>
+    ) : (
+      <table>
+        <thead>
+          <tr>
+            <th>{t("homework.leaderboard.column.rank", locale)}</th>
+            <th>{t("homework.leaderboard.column.student", locale)}</th>
+            <th>{t("homework.leaderboard.column.score", locale)}</th>
+            <th>{t("homework.leaderboard.column.status", locale)}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {status.leaderboard.map((e) => (
+            <tr>
+              <td>{e.rank}</td>
+              <td>{e.displayName}</td>
+              <td>{e.score}</td>
+              <td>{e.completedAt === null ? t("homework.leaderboard.inProgress", locale) : t("homework.leaderboard.completed", locale)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+</BaseLayout>

@@ -4,6 +4,27 @@ Things deliberately left unfinished or simplified, grouped by the slice that
 introduced them, per the "be pragmatic, don't block on infeasible-in-sandbox
 items" guidance:
 
+## Slice 16 (teacher insights) — bug found during slice 17's review, fixed retroactively
+
+- **`sets/[id]/insights.astro` was broken in production since it shipped.**
+  It destructured `insightsRepo: liveQuizInsightsRepo` from the container,
+  but the container only ever exposed the key `liveQuizInsightsRepo` — never
+  `insightsRepo`. The local ended up `undefined`, so any real visit to this
+  page threw a runtime error before rendering. No automated test caught it:
+  `bun test` calls `getSetInsights` directly at the usecase layer (correctly
+  — that's the unit under test), never through the actual Astro page/its
+  `getContainer()` destructuring, so a wiring typo at exactly that boundary
+  had no test surface to fail against. Fixed by destructuring the real key.
+  **General lesson, not just this one bug**: this project's test suite has
+  thorough usecase/domain coverage but zero automated coverage of Astro
+  pages themselves (no page-render/route test harness exists) — a
+  container-wiring mismatch in any `.astro` file is a blind spot the current
+  test discipline cannot catch, only manual click-through or a future
+  page-level test harness would. Worth deciding whether that gap is worth
+  closing (e.g. a lightweight smoke test hitting every page route with a
+  logged-in owner session and asserting a 200, not full content assertions)
+  if this class of bug recurs.
+
 ## Slice 11 (live quiz core)
 
 - **No multi-client real-browser QA yet.** The actual WebSocket wire

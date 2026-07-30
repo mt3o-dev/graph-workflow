@@ -14,6 +14,7 @@ import type { LiveSessionPort } from "../core/ports/liveSessionPort";
 import { createInMemoryLiveSessionPort } from "../adapters/liveQuiz/inMemoryLiveSessionPort";
 import type { LiveStreakBonusRepoPort } from "../core/ports/liveStreakBonusRepoPort";
 import type { LiveQuizInsightsRepoPort } from "../core/ports/liveQuizInsightsRepoPort";
+import type { LiveHomeworkRepoPort } from "../core/ports/liveHomeworkRepoPort";
 
 export interface Container {
   setRepo: SetRepoPort;
@@ -44,6 +45,8 @@ export interface Container {
   liveStreakBonusRepo: LiveStreakBonusRepoPort;
   /** Slice 16 (live-quiz teacher insights) — durable per-round/per-player/per-question outcome records; see liveQuizInsightsRepoPort.ts. */
   liveQuizInsightsRepo: LiveQuizInsightsRepoPort;
+  /** Slice 17 (async homework mode) — durable assignments/attempts/answers, the persistence live-quiz's in-memory rooms can't provide; see liveHomeworkRepoPort.ts / docs/ADR-homework-mode.md. */
+  liveHomeworkRepo: LiveHomeworkRepoPort;
   seedAdminIfNeeded(): Promise<void>;
 }
 
@@ -64,6 +67,7 @@ async function buildContainer(): Promise<Container> {
   let pushSubscriptionRepo: PushSubscriptionRepoPort;
   let liveStreakBonusRepo: LiveStreakBonusRepoPort;
   let liveQuizInsightsRepo: LiveQuizInsightsRepoPort;
+  let liveHomeworkRepo: LiveHomeworkRepoPort;
 
   if (driver === "postgres") {
     const { createSetRepoPg } = await import("../adapters/db/setRepo.pg");
@@ -76,6 +80,7 @@ async function buildContainer(): Promise<Container> {
     const { createPushSubscriptionRepoPg } = await import("../adapters/db/pushSubscriptionRepo.pg");
     const { createLiveStreakBonusRepoPg } = await import("../adapters/db/liveStreakBonusRepo.pg");
     const { createLiveQuizInsightsRepoPg } = await import("../adapters/db/liveQuizInsightsRepo.pg");
+    const { createLiveHomeworkRepoPg } = await import("../adapters/db/liveHomeworkRepo.pg");
     const pgDb = db as PgDb;
     setRepo = createSetRepoPg(pgDb);
     cardRepo = createCardRepoPg(pgDb);
@@ -87,6 +92,7 @@ async function buildContainer(): Promise<Container> {
     pushSubscriptionRepo = createPushSubscriptionRepoPg(pgDb);
     liveStreakBonusRepo = createLiveStreakBonusRepoPg(pgDb);
     liveQuizInsightsRepo = createLiveQuizInsightsRepoPg(pgDb);
+    liveHomeworkRepo = createLiveHomeworkRepoPg(pgDb);
   } else {
     const { createSetRepoSqlite } = await import("../adapters/db/setRepo.sqlite");
     const { createCardRepoSqlite } = await import("../adapters/db/cardRepo.sqlite");
@@ -98,6 +104,7 @@ async function buildContainer(): Promise<Container> {
     const { createPushSubscriptionRepoSqlite } = await import("../adapters/db/pushSubscriptionRepo.sqlite");
     const { createLiveStreakBonusRepoSqlite } = await import("../adapters/db/liveStreakBonusRepo.sqlite");
     const { createLiveQuizInsightsRepoSqlite } = await import("../adapters/db/liveQuizInsightsRepo.sqlite");
+    const { createLiveHomeworkRepoSqlite } = await import("../adapters/db/liveHomeworkRepo.sqlite");
     const sqliteDb = db as SqliteDb;
     setRepo = createSetRepoSqlite(sqliteDb);
     cardRepo = createCardRepoSqlite(sqliteDb);
@@ -109,6 +116,7 @@ async function buildContainer(): Promise<Container> {
     pushSubscriptionRepo = createPushSubscriptionRepoSqlite(sqliteDb);
     liveStreakBonusRepo = createLiveStreakBonusRepoSqlite(sqliteDb);
     liveQuizInsightsRepo = createLiveQuizInsightsRepoSqlite(sqliteDb);
+    liveHomeworkRepo = createLiveHomeworkRepoSqlite(sqliteDb);
   }
 
   const { createWebPushAdapter } = await import("../adapters/push/webPushAdapter");
@@ -176,6 +184,7 @@ async function buildContainer(): Promise<Container> {
     liveSessionPort,
     liveStreakBonusRepo,
     liveQuizInsightsRepo,
+    liveHomeworkRepo,
     seedAdminIfNeeded,
   };
 }

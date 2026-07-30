@@ -121,6 +121,38 @@ export async function migratePg(db: PgDb): Promise<void> {
       finished_at TIMESTAMP NOT NULL
     );
   `);
+  // Slice 17 (async homework mode) — mirrors migrateSqlite.ts. Three new
+  // tables, see docs/ADR-homework-mode.md.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS live_homework_assignments (
+      id TEXT PRIMARY KEY,
+      set_id TEXT NOT NULL REFERENCES sets(id) ON DELETE CASCADE,
+      host_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      deadline TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL
+    );
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS live_homework_attempts (
+      id TEXT PRIMARY KEY,
+      assignment_id TEXT NOT NULL REFERENCES live_homework_assignments(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      score INTEGER NOT NULL DEFAULT 0,
+      completed_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL
+    );
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS live_homework_answers (
+      id TEXT PRIMARY KEY,
+      attempt_id TEXT NOT NULL REFERENCES live_homework_attempts(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      correct BOOLEAN NOT NULL,
+      answered_at TIMESTAMP NOT NULL
+    );
+  `);
+
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
@@ -136,6 +168,17 @@ export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_live_quiz_answer_records_set ON live_quiz_answer_records(set_id);`);
   await db.execute(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_quiz_answer_records_unique ON live_quiz_answer_records(room_code, card_id, user_id);`,
+  );
+
+  // Slice 17: same lookups + real unique guards as migrateSqlite.ts.
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_live_homework_assignments_set ON live_homework_assignments(set_id);`);
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_assignments_code ON live_homework_assignments(code);`);
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_attempts_unique ON live_homework_attempts(assignment_id, user_id);`,
+  );
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_live_homework_answers_attempt ON live_homework_answers(attempt_id);`);
+  await db.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_answers_unique ON live_homework_answers(attempt_id, card_id);`,
   );
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler

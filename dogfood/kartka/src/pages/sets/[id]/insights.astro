@@ -24,7 +24,7 @@ const locale = resolveLocale({
   acceptLanguage: Astro.request.headers.get("accept-language"),
 });
 
-const { setRepo, cardRepo, insightsRepo: liveQuizInsightsRepo } = await getContainer();
+const { setRepo, cardRepo, liveQuizInsightsRepo } = await getContainer();
 const setId = Astro.params.id!;
 
 let set;

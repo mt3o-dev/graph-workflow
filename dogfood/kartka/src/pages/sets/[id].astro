@@ -6,6 +6,7 @@ import { getContainer } from "../../di/container";
 import { getOwnedSet } from "../../core/usecases/setUsecases";
 import { listCardsInSet } from "../../core/usecases/cardUsecases";
 import { previewCramSession } from "../../core/usecases/cramUsecases";
+import { listHomeworkAssignmentsForSet } from "../../core/usecases/liveHomeworkUsecases";
 import { parsePageQuery } from "../../lib/pageQuery";
 import { renderCardsTableFragment, renderVisibilityControlFragment, renderCramControlFragment } from "../../lib/fragments";
 import { NotFoundError, ForbiddenError } from "../../core/domain/errors";
@@ -52,6 +53,18 @@ const cardTypes = ["basic", "cloze", "multiple_choice", "true_false", "type_answ
 const allCards = await cardRepo.listAllBySet(setId);
 const hasLiveEligibleCards = allCards.some((c) => isLiveEligibleType(c.type));
 const liveCreateUrl = `${Astro.url.protocol}//${Astro.url.hostname}:${ENV.LIVE_WS_PORT || "4322"}/live/create`;
+
+// Slice 17 (async homework mode): owner-only "assign as homework" entry point +
+// a list of this set's existing assignments (each links to its host status
+// page). Unlike live mode above, this is a plain Astro API route in THIS app —
+// no WebSocket sidecar involved — see docs/ADR-homework-mode.md.
+const { liveHomeworkRepo } = await getContainer();
+const homeworkDeps = { homeworkRepo: liveHomeworkRepo, setRepo, cardRepo };
+const homeworkAssignments = await listHomeworkAssignmentsForSet(homeworkDeps, setId, user.id);
+const homeworkError = Astro.url.searchParams.get("homeworkError") === "1";
+// Min deadline for the date input = today's UTC calendar date (matches the
+// server-side "today or later" rule in createHomeworkAssignment / slice 8).
+const todayIso = new Date().toISOString().slice(0, 10);
 ---
 
 <BaseLayout title={t("cards.title", locale, { setTitle: set.title })} locale={locale}>
@@ -76,6 +89,43 @@ const liveCreateUrl = `${Astro.url.protocol}//${Astro.url.hostname}:${ENV.LIVE_W
           </form>
         ) : (
           <p class="empty-state">{t("live.start.noEligibleCards", locale)}</p>
+        )
+      }
+    </div>
+  </details>
+
+  <details class="card" style="margin-bottom: var(--space-6)">
+    <summary class="btn btn-primary" style="display:inline-block">{t("homework.assign.title", locale)}</summary>
+    <div class="stack" style="margin-top: var(--space-4)">
+      {homeworkError && <p class="field-error">{t("homework.assign.error", locale)}</p>}
+      {
+        hasLiveEligibleCards ? (
+          <form method="post" action={`/api/sets/${setId}/homework?lang=${locale}`} class="stack">
+            <p>{t("homework.assign.intro", locale)}</p>
+            <div class="field">
+              <label for="deadline">{t("homework.assign.deadlineLabel", locale)}</label>
+              <input type="date" id="deadline" name="deadline" min={todayIso} required />
+            </div>
+            <button type="submit" class="btn-primary">{t("homework.assign.submit", locale)}</button>
+          </form>
+        ) : (
+          <p class="empty-state">{t("homework.assign.noEligibleCards", locale)}</p>
+        )
+      }
+      {
+        homeworkAssignments.length > 0 && (
+          <div class="stack">
+            <h3>{t("homework.assign.existing", locale)}</h3>
+            <ul class="stack">
+              {homeworkAssignments.map((a) => (
+                <li>
+                  <a href={`/homework/${a.code}/status?lang=${locale}`}>
+                    {t("homework.assign.listItem", locale, { code: a.code, deadline: a.deadline.toISOString().slice(0, 10) })}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         )
       }
     </div>

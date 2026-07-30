@@ -669,6 +669,53 @@ roadmap, each independently reviewed to the same bar as the required work.
 Slice 17 (async homework mode) remains the one item left on the full-
 Kahoot-mode roadmap, not built this session.
 
+## Slice 17 result — kartka-live-homework-mode (roadmap complete)
+
+The last slice on the full 17-slice roadmap, and the first slice in the
+finished-round-side-effect family (after #15's and #16's each needing
+post-review fixes) to land with **zero bugs found in its own logic** — both
+built and reviewed by Opus per explicit request, on a slice that required a
+genuine architectural call rather than an incremental addition. The call:
+build async homework mode **without** the WebSocket sidecar at all — plain
+Astro SSR/htmx form POSTs against three new DB tables, reusing only the
+*pure* scoring/domain functions from the live-quiz core (`isAnswerCorrect`,
+`isLiveEligibleType`, `toPublicQuestion`), not `RoomState`/`LiveSessionPort`/
+the transport itself. Reviewed and confirmed sound: a multi-day durable
+assignment cannot live in the in-memory, single-process, minutes-long
+`Map` the sidecar was built for, and homework mode has no synchronized
+real-time component a socket would actually carry. The three concurrency
+guards this slice needed (one attempt per student, no double-scoring on a
+repeated submit, an idempotent completion transition) were all designed in
+as DB-level constraints from the start — exactly the discipline slices
+15/16 had to learn the hard way — and held clean under 5 repeated
+concurrency-test runs. The deadline-timezone handling directly reused
+slice 8's UTC-calendar-string fix rather than reintroducing that bug class.
+
+**One real bug surfaced, but not slice 17's own**: the review traced a
+production-breaking wiring error in slice 16's `insights.astro` — it
+destructured a container key (`insightsRepo`) that never existed (the
+container only ever exposed `liveQuizInsightsRepo`), so any real visit to
+that page has thrown since it shipped. `bun test` never caught it because
+tests call `getSetInsights` directly at the usecase layer — correct unit
+coverage, but a total blind spot for wiring mismatches at the Astro-page
+boundary itself. Fixed immediately (a one-line rename). **New standing
+lesson (recorded in `docs/TODO.md`)**: this project has thorough usecase/
+domain test coverage and essentially zero automated coverage of the pages
+that actually wire containers into routes — worth a lightweight page-render
+smoke test (hit every route with a logged-in session, assert non-5xx) if
+this class of bug recurs, since it's cheap insurance against exactly this
+failure mode. 343/343 tests, build green throughout.
+
+**This closes out the entire originally-scoped 17-slice roadmap**: base
+MVP (1-4), six post-MVP feature slices (5-10), and the full-Kahoot live-quiz
+arc (11-17) — 17 slices total, each independently built and adversarially
+reviewed. Across the whole arc, review caught and fixed 8 real, non-
+hypothetical bugs before merge (slices 1, 4, 7, 8, 11, 12, 15 ×2, 16) plus
+honestly disclosed 3 genuine browser-QA gaps this environment has no
+tooling to close (slices 6, 9, 11) — the empirical case for the graph-
+workflow's review-gate discipline (issue #29) this whole dogfood set out to
+test.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

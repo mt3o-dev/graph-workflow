@@ -159,3 +159,44 @@ export const liveQuizAnswerRecords = sqliteTable("live_quiz_answer_records", {
   correct: integer("correct", { mode: "boolean" }).notNull(),
   finishedAt: integer("finished_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+// Slice 17 (async homework mode): a durable, deadline-bound async variant of
+// the live-quiz concept — deliberately NOT built on the in-memory
+// RoomState/LiveSessionPort/WebSocket machinery (see docs/ADR-homework-mode.md).
+// One assignment = one set published under a short shareable code with a
+// future deadline. `code` is not marked .unique() here (mirrors sets.slug's
+// note) — uniqueness is a separate CREATE UNIQUE INDEX in migrate*.ts.
+export const liveHomeworkAssignments = sqliteTable("live_homework_assignments", {
+  id: text("id").primaryKey(),
+  setId: text("set_id").notNull().references(() => sets.id, { onDelete: "cascade" }),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  code: text("code").notNull(),
+  deadline: integer("deadline", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+// Slice 17: one student's single attempt at one assignment. `score` is a
+// snapshot correct-count set at completion; the leaderboard recomputes from
+// answer records (source of truth). At most one row per (assignment_id,
+// user_id) — a real unique index in migrate*.ts is the one-attempt-per-student
+// guard.
+export const liveHomeworkAttempts = sqliteTable("live_homework_attempts", {
+  id: text("id").primaryKey(),
+  assignmentId: text("assignment_id").notNull().references(() => liveHomeworkAssignments.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  score: integer("score").notNull().default(0),
+  completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+// Slice 17: one recorded answer per (attempt, question). At most one row per
+// (attempt_id, card_id) — a real unique index in migrate*.ts is the
+// double-submit / double-tab guard (recordAnswer uses onConflictDoNothing),
+// the same DB-constraint discipline slices 15/16 landed on.
+export const liveHomeworkAnswers = sqliteTable("live_homework_answers", {
+  id: text("id").primaryKey(),
+  attemptId: text("attempt_id").notNull().references(() => liveHomeworkAttempts.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  correct: integer("correct", { mode: "boolean" }).notNull(),
+  answeredAt: integer("answered_at", { mode: "timestamp_ms" }).notNull(),
+});

@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../i18n";
+import { getCurrentUser } from "../../lib/session";
+import { getContainer } from "../../di/container";
+import { getHomeworkPlayState, getHomeworkResult } from "../../core/usecases/liveHomeworkUsecases";
+import { NotFoundError } from "../../core/domain/errors";
+
+// Student play page (slice 17): plain SSR + form POSTs, NO WebSocket — see
+// docs/ADR-homework-mode.md. Presents the assignment's live-eligible questions
+// one at a time; each answer is a full-page POST to /api/homework/[code]/answer
+// which records it and redirects back here (PRG). Self-paced — no synchronized
+// countdown, no speed bonus (a deliberate scope decision, documented in the
+// ADR: a speed bonus is only fair when everyone faces the same timer).
+
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const code = Astro.params.code!;
+const { setRepo, cardRepo, userRepo, liveHomeworkRepo } = await getContainer();
+const deps = { homeworkRepo: liveHomeworkRepo, setRepo, cardRepo };
+
+let state;
+try {
+  state = await getHomeworkPlayState(deps, { code, userId: user.id });
+} catch (err) {
+  if (err instanceof NotFoundError) return Astro.redirect(`/homework/join?error=notfound&lang=${locale}`);
+  throw err;
+}
+
+// When finished (all answered, or the deadline has passed), also load the
+// result + leaderboard view for this student.
+const result = state.finished ? await getHomeworkResult({ ...deps, userRepo }, code, user.id) : null;
+
+const q = state.currentQuestion;
+const answerAction = `/api/homework/${code}/answer?lang=${locale}`;
+---
+
+<BaseLayout title={t("homework.play.title", locale)} locale={locale}>
+  <h1>{t("homework.play.title", locale)}</h1>
+
+  {
+    state.finished ? (
+      <div class="stack">
+        {state.deadlinePassed && state.attempt.completedAt === null ? (
+          <p class="empty-state">{t("homework.play.closedByDeadline", locale)}</p>
+        ) : (
+          <p>{t("homework.play.done", locale)}</p>
+        )}
+        <p>
+          <strong>{t("homework.result.yourScore", locale, { correct: result!.correctCount, total: result!.totalQuestions })}</strong>
+        </p>
+
+        <h2>{t("homework.leaderboard.title", locale)}</h2>
+        <p>
+          {result!.deadlinePassed ? t("homework.leaderboard.final", locale) : t("homework.leaderboard.stillOpen", locale)}
+        </p>
+        {result!.leaderboard.length === 0 ? (
+          <p class="empty-state">{t("homework.leaderboard.empty", locale)}</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>{t("homework.leaderboard.column.rank", locale)}</th>
+                <th>{t("homework.leaderboard.column.student", locale)}</th>
+                <th>{t("homework.leaderboard.column.score", locale)}</th>
+                <th>{t("homework.leaderboard.column.status", locale)}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result!.leaderboard.map((e) => (
+                <tr>
+                  <td>{e.rank}</td>
+                  <td>
+                    {e.userId === user.id ? <strong>{e.displayName}</strong> : e.displayName}
+                  </td>
+                  <td>{e.score}</td>
+                  <td>{e.completedAt === null ? t("homework.leaderboard.inProgress", locale) : t("homework.leaderboard.completed", locale)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    ) : q ? (
+      <div class="card stack">
+        <p>{t("homework.play.progress", locale, { answered: state.answeredCount, total: state.totalQuestions })}</p>
+        <form method="post" action={answerAction} class="stack">
+          <input type="hidden" name="cardId" value={q.cardId} />
+          {q.type === "multiple_choice" && (
+            <fieldset class="stack">
+              <legend>{q.question}</legend>
+              {q.options.map((opt, i) => (
+                <label class="row">
+                  <input type="radio" name="rawAnswer" value={i} required /> {opt}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {q.type === "true_false" && (
+            <fieldset class="stack">
+              <legend>{q.statement}</legend>
+              <label class="row">
+                <input type="radio" name="rawAnswer" value="true" required /> {t("homework.question.trueLabel", locale)}
+              </label>
+              <label class="row">
+                <input type="radio" name="rawAnswer" value="false" required /> {t("homework.question.falseLabel", locale)}
+              </label>
+            </fieldset>
+          )}
+          {q.type === "type_answer" && (
+            <div class="field">
+              <label for="rawAnswer">{q.prompt}</label>
+              <input id="rawAnswer" name="rawAnswer" required autocomplete="off" />
+            </div>
+          )}
+          <button type="submit" class="btn-primary">{t("homework.question.submit", locale)}</button>
+        </form>
+      </div>
+    ) : (
+      <p class="empty-state">{t("homework.play.noQuestions", locale)}</p>
+    )
+  }
+</BaseLayout>

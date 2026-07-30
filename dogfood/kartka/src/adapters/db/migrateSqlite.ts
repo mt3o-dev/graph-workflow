@@ -142,6 +142,39 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       finished_at INTEGER NOT NULL
     );
   `);
+  // Slice 17 (async homework mode): three brand-new tables (like
+  // live_streak_bonuses / live_quiz_answer_records above), so no ALTER-table
+  // dance is needed — see docs/ADR-homework-mode.md.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS live_homework_assignments (
+      id TEXT PRIMARY KEY,
+      set_id TEXT NOT NULL REFERENCES sets(id) ON DELETE CASCADE,
+      host_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      deadline INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS live_homework_attempts (
+      id TEXT PRIMARY KEY,
+      assignment_id TEXT NOT NULL REFERENCES live_homework_assignments(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      score INTEGER NOT NULL DEFAULT 0,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS live_homework_answers (
+      id TEXT PRIMARY KEY,
+      attempt_id TEXT NOT NULL REFERENCES live_homework_attempts(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      correct INTEGER NOT NULL,
+      answered_at INTEGER NOT NULL
+    );
+  `);
+
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
@@ -174,6 +207,28 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   // review landed on, applied here from the start.
   db.run(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_quiz_answer_records_unique ON live_quiz_answer_records(room_code, card_id, user_id);`,
+  );
+
+  // Slice 17: homework lookups + the two real (non-partial) unique guards that
+  // make this feature concurrency-safe from the start (applying slices 15/16's
+  // lesson, not waiting for review to find it — see docs/ADR-homework-mode.md).
+  db.run(`CREATE INDEX IF NOT EXISTS idx_live_homework_assignments_set ON live_homework_assignments(set_id);`);
+  // A join code must resolve to exactly one assignment — createHomeworkAssignment
+  // still probes for a free code first, but this is the real guarantee.
+  db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_assignments_code ON live_homework_assignments(code);`);
+  // One attempt per student per assignment (roadmap point 3/7): two concurrent
+  // first-plays from two tabs race here; createAttempt's caller catches the
+  // violation and re-reads the winner (ensureAttempt), never a second attempt.
+  db.run(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_attempts_unique ON live_homework_attempts(assignment_id, user_id);`,
+  );
+  db.run(`CREATE INDEX IF NOT EXISTS idx_live_homework_answers_attempt ON live_homework_answers(attempt_id);`);
+  // One answer per question per attempt (roadmap point 7): a double form-submit
+  // / network retry / two concurrent tabs answering the same question collide
+  // here; recordAnswer uses onConflictDoNothing so the loser is silently
+  // skipped — never a double-score. See the Promise.all concurrency test.
+  db.run(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_homework_answers_unique ON live_homework_answers(attempt_id, card_id);`,
   );
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
