@@ -1,4 +1,4 @@
-import type { LiveAnswerResult, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
+import type { HintReveal, LiveAnswerResult, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
 
 /**
  * Storage/lifecycle port for live-quiz rooms (slice 11). The only
@@ -34,4 +34,11 @@ export interface LiveSessionPort {
   assignPlayerTeam(code: string, userId: string, teamId: string | null): Promise<RoomState>;
   /** Slice 12 (teams): team-ranked leaderboard, see domain.teamScoreboard. Empty array if teams aren't configured. */
   getTeamScoreboard(code: string): Promise<TeamScoreboardEntry[]>;
+  /**
+   * Slice 14 (hints): self-service, scoped to the requesting player's own
+   * answer/hint state only — see domain.requestHint. Idempotent per
+   * (player, question): a repeated request for the same card returns the
+   * already-revealed hint without a second charge.
+   */
+  requestHint(code: string, userId: string, cardId: string): Promise<{ room: RoomState; hint: HintReveal }>;
 }

@@ -577,6 +577,29 @@ gate was reinstated per issue #29) shipped an exploitable bug; every
 slice after, reviewed as a matter of course, either came back clean or had
 its defect caught before merge.
 
+## Slice 14 result — kartka-live-streaks-hints
+
+The first slice past the originally-planned roadmap (14-17 were documented
+future work, not required output): a streak bonus and per-player hint
+mechanic for live quiz. The risk here was a different axis than slice 11's
+new architecture — this slice modifies `submitReview`, the single most
+reused/tested function in the entire app, to add a side effect (resolving
+a durable "pending streak bonus" record — confirmed if the same card is
+later answered correctly on a real review, forfeited otherwise). Reviewed
+**clean, zero findings** — the reviewer specifically re-ran the five most
+critical pre-existing test files in isolation and confirmed via `git diff`
+they're byte-identical, verified the new `bonusRepo` parameter is genuinely
+optional with every call site checked, and confirmed the bonus-resolution
+side effect strictly runs after the real scheduling write already
+succeeded, discarding its own result so it structurally cannot affect what
+`submitReview` returns. Streak detection, duplicate-record prevention,
+single-resolution, and the hint mechanic's per-type answer-leak safety
+(especially multiple_choice's "eliminate one wrong option" correctly
+filtering out the correct index first) were all deliberately tested against
+adversarial fixtures, not just happy-path cases. 288/288 tests, build green,
+zero changes needed post-review — the most delicate integration point in
+the project so far held up without a single finding.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

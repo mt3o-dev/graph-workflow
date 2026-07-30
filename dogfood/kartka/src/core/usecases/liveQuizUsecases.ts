@@ -1,7 +1,8 @@
 import type { LiveSessionPort } from "../ports/liveSessionPort";
 import type { CardRepoPort } from "../ports/cardRepoPort";
 import type { SetRepoPort } from "../ports/setRepoPort";
-import type { LiveAnswerResult, LiveCardType, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
+import type { LiveStreakBonusRepoPort } from "../ports/liveStreakBonusRepoPort";
+import type { HintReveal, LiveAnswerResult, LiveCardType, LiveQuestion, RoomState, ScoreboardEntry, TeamScoreboardEntry } from "../domain/liveQuiz";
 import { isLiveEligibleType } from "../domain/liveQuiz";
 import { getOwnedSet } from "./setUsecases";
 import { ForbiddenError, NotFoundError, ValidationError } from "../domain/errors";
@@ -84,15 +85,62 @@ export interface SubmitLiveAnswerInput {
  * the real domain scoring (core/domain/liveQuiz.ts's recordAnswer/scoreAnswer
  * — which in turn reuses levenshtein.ts for type_answer correctness). A
  * player who hasn't joined the room yet cannot submit an answer.
+ *
+ * Slice 14: when the recorded answer crosses the streak-bonus threshold
+ * (`result.streakBonusAwarded`), creates the durable "pending" bonus record
+ * for (userId, cardId) that reviewUsecases.submitReview later confirms or
+ * forfeits — see core/ports/liveStreakBonusRepoPort.ts. `bonusRepo` is
+ * optional so callers that don't care about bonus persistence (e.g. existing
+ * tests exercising only the in-round scoring path) don't need to supply one;
+ * production wiring (live-server.ts) always passes the real repo. Per the
+ * roadmap's "don't over-award" rule: if an unresolved pending record already
+ * exists for this exact (userId, cardId) pair (e.g. the player streaked into
+ * the same card again in a later round before their previous bonus on it
+ * resolved), no second record is created — the existing one still stands.
  */
 export async function submitLiveAnswer(
   port: LiveSessionPort,
   input: SubmitLiveAnswerInput,
+  bonusRepo?: LiveStreakBonusRepoPort,
 ): Promise<{ room: RoomState; result: LiveAnswerResult }> {
   const room = await port.getRoom(input.code);
   if (!room) throw new NotFoundError("Room");
   if (!room.players[input.userId]) throw new ForbiddenError("Join the room before answering");
-  return port.submitAnswer(input.code, input.userId, input.cardId, input.rawAnswer, input.now ?? new Date());
+  const outcome = await port.submitAnswer(input.code, input.userId, input.cardId, input.rawAnswer, input.now ?? new Date());
+
+  if (bonusRepo && outcome.result.streakBonusAwarded) {
+    const existing = await bonusRepo.findUnresolvedByUserAndCard(input.userId, input.cardId);
+    if (!existing) {
+      await bonusRepo.createPending({
+        userId: input.userId,
+        cardId: input.cardId,
+        roomCode: input.code,
+        points: outcome.result.points,
+      });
+    }
+  }
+
+  return outcome;
+}
+
+export interface RequestLiveHintInput {
+  code: string;
+  userId: string;
+  cardId: string;
+}
+
+/**
+ * Self-service (slice 14): the requesting player spends points for a
+ * type-appropriate partial reveal of their own current question — see
+ * domain.requestHint. No host/ownership check beyond "must have joined the
+ * room" (mirrors submitLiveAnswer) since this only ever touches the
+ * requesting player's own state.
+ */
+export async function requestLiveHint(port: LiveSessionPort, input: RequestLiveHintInput): Promise<{ room: RoomState; hint: HintReveal }> {
+  const room = await port.getRoom(input.code);
+  if (!room) throw new NotFoundError("Room");
+  if (!room.players[input.userId]) throw new ForbiddenError("Join the room before requesting a hint");
+  return port.requestHint(input.code, input.userId, input.cardId);
 }
 
 export interface AdvanceLiveQuestionInput {

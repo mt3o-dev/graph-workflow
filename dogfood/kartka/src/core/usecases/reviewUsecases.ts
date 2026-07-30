@@ -1,10 +1,45 @@
 import type { CardRepoPort } from "../ports/cardRepoPort";
 import type { SetRepoPort } from "../ports/setRepoPort";
 import type { Sm2SchedulerPort, FsrsSchedulerPort } from "../ports/schedulerPort";
+import type { LiveStreakBonusRepoPort } from "../ports/liveStreakBonusRepoPort";
 import type { Card, ReviewQuality, ReviewState, FsrsReviewState, SchedulerPreference } from "../domain/types";
 import { sm2, sm2InitialState, addDays } from "../domain/sm2";
 import { fsrs, fsrsInitialState, fsrsGradeFromQuality, bootstrapFsrsFromSm2 } from "../domain/fsrs";
 import { getOwnedCard } from "./cardUsecases";
+
+/**
+ * Slice 14: the same 0-5 SM-2 quality threshold sm2.ts itself uses to decide
+ * "pass" (repetitions grow) vs. "fail" (repetitions reset) — see sm2()'s doc
+ * comment. Reused here rather than inventing a second correctness rule for
+ * whether a real review "counts" for confirming a live-quiz streak bonus.
+ */
+const PASSING_QUALITY_THRESHOLD = 3;
+
+/**
+ * Slice 14 side effect, appended after the real SM-2/FSRS scheduling above
+ * has already succeeded — see submitReview's doc comment for why this is
+ * deliberately NOT folded into submitSm2Review/submitFsrsReview themselves.
+ * Resolves AT MOST one unresolved ("pending") streak-bonus record for this
+ * exact (userId, cardId) pair: 'confirmed' (its points now count toward the
+ * lasting total, see LiveStreakBonusRepoPort.sumConfirmedPointsForUser) if
+ * this review's quality passes, 'forfeited' (no points, ever) otherwise.
+ * Because findUnresolvedByUserAndCard only ever returns an already-'pending'
+ * record, and this is the only place that resolves one, a card can only ever
+ * be resolved once — a second, third, ... review of the same card afterward
+ * finds nothing left to resolve and is a no-op.
+ */
+async function resolvePendingStreakBonus(
+  bonusRepo: LiveStreakBonusRepoPort,
+  userId: string,
+  cardId: string,
+  quality: ReviewQuality,
+  now: Date,
+): Promise<void> {
+  const pending = await bonusRepo.findUnresolvedByUserAndCard(userId, cardId);
+  if (!pending) return;
+  const status = quality >= PASSING_QUALITY_THRESHOLD ? "confirmed" : "forfeited";
+  await bonusRepo.resolve(pending.id, status, now);
+}
 
 /** Both scheduler implementations, bundled — see schedulerPort.ts for why there are two. */
 export interface Schedulers {
@@ -53,12 +88,40 @@ export interface SubmitReviewInput {
   now?: Date;
 }
 
-/** Dispatches to the SM-2 or FSRS update path based on `input.schedulerPreference` (the reviewing user's own setting — see authUsecases.changeSchedulerPreference for how that's set). */
-export async function submitReview(schedulers: Schedulers, input: SubmitReviewInput): Promise<ReviewState | FsrsReviewState> {
+/**
+ * Dispatches to the SM-2 or FSRS update path based on `input.schedulerPreference`
+ * (the reviewing user's own setting — see authUsecases.changeSchedulerPreference
+ * for how that's set). This is the single most reused, most-tested function in
+ * the app — every `/api/review/*` endpoint and the offline-sync replay path
+ * all funnel through it, and every prior slice's review behavior depends on it
+ * being unchanged.
+ *
+ * Slice 14 adds ONE thing here: `bonusRepo` (optional — omit it and behavior
+ * is byte-for-byte what it was before this slice, which is exactly why every
+ * pre-existing call/test that doesn't pass it still passes unchanged). When
+ * provided, AFTER the real scheduling result above has already been computed
+ * and persisted, this checks for — and resolves — at most one pending
+ * live-quiz streak bonus for this (userId, cardId) pair. See
+ * resolvePendingStreakBonus's doc comment for the exact resolution rule.
+ * This is a pure side effect bolted on at the end; it does not read, does
+ * not influence, and cannot change the SM-2/FSRS result being returned.
+ */
+export async function submitReview(
+  schedulers: Schedulers,
+  input: SubmitReviewInput,
+  bonusRepo?: LiveStreakBonusRepoPort,
+): Promise<ReviewState | FsrsReviewState> {
   const now = input.now ?? new Date();
-  return input.schedulerPreference === "fsrs"
-    ? submitFsrsReview(schedulers.fsrs, schedulers.sm2, input, now)
-    : submitSm2Review(schedulers.sm2, input, now);
+  const result =
+    input.schedulerPreference === "fsrs"
+      ? await submitFsrsReview(schedulers.fsrs, schedulers.sm2, input, now)
+      : await submitSm2Review(schedulers.sm2, input, now);
+
+  if (bonusRepo) {
+    await resolvePendingStreakBonus(bonusRepo, input.userId, input.cardId, input.quality, now);
+  }
+
+  return result;
 }
 
 async function submitSm2Review(scheduler: Sm2SchedulerPort, input: SubmitReviewInput, now: Date): Promise<ReviewState> {
@@ -223,6 +286,7 @@ export async function syncOfflineReviews(
   schedulerPreference: SchedulerPreference,
   items: OfflineReviewItem[],
   serverNow: Date = new Date(),
+  bonusRepo?: LiveStreakBonusRepoPort,
 ): Promise<SyncResult> {
   const applied: SyncOutcome[] = [];
   const skipped: SyncSkip[] = [];
@@ -261,13 +325,17 @@ export async function syncOfflineReviews(
       if (ts.getTime() > serverNow.getTime()) ts = serverNow;
       if (floor && ts.getTime() < floor.getTime()) ts = floor;
 
-      await submitReview(schedulers, {
-        cardId,
-        userId,
-        quality: item.quality as ReviewQuality,
-        schedulerPreference,
-        now: ts,
-      });
+      await submitReview(
+        schedulers,
+        {
+          cardId,
+          userId,
+          quality: item.quality as ReviewQuality,
+          schedulerPreference,
+          now: ts,
+        },
+        bonusRepo,
+      );
 
       floor = ts;
       applied.push({ cardId, answeredAt: ts });

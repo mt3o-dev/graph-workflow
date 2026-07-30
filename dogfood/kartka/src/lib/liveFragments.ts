@@ -5,8 +5,8 @@
 // see docs/ADR-live-transport.md for the full message-shape documentation.
 import { t, type Locale } from "../i18n";
 import { escapeHtml } from "./html";
-import type { RoomState, PublicLiveQuestion, LiveQuestion, ScoreboardEntry, TeamScoreboardEntry } from "../core/domain/liveQuiz";
-import { toPublicQuestion, teamScoreboard, answeredCount, correctAnswererCount } from "../core/domain/liveQuiz";
+import type { RoomState, PublicLiveQuestion, LiveQuestion, ScoreboardEntry, TeamScoreboardEntry, HintReveal } from "../core/domain/liveQuiz";
+import { toPublicQuestion, teamScoreboard, answeredCount, correctAnswererCount, isHintEligible, HINT_COST } from "../core/domain/liveQuiz";
 import type { MultipleChoicePayload, TrueFalsePayload, TypeAnswerPayload } from "../core/domain/types";
 import { renderQrCodeSvg } from "./qr";
 
@@ -194,20 +194,49 @@ export function renderQuestionFragment(opts: {
     ? `<form ws-send><input type="hidden" name="type" value="advance"/><button type="submit" class="btn-secondary">${escapeHtml(t("live.room.reveal.nextButton", locale))}</button></form>`
     : "";
 
+  // Slice 14: self-service hint, one per player per question. true_false has
+  // no meaningful partial reveal (see core/domain/liveQuiz.ts's header
+  // comment) so the button is simply omitted for that type — this is a
+  // client-side nicety only; requestHint/computeHint are the real
+  // enforcement (they throw for true_false regardless).
+  const hintButton = isHintEligible(pub.type)
+    ? `<form ws-send><input type="hidden" name="type" value="hint"/><input type="hidden" name="cardId" value="${escapeHtml(pub.cardId)}"/><button type="submit" class="btn-secondary">${escapeHtml(
+        t("live.room.question.hintButton", locale, { cost: HINT_COST }),
+      )}</button></form>`
+    : "";
+
   return oob(
     `<h2>${escapeHtml(t("live.room.question.number", locale, { current: index + 1, total }))}</h2>
      ${answerForm}
+     ${hintButton}
+     <p id="live-hint" aria-live="polite"></p>
      <p id="live-answer-status" aria-live="polite"></p>
      ${hostControls}`,
   );
 }
 
+/** Sent privately (unicast) to the socket that requested a hint — see live-server.ts's "hint" message branch. */
+export function renderHintFragment(opts: { hint: HintReveal; locale: Locale }): string {
+  const { hint, locale } = opts;
+  const text =
+    hint.type === "type_answer"
+      ? t("live.room.question.hint.typeAnswer", locale, { letter: hint.firstLetter, length: hint.length })
+      : t("live.room.question.hint.multipleChoice", locale, { option: hint.eliminatedOption });
+  return `<p id="live-hint" hx-swap-oob="true" aria-live="polite">${escapeHtml(text)}</p>`;
+}
+
 /** Sent privately (unicast) to the socket that just submitted an answer — see live-server.ts. */
-export function renderAnswerAckFragment(opts: { correct: boolean; points: number; locale: Locale }): string {
-  const { correct, points, locale } = opts;
+export function renderAnswerAckFragment(opts: { correct: boolean; points: number; streakBonusAwarded: boolean; locale: Locale }): string {
+  const { correct, points, streakBonusAwarded, locale } = opts;
+  // Slice 14: immediate positive feedback the moment a streak crosses the
+  // threshold — the roadmap's "visible on the room's live leaderboard right
+  // away" requirement is satisfied here (this ack fires the instant
+  // recordAnswer awards the bonus) plus this small callout, distinct from
+  // the ordinary "+N" ack so a player notices something extra happened.
+  const streakNote = streakBonusAwarded ? ` ${escapeHtml(t("live.room.question.streakBonus", locale))}` : "";
   return `<p id="live-answer-status" hx-swap-oob="true" aria-live="polite">${escapeHtml(t("live.room.question.answered", locale))} ${
     correct ? `(${escapeHtml(t("live.room.reveal.correct", locale))} +${points})` : ""
-  }</p>`;
+  }${streakNote}</p>`;
 }
 
 export function renderRevealFragment(opts: { room: RoomState; question: LiveQuestion; locale: Locale; isHost: boolean }): string {

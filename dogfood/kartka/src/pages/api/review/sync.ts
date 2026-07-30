@@ -48,7 +48,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     items.push({ cardId, quality: quality as ReviewQuality, answeredAt });
   }
 
-  const { cardRepo, setRepo, scheduler, fsrsScheduler } = await getContainer();
+  const { cardRepo, setRepo, scheduler, fsrsScheduler, liveStreakBonusRepo } = await getContainer();
   const result = await syncOfflineReviews(
     cardRepo,
     setRepo,
@@ -56,6 +56,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     user.id,
     user.schedulerPreference,
     items,
+    new Date(),
+    liveStreakBonusRepo,
   );
 
   const body = JSON.stringify({

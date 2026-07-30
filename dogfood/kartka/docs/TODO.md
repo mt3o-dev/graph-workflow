@@ -169,3 +169,23 @@ items" guidance:
   admin" before either commits, banning both. Not addressed with a
   transaction/lock — low likelihood, low severity (an operator can still fix
   it via direct DB access), noted rather than fixed for this slice's scope.
+- **Hint scope substitution (slice 14)**: the roadmap's literal wording for
+  the hint mechanic ("reveals a mnemonic/related-fact") assumes authored
+  mnemonic content that doesn't exist on any card type in this app. Rather
+  than inventing a new card-authoring field this slice doesn't otherwise
+  need, a hint is a type-appropriate partial reveal instead: `type_answer`
+  gets first-letter + length, `multiple_choice` gets one wrong option
+  eliminated, `true_false` has no hint (no meaningful partial reveal exists
+  for a binary question) — see `core/domain/liveQuiz.ts`'s "Hints" section.
+  Revisit if/when cards gain an authored mnemonic/hint field of their own.
+- **Streak-bonus score can go negative via hints (slice 14)**: `requestHint`
+  deducts `HINT_COST` from the player's in-round score with no floor at 0 —
+  consistent with `scoreAnswer`'s existing "just add/subtract points" model
+  and harmless for an ungraded practice round, but worth a floor if a future
+  slice ever surfaces raw in-round score somewhere a negative number would
+  read badly (e.g. a public leaderboard export).
+- **`live_streak_bonuses` rows accumulate forever (slice 14)** — same
+  "documented MVP limitation, not a blocker" pattern as the in-memory
+  `LiveSessionPort` rooms (see `docs/ADR-live-transport.md`): resolved
+  (confirmed/forfeited) rows are never pruned. Fine at this scale; a
+  retention sweep would be a small addition if the table grows large.

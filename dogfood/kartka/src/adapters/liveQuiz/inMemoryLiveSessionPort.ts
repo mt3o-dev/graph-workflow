@@ -7,6 +7,7 @@ import {
   createRoomState,
   generateRoomCode,
   recordAnswer,
+  requestHint,
   scoreboard,
   teamScoreboard,
   type RoomState,
@@ -101,6 +102,13 @@ export function createInMemoryLiveSessionPort(): LiveSessionPort {
     async getTeamScoreboard(code) {
       const room = getOrThrow(code);
       return teamScoreboard(room);
+    },
+
+    async requestHint(code, userId, cardId) {
+      const room = getOrThrow(code);
+      const { room: updated, hint } = requestHint(room, userId, cardId);
+      rooms.set(code, updated);
+      return { room: updated, hint };
     },
   };
 }

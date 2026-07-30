@@ -3,9 +3,17 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import { t, resolveLocale } from "../../i18n";
 import { getCurrentUser } from "../../lib/session";
 import { ENV } from "../../env";
+import { getContainer } from "../../di/container";
 
 const user = await getCurrentUser(Astro.cookies);
 if (!user) return Astro.redirect("/login?next=/account/settings");
+
+// Slice 14: self-service only — always the CURRENT authenticated user's own
+// id, never a param/query value, so this can't be used to peek at another
+// user's bonus total. Computed as a live SUM over confirmed records rather
+// than read from a stored counter — see liveStreakBonusRepoPort.ts.
+const { liveStreakBonusRepo } = await getContainer();
+const streakBonusTotal = await liveStreakBonusRepo.sumConfirmedPointsForUser(user.id);
 
 const locale = resolveLocale({
   queryLang: Astro.url.searchParams.get("lang"),
@@ -54,6 +62,12 @@ const quietHoursEnabled = !!(user.quietHoursStart && user.quietHoursEnd);
 
     <button type="submit" class="btn-primary">{t("common.save", locale)}</button>
   </form>
+
+  <div class="stack card">
+    <h2>{t("settings.streakBonus.title", locale)}</h2>
+    <p class="empty-state">{t("settings.streakBonus.hint", locale)}</p>
+    <p><strong>{t("settings.streakBonus.total", locale, { points: streakBonusTotal })}</strong></p>
+  </div>
 
   <div id="push-reminders" class="stack card" data-vapid-public-key={vapidPublicKey}>
     <h2>{t("settings.reminders.title", locale)}</h2>

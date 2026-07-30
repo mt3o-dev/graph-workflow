@@ -280,6 +280,10 @@
   "settings.quietHours.start": "Początek (UTC)",
   "settings.quietHours.end": "Koniec (UTC)",
 
+  "settings.streakBonus.title": "Bonus za serię w quizie na żywo",
+  "settings.streakBonus.hint": "Punkty zdobyte za serię poprawnych odpowiedzi w quizie na żywo — zatwierdzane dopiero, gdy tę samą fiszkę odpowiesz poprawnie także podczas zwykłej powtórki.",
+  "settings.streakBonus.total": "{points} pkt",
+
   "reminders.notification.body": "Masz {count} fiszek do powtórki.",
 
   "nav.live": "Dołącz do quizu na żywo",
@@ -305,6 +309,10 @@
   "live.room.question.trueLabel": "Prawda",
   "live.room.question.falseLabel": "Fałsz",
   "live.room.question.typeAnswerPlaceholder": "Wpisz odpowiedź…",
+  "live.room.question.hintButton": "Podpowiedź (-{cost} pkt)",
+  "live.room.question.hint.typeAnswer": "Podpowiedź: zaczyna się na \"{letter}\", ma {length} liter.",
+  "live.room.question.hint.multipleChoice": "Podpowiedź: \"{option}\" to niepoprawna odpowiedź.",
+  "live.room.question.streakBonus": "🔥 Bonus za serię!",
   "live.room.reveal.title": "Odkrycie",
   "live.room.reveal.correct": "Poprawnie!",
   "live.room.reveal.incorrect": "Niestety, źle.",

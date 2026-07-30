@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const current = Number(form.get("current") ?? 1);
   const locale = (String(form.get("lang") ?? "") as Locale) || resolveLocale({ queryLang: null, acceptLanguage: request.headers.get("accept-language") });
 
-  const { scheduler, fsrsScheduler, cardRepo, setRepo } = await getContainer();
+  const { scheduler, fsrsScheduler, cardRepo, setRepo, liveStreakBonusRepo } = await getContainer();
   try {
     await getOwnedCard(cardRepo, setRepo, cardId, user.id);
   } catch (err) {
@@ -32,6 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   await submitReview(
     { sm2: scheduler, fsrs: fsrsScheduler },
     { cardId, userId: user.id, quality: qualityFromSelfRating(rating), schedulerPreference: user.schedulerPreference },
+    liveStreakBonusRepo,
   );
 
   const html = await renderNextRich(cardRepo, queue, total, current, locale);

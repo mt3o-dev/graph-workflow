@@ -280,6 +280,10 @@
   "settings.quietHours.start": "Start (UTC)",
   "settings.quietHours.end": "End (UTC)",
 
+  "settings.streakBonus.title": "Live-quiz streak bonus",
+  "settings.streakBonus.hint": "Points earned by hitting an answer streak in a live quiz — confirmed only once you also answer that same card correctly on a later regular review.",
+  "settings.streakBonus.total": "{points} pts",
+
   "reminders.notification.body": "You have {count} cards due for review.",
 
   "nav.live": "Join live quiz",
@@ -305,6 +309,10 @@
   "live.room.question.trueLabel": "True",
   "live.room.question.falseLabel": "False",
   "live.room.question.typeAnswerPlaceholder": "Type your answer…",
+  "live.room.question.hintButton": "Hint (-{cost} pts)",
+  "live.room.question.hint.typeAnswer": "Hint: starts with \"{letter}\", {length} letters long.",
+  "live.room.question.hint.multipleChoice": "Hint: \"{option}\" is not correct.",
+  "live.room.question.streakBonus": "🔥 Streak bonus!",
   "live.room.reveal.title": "Reveal",
   "live.room.reveal.correct": "Correct!",
   "live.room.reveal.incorrect": "Not quite.",

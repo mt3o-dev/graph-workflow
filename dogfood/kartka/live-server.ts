@@ -21,6 +21,9 @@
 //     {"type": "configureTeams", "teamCount": 3}               (host only,
 //       slice 12 — lobby-phase only, see core/domain/liveQuiz.ts's
 //       configureTeams; re-sending reshuffles)
+//     {"type": "hint", "cardId": "..."}                        (slice 14,
+//       self-service — see core/domain/liveQuiz.ts's requestHint. Scoped to
+//       the requesting socket's own userId only.)
 //   server -> client: raw HTML fragments (hx-swap-oob), the same
 //   "HTML over the wire" model as every other htmx interaction in this app —
 //   NOT JSON, since the client just swaps whatever markup it's given. Two
@@ -46,6 +49,7 @@ import {
   setLiveTeams,
   assignLiveTeam,
   isLiveHost,
+  requestLiveHint,
 } from "./src/core/usecases/liveQuizUsecases";
 import { currentQuestion, type RoomState } from "./src/core/domain/liveQuiz";
 import { NotFoundError, ForbiddenError, ValidationError } from "./src/core/domain/errors";
@@ -62,6 +66,7 @@ import {
   renderHostQuestionFragment,
   renderHostRevealFragment,
   renderHostFinishedFragment,
+  renderHintFragment,
 } from "./src/lib/liveFragments";
 
 /**
@@ -344,23 +349,51 @@ const server = Bun.serve<SocketData>({
         return; // ignore malformed frames
       }
 
-      const { liveSessionPort } = await getContainer();
+      const { liveSessionPort, liveStreakBonusRepo } = await getContainer();
 
       if (parsed.type === "answer") {
         const cardId = String(parsed.cardId ?? "");
         const rawAnswer = String(parsed.rawAnswer ?? "");
         try {
-          const { result } = await submitLiveAnswer(liveSessionPort, {
-            code: ws.data.code,
-            userId: ws.data.userId,
-            cardId,
-            rawAnswer,
-          });
-          ws.send(renderAnswerAckFragment({ correct: result.correct, points: result.points, locale: ws.data.locale }));
+          const { result } = await submitLiveAnswer(
+            liveSessionPort,
+            {
+              code: ws.data.code,
+              userId: ws.data.userId,
+              cardId,
+              rawAnswer,
+            },
+            liveStreakBonusRepo,
+          );
+          ws.send(
+            renderAnswerAckFragment({
+              correct: result.correct,
+              points: result.points,
+              streakBonusAwarded: result.streakBonusAwarded,
+              locale: ws.data.locale,
+            }),
+          );
         } catch {
           // Already answered / no question live / bad cardId: no-op. This is
           // ungraded practice, not a scored exam — silently ignoring a
           // duplicate/late submission is the right failure mode here.
+        }
+        return;
+      }
+
+      if (parsed.type === "hint") {
+        // Slice 14, self-service: scoped entirely to the requesting socket's
+        // OWN userId (ws.data.userId) — no host/ownership check needed
+        // beyond "must have joined the room" (requestLiveHint's own check),
+        // since this can only ever reveal/charge the requester's own state.
+        const cardId = String(parsed.cardId ?? "");
+        try {
+          const { hint } = await requestLiveHint(liveSessionPort, { code: ws.data.code, userId: ws.data.userId, cardId });
+          ws.send(renderHintFragment({ hint, locale: ws.data.locale }));
+        } catch {
+          // No question live / wrong cardId / already answered / true_false
+          // (no hint exists) / unknown player: no-op, same reasoning as the
+          // "answer" branch above — ungraded practice, not a scored exam.
         }
         return;
       }

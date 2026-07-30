@@ -119,3 +119,16 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   authKey: text("auth_key").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
+
+// Slice 14: one row per streak-bonus "did it actually stick" record — see
+// LiveStreakBonusRepoPort / LiveStreakBonus's doc comment in domain/types.ts.
+export const liveStreakBonuses = pgTable("live_streak_bonuses", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  roomCode: text("room_code").notNull(),
+  points: integer("points").notNull(),
+  status: text("status", { enum: ["pending", "confirmed", "forfeited"] }).notNull().default("pending"),
+  awardedAt: timestamp("awarded_at", { mode: "date" }).notNull(),
+  resolvedAt: timestamp("resolved_at", { mode: "date" }),
+});

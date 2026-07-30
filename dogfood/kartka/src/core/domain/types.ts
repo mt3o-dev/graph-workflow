@@ -241,3 +241,25 @@ export interface PushSubscription {
   authKey: string;
   createdAt: Date;
 }
+
+/**
+ * Slice 14 (live-quiz streak bonus): the durable "did the streak-bonus card
+ * actually stick" record. Created (status='pending') the moment a live-round
+ * streak crosses core/domain/liveQuiz.ts's STREAK_BONUS_THRESHOLD; resolved
+ * to 'confirmed' (points count toward the lasting total) or 'forfeited'
+ * (points never count) by the FIRST subsequent real review of the same
+ * (userId, cardId) pair through reviewUsecases.submitReview — see
+ * liveStreakBonusRepoPort.ts. This deliberately lives in real storage (not
+ * in-memory room state): the round that created it may end long before the
+ * player's next scheduled review of that card.
+ */
+export interface LiveStreakBonus {
+  id: string;
+  userId: string;
+  cardId: string;
+  roomCode: string;
+  points: number;
+  status: "pending" | "confirmed" | "forfeited";
+  awardedAt: Date;
+  resolvedAt: Date | null;
+}

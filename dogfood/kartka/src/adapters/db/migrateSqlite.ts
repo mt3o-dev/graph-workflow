@@ -110,6 +110,22 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       created_at INTEGER NOT NULL
     );
   `);
+  // Slice 14: streak-bonus confirmation records — see
+  // src/core/ports/liveStreakBonusRepoPort.ts / domain/types.ts's
+  // LiveStreakBonus doc comment for the full "pending -> confirmed/forfeited"
+  // lifecycle this table drives.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS live_streak_bonuses (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      room_code TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      awarded_at INTEGER NOT NULL,
+      resolved_at INTEGER
+    );
+  `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
@@ -122,6 +138,12 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   // scoped by (user_id, endpoint) together in pushSubscriptionRepo, and a
   // stray duplicate row is harmless (both get cleaned up on the same 410).
   db.run(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);`);
+  // Slice 14: findUnresolvedByUserAndCard's lookup shape — not unique (the
+  // repo/usecase layer, not the DB, enforces "at most one unresolved per
+  // pair", same division of responsibility as push_subscriptions above).
+  db.run(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_card ON live_streak_bonuses(user_id, card_id, status);`);
+  // Slice 14: sumConfirmedPointsForUser's lookup shape.
+  db.run(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_status ON live_streak_bonuses(user_id, status);`);
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
   // preference column via ALTER, same pattern as sets.slug in slice 3.

@@ -12,6 +12,7 @@ import type { PushSubscriptionRepoPort } from "../core/ports/pushSubscriptionRep
 import type { WebPushPort } from "../core/ports/webPushPort";
 import type { LiveSessionPort } from "../core/ports/liveSessionPort";
 import { createInMemoryLiveSessionPort } from "../adapters/liveQuiz/inMemoryLiveSessionPort";
+import type { LiveStreakBonusRepoPort } from "../core/ports/liveStreakBonusRepoPort";
 
 export interface Container {
   setRepo: SetRepoPort;
@@ -38,6 +39,8 @@ export interface Container {
    * rooms silently "don't exist" in the other process.
    */
   liveSessionPort: LiveSessionPort;
+  /** Slice 14 (live-quiz streak bonus) — durable pending/confirmed/forfeited bonus records; see liveStreakBonusRepoPort.ts. */
+  liveStreakBonusRepo: LiveStreakBonusRepoPort;
   seedAdminIfNeeded(): Promise<void>;
 }
 
@@ -56,6 +59,7 @@ async function buildContainer(): Promise<Container> {
   let auth: AuthPort;
   let llmCallLogRepo: LlmCallLogRepoPort;
   let pushSubscriptionRepo: PushSubscriptionRepoPort;
+  let liveStreakBonusRepo: LiveStreakBonusRepoPort;
 
   if (driver === "postgres") {
     const { createSetRepoPg } = await import("../adapters/db/setRepo.pg");
@@ -66,6 +70,7 @@ async function buildContainer(): Promise<Container> {
     const { createAuthAdapterPg } = await import("../adapters/auth/authAdapter.pg");
     const { createLlmCallLogRepoPg } = await import("../adapters/db/llmCallLogRepo.pg");
     const { createPushSubscriptionRepoPg } = await import("../adapters/db/pushSubscriptionRepo.pg");
+    const { createLiveStreakBonusRepoPg } = await import("../adapters/db/liveStreakBonusRepo.pg");
     const pgDb = db as PgDb;
     setRepo = createSetRepoPg(pgDb);
     cardRepo = createCardRepoPg(pgDb);
@@ -75,6 +80,7 @@ async function buildContainer(): Promise<Container> {
     auth = createAuthAdapterPg(pgDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoPg(pgDb);
     pushSubscriptionRepo = createPushSubscriptionRepoPg(pgDb);
+    liveStreakBonusRepo = createLiveStreakBonusRepoPg(pgDb);
   } else {
     const { createSetRepoSqlite } = await import("../adapters/db/setRepo.sqlite");
     const { createCardRepoSqlite } = await import("../adapters/db/cardRepo.sqlite");
@@ -84,6 +90,7 @@ async function buildContainer(): Promise<Container> {
     const { createAuthAdapterSqlite } = await import("../adapters/auth/authAdapter.sqlite");
     const { createLlmCallLogRepoSqlite } = await import("../adapters/db/llmCallLogRepo.sqlite");
     const { createPushSubscriptionRepoSqlite } = await import("../adapters/db/pushSubscriptionRepo.sqlite");
+    const { createLiveStreakBonusRepoSqlite } = await import("../adapters/db/liveStreakBonusRepo.sqlite");
     const sqliteDb = db as SqliteDb;
     setRepo = createSetRepoSqlite(sqliteDb);
     cardRepo = createCardRepoSqlite(sqliteDb);
@@ -93,6 +100,7 @@ async function buildContainer(): Promise<Container> {
     auth = createAuthAdapterSqlite(sqliteDb, ENV.SESSION_SECRET);
     llmCallLogRepo = createLlmCallLogRepoSqlite(sqliteDb);
     pushSubscriptionRepo = createPushSubscriptionRepoSqlite(sqliteDb);
+    liveStreakBonusRepo = createLiveStreakBonusRepoSqlite(sqliteDb);
   }
 
   const { createWebPushAdapter } = await import("../adapters/push/webPushAdapter");
@@ -158,6 +166,7 @@ async function buildContainer(): Promise<Container> {
     pushSubscriptionRepo,
     webPush,
     liveSessionPort,
+    liveStreakBonusRepo,
     seedAdminIfNeeded,
   };
 }

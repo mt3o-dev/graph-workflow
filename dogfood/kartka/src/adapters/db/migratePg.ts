@@ -91,6 +91,22 @@ export async function migratePg(db: PgDb): Promise<void> {
       created_at TIMESTAMP NOT NULL
     );
   `);
+  // Slice 14: streak-bonus confirmation records — see
+  // src/core/ports/liveStreakBonusRepoPort.ts / domain/types.ts's
+  // LiveStreakBonus doc comment for the full "pending -> confirmed/forfeited"
+  // lifecycle this table drives.
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS live_streak_bonuses (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      room_code TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      awarded_at TIMESTAMP NOT NULL,
+      resolved_at TIMESTAMP
+    );
+  `);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
@@ -99,6 +115,8 @@ export async function migratePg(db: PgDb): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_llm_call_log_user ON llm_call_log(user_id, requested_at);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_card ON live_streak_bonuses(user_id, card_id, status);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_status ON live_streak_bonuses(user_id, status);`);
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
   // preference column via ALTER, same pattern as sets.slug in slice 3. No

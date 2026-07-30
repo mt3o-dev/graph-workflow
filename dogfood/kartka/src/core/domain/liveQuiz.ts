@@ -112,7 +112,21 @@ export const QUESTION_TIME_LIMIT_MS = 20_000;
 
 export interface LiveAnswerResult {
   correct: boolean;
+  /** Total points this answer awarded, INCLUDING the streak bonus (see STREAK_BONUS_POINTS) when streakBonusAwarded is true. */
   points: number;
+  /**
+   * Slice 14: true iff this is the one answer, in this player's current
+   * contiguous correct-answer streak, that just reached
+   * STREAK_BONUS_THRESHOLD — see crossedStreakThreshold. Fires exactly once
+   * per contiguous streak (not on every answer once the streak is past the
+   * threshold), and `points` above already includes STREAK_BONUS_POINTS when
+   * this is true. The caller (liveQuizUsecases.submitLiveAnswer) is
+   * responsible for creating the durable "pending bonus" record for this
+   * (userId, cardId) pair that the real spaced-repetition review path
+   * (reviewUsecases.submitReview) later confirms or forfeits — see
+   * core/ports/liveStreakBonusRepoPort.ts.
+   */
+  streakBonusAwarded: boolean;
 }
 
 export function scoreAnswer(
@@ -120,12 +134,99 @@ export function scoreAnswer(
   rawAnswer: string,
   elapsedMs: number,
   questionTimeLimitMs: number = QUESTION_TIME_LIMIT_MS,
-): LiveAnswerResult {
+): { correct: boolean; points: number } {
   const correct = isAnswerCorrect(question, rawAnswer);
   if (!correct) return { correct: false, points: 0 };
   const clampedElapsed = Math.min(Math.max(elapsedMs, 0), questionTimeLimitMs);
   const speedBonus = Math.round(MAX_SPEED_BONUS * (1 - clampedElapsed / questionTimeLimitMs));
   return { correct: true, points: BASE_POINTS + speedBonus };
+}
+
+// --- Streak bonus (slice 14) --------------------------------------------
+// Kept learning-honest per the roadmap: an in-round streak bonus is only
+// PROVISIONAL here (immediate points + a flagged card) — it only becomes a
+// lasting reward if that same card is later answered correctly on the
+// player's next REAL spaced-repetition review (reviewUsecases.submitReview),
+// not just from surviving a few seconds of live-round pressure. See
+// core/ports/liveStreakBonusRepoPort.ts for the durable side of this.
+
+/** 3 consecutive correct answers in a room triggers the bonus — long enough to require genuine recall streak, short enough to hit within a typical round. */
+export const STREAK_BONUS_THRESHOLD = 3;
+/** Flat bonus (not speed-scaled, unlike scoreAnswer's own bonus) — a quarter of BASE_POINTS, enough to feel rewarding without dwarfing normal scoring. */
+export const STREAK_BONUS_POINTS = 250;
+
+/**
+ * The trailing run-length of consecutive `correct: true` answers in
+ * `answersInOrder` (oldest first). Resets to 0 on the first `false` walking
+ * backward from the end; 0 if the list is empty or its last answer is wrong.
+ */
+export function currentStreak(answersInOrder: readonly RoomPlayerAnswer[]): number {
+  let streak = 0;
+  for (const answer of answersInOrder) {
+    streak = answer.correct ? streak + 1 : 0;
+  }
+  return streak;
+}
+
+/**
+ * True iff the LAST answer in `answersInOrder` is the one that just brought
+ * the trailing streak to exactly STREAK_BONUS_THRESHOLD. Deliberately an
+ * equality check (not >=): a streak of 4, 5, 6... correct answers only
+ * crosses the threshold once — see recordAnswer's "one pending record per
+ * crossing, not one per card in the streak" rule. A streak that breaks (one
+ * wrong answer) and rebuilds to the threshold again is a NEW crossing.
+ */
+export function crossedStreakThreshold(answersInOrder: readonly RoomPlayerAnswer[]): boolean {
+  if (answersInOrder.length === 0) return false;
+  if (!answersInOrder[answersInOrder.length - 1]!.correct) return false;
+  return currentStreak(answersInOrder) === STREAK_BONUS_THRESHOLD;
+}
+
+// --- Hints (slice 14) -----------------------------------------------------
+// Scope substitution, documented per the roadmap's own pattern for prior
+// slices: the roadmap's literal wording ("reveals a mnemonic/related-fact")
+// assumes authored mnemonic content that doesn't exist on any card type in
+// this app. Rather than inventing a new card-authoring field this slice
+// doesn't otherwise need, a hint here is a type-appropriate PARTIAL reveal
+// that still requires real recall:
+//   - type_answer: first letter + answer length only (not the answer).
+//   - multiple_choice: eliminates exactly one incorrect option.
+//   - true_false: no meaningful partial reveal exists for a binary question
+//     (either revealed choice IS the answer) — hints are simply unavailable
+//     for this type; see isHintEligible.
+
+/** Points deducted from the requesting player's own score for a hint — self-service, costs less than a correct answer's base points so it's a real trade-off, not free. */
+export const HINT_COST = 200;
+
+export type HintReveal =
+  | { type: "type_answer"; firstLetter: string; length: number }
+  | { type: "multiple_choice"; eliminatedIndex: number; eliminatedOption: string };
+
+export function isHintEligible(type: LiveCardType): boolean {
+  return type === "type_answer" || type === "multiple_choice";
+}
+
+/**
+ * Computes the (type-appropriate) partial reveal for `question`. Throws
+ * ValidationError for true_false (see header comment — no hint exists for
+ * that type; callers should check isHintEligible first, e.g. to hide the
+ * hint button client-side, though this is the real enforcement point).
+ * `rng` is injectable (same pattern as configureTeams' `shuffle`) so tests
+ * can assert a deterministic eliminated option instead of asserting on
+ * randomness.
+ */
+export function computeHint(question: LiveQuestion, rng: () => number = Math.random): HintReveal {
+  if (question.type === "type_answer") {
+    const answer = (question.payload as TypeAnswerPayload).acceptedAnswers[0] ?? "";
+    return { type: "type_answer", firstLetter: answer.charAt(0), length: answer.length };
+  }
+  if (question.type === "multiple_choice") {
+    const payload = question.payload as MultipleChoicePayload;
+    const wrongIndices = payload.options.map((_, i) => i).filter((i) => i !== payload.correctIndex);
+    const pick = wrongIndices[Math.floor(rng() * wrongIndices.length)] ?? wrongIndices[0]!;
+    return { type: "multiple_choice", eliminatedIndex: pick, eliminatedOption: payload.options[pick] ?? "" };
+  }
+  throw new ValidationError("No hint available for this question type");
 }
 
 /** Round phase state machine: lobby -> (question-live <-> reveal)* -> finished. */
@@ -151,6 +252,14 @@ export interface RoomPlayer {
    * room that never calls configureTeams behaves exactly like slice 11.
    */
   teamId: string | null;
+  /**
+   * Slice 14: this player's own revealed hints, keyed by cardId — set the
+   * first time they call requestHint for that question, and re-served
+   * as-is (no re-charge) on any subsequent request for the same card. Only
+   * ever read/written for the requesting player's own userId (see
+   * requestHint) — never exposes another player's hint state.
+   */
+  hints: Record<string, HintReveal>;
 }
 
 export interface RoomState {
@@ -257,7 +366,7 @@ export function addPlayer(room: RoomState, player: { userId: string; displayName
   const existing = room.players[player.userId];
   const nextPlayer: RoomPlayer = existing
     ? { ...existing, displayName: player.displayName }
-    : { userId: player.userId, displayName: player.displayName, score: 0, answers: {}, teamId: null };
+    : { userId: player.userId, displayName: player.displayName, score: 0, answers: {}, teamId: null, hints: {} };
   return { ...room, players: { ...room.players, [player.userId]: nextPlayer } };
 }
 
@@ -311,16 +420,77 @@ export function recordAnswer(
   if (player.answers[cardId]) throw new ValidationError("Already answered this question");
 
   const elapsedMs = now.getTime() - room.questionStartedAtMs;
-  const result = scoreAnswer(question, rawAnswer, elapsedMs);
-  const answer: RoomPlayerAnswer = { cardId, correct: result.correct, points: result.points, submittedAtMs: now.getTime() };
+  const base = scoreAnswer(question, rawAnswer, elapsedMs);
+
+  // Slice 14: chronological order matters for streak detection, so sort by
+  // submittedAtMs rather than trusting Record insertion order. The new
+  // answer being recorded right now is provisionally appended last (it IS
+  // chronologically last) purely to compute whether it crosses the
+  // threshold; the actual stored record (with final `points`, below) is
+  // built afterward once we know if the bonus applies.
+  const priorOrdered = Object.values(player.answers).sort((a, b) => a.submittedAtMs - b.submittedAtMs);
+  const provisional: RoomPlayerAnswer = { cardId, correct: base.correct, points: base.points, submittedAtMs: now.getTime() };
+  const streakBonusAwarded = crossedStreakThreshold([...priorOrdered, provisional]);
+  const totalPoints = base.points + (streakBonusAwarded ? STREAK_BONUS_POINTS : 0);
+
+  const answer: RoomPlayerAnswer = { ...provisional, points: totalPoints };
   const updatedPlayer: RoomPlayer = {
     ...player,
-    score: player.score + result.points,
+    score: player.score + totalPoints,
     answers: { ...player.answers, [cardId]: answer },
   };
+  const result: LiveAnswerResult = { correct: base.correct, points: totalPoints, streakBonusAwarded };
   return {
     room: { ...room, players: { ...room.players, [userId]: updatedPlayer } },
     result,
+  };
+}
+
+/**
+ * Slice 14, self-service: the requesting player spends HINT_COST of their
+ * OWN score for a type-appropriate partial reveal of the room's CURRENT
+ * question (see computeHint). Only operates on `room.players[userId]` — no
+ * other player's state is read or written, so this can never leak another
+ * player's answer/hint status (see roadmap's ownership note for this
+ * mechanic). Idempotent per (player, question): a second request for the
+ * same card returns the already-revealed hint without charging again.
+ *
+ * Throws ValidationError if: no question is live, the cardId doesn't match
+ * the current question, this question's type has no hint (true_false), or
+ * the player already answered this question (nothing left to hint at).
+ * Throws NotFoundError for an unknown player, same as recordAnswer.
+ */
+export function requestHint(
+  room: RoomState,
+  userId: string,
+  cardId: string,
+  rng: () => number = Math.random,
+): { room: RoomState; hint: HintReveal } {
+  if (room.phase !== "question-live") {
+    throw new ValidationError("No question is currently live");
+  }
+  const question = currentQuestion(room);
+  if (!question || question.cardId !== cardId) {
+    throw new ValidationError("Hint requested for a card that isn't the current question");
+  }
+  const player = room.players[userId];
+  if (!player) throw new NotFoundError("Player");
+  if (player.answers[cardId]) throw new ValidationError("Already answered this question");
+
+  const existingHint = player.hints[cardId];
+  if (existingHint) {
+    return { room, hint: existingHint }; // already paid for — re-serve the same reveal, no double charge
+  }
+
+  const hint = computeHint(question, rng); // throws ValidationError for true_false
+  const updatedPlayer: RoomPlayer = {
+    ...player,
+    score: player.score - HINT_COST,
+    hints: { ...player.hints, [cardId]: hint },
+  };
+  return {
+    room: { ...room, players: { ...room.players, [userId]: updatedPlayer } },
+    hint,
   };
 }
 
