@@ -52,6 +52,7 @@ import {
   requestLiveHint,
 } from "./src/core/usecases/liveQuizUsecases";
 import { importPostGameReviewForRoom } from "./src/core/usecases/liveQuizPostGameUsecases";
+import { recordLiveQuizRoundInsights } from "./src/core/usecases/liveQuizInsightsUsecases";
 import { currentQuestion, type RoomState } from "./src/core/domain/liveQuiz";
 import { NotFoundError, ForbiddenError, ValidationError } from "./src/core/domain/errors";
 import { t, type Locale } from "./src/i18n";
@@ -149,7 +150,7 @@ function renderHostScreenFragment(room: RoomState, locale: Locale, joinUrl: stri
 
 /** Renders+sends whichever fragment set `ws` subscribes to (player or host-screen), for the room's CURRENT phase. */
 async function sendCurrentRoomState(ws: Bun.ServerWebSocket<SocketData>, room: RoomState): Promise<void> {
-  const { liveSessionPort, setRepo, cardRepo, userRepo, scheduler, fsrsScheduler } = await getContainer();
+  const { liveSessionPort, setRepo, cardRepo, userRepo, scheduler, fsrsScheduler, liveQuizInsightsRepo } = await getContainer();
   if (room.phase === "finished") {
     const entries = await computeScoreboard(liveSessionPort, ws.data.code);
     const teamEntries = await computeTeamScoreboard(liveSessionPort, ws.data.code);
@@ -166,6 +167,14 @@ async function sendCurrentRoomState(ws: Bun.ServerWebSocket<SocketData>, room: R
       { pl: t("live.postGame.practiceSetTitle", "pl"), en: t("live.postGame.practiceSetTitle", "en") },
     );
     const myImport = importResults.find((r) => r.userId === ws.data.userId);
+    // Slice 16 (teacher insights): an INDEPENDENT, ADDITIVE write at the
+    // exact same finished-round trigger point as the import call right
+    // above — see core/usecases/liveQuizInsightsUsecases.ts. Never modifies
+    // importPostGameReviewForRoom or its logic; same "safe to re-run on
+    // every finished-fragment render" idempotence, guarded by a DB-level
+    // unique constraint (not an in-process lock) — see that file's header
+    // comment.
+    await recordLiveQuizRoundInsights({ liveSessionPort, insightsRepo: liveQuizInsightsRepo }, ws.data.code);
     if (ws.data.view === "host") {
       ws.send(renderHostFinishedFragment({ entries, teamEntries, locale: ws.data.locale }));
     } else {

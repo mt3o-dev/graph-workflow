@@ -126,6 +126,22 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
       resolved_at INTEGER
     );
   `);
+  // Slice 16 (teacher insights): one row per (finished round, player,
+  // question) — see LiveQuizInsightsRepoPort / LiveQuizAnswerRecord's doc
+  // comment in domain/types.ts. A brand-new table (like live_streak_bonuses
+  // above), so no ALTER-table dance is needed.
+  db.run(`
+    CREATE TABLE IF NOT EXISTS live_quiz_answer_records (
+      id TEXT PRIMARY KEY,
+      room_code TEXT NOT NULL,
+      set_id TEXT NOT NULL REFERENCES sets(id) ON DELETE CASCADE,
+      host_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      correct INTEGER NOT NULL,
+      finished_at INTEGER NOT NULL
+    );
+  `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_sets_owner ON sets(owner_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_review_states_user_due ON review_states(user_id, due_at);`);
@@ -144,6 +160,21 @@ export async function migrateSqlite(db: SqliteDb): Promise<void> {
   db.run(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_card ON live_streak_bonuses(user_id, card_id, status);`);
   // Slice 14: sumConfirmedPointsForUser's lookup shape.
   db.run(`CREATE INDEX IF NOT EXISTS idx_live_streak_bonuses_user_status ON live_streak_bonuses(user_id, status);`);
+  // Slice 16: listBySetId's lookup shape.
+  db.run(`CREATE INDEX IF NOT EXISTS idx_live_quiz_answer_records_set ON live_quiz_answer_records(set_id);`);
+  // The duplicate-write guard (roadmap point 1): at most one recorded
+  // outcome per (room, question, player) — a REAL unique index, not a
+  // partial one (unlike slice 15's practice-set-marker index), since every
+  // row in this table is meant to be constrained this way, not just a
+  // subset. Concurrent finished-round renders that both try to record the
+  // same round's results race here at the DB level; the repo
+  // (liveQuizInsightsRepo.*.ts) uses onConflictDoNothing() so the loser of
+  // the race is silently skipped instead of throwing — the exact
+  // "DB-level constraint + graceful handling" class of fix slice 15's
+  // review landed on, applied here from the start.
+  db.run(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_live_quiz_answer_records_unique ON live_quiz_answer_records(room_code, card_id, user_id);`,
+  );
 
   // Slice 5: `users` already existed from slice 1 — add the scheduler
   // preference column via ALTER, same pattern as sets.slug in slice 3.

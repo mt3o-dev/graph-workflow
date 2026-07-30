@@ -353,5 +353,22 @@
   "live.host.finished.teamPodium.title": "Top team",
 
   "live.postGame.practiceSetTitle": "Live quiz review",
-  "live.postGame.summary": "{count} card(s) added to your review queue."
+  "live.postGame.summary": "{count} card(s) added to your review queue.",
+
+  "insights.link": "Teacher insights",
+  "insights.title": "Live quiz insights — {setTitle}",
+  "insights.backToSet": "&larr; Back to set",
+  "insights.intro": "Data across every live-quiz round ever played from this set.",
+  "insights.question.title": "Question performance",
+  "insights.question.column.question": "Question",
+  "insights.question.column.timesAsked": "Times asked",
+  "insights.question.column.percentCorrect": "% correct",
+  "insights.question.neverAsked": "Not asked yet",
+  "insights.question.empty": "This set has no live-quiz-eligible questions yet.",
+  "insights.student.title": "Student performance (anonymized)",
+  "insights.student.column.student": "Student",
+  "insights.student.column.timesAnswered": "Times answered",
+  "insights.student.column.percentCorrect": "% correct",
+  "insights.student.label": "Student {n}",
+  "insights.student.empty": "This set hasn't been played in a live-quiz round yet."
 }

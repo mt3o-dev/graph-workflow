@@ -136,3 +136,17 @@ export const liveStreakBonuses = pgTable("live_streak_bonuses", {
   awardedAt: timestamp("awarded_at", { mode: "date" }).notNull(),
   resolvedAt: timestamp("resolved_at", { mode: "date" }),
 });
+
+// Slice 16 (teacher insights): one row per (finished round, player, question)
+// — see the matching comment in schema.sqlite.ts / LiveQuizAnswerRecord's
+// doc comment in domain/types.ts.
+export const liveQuizAnswerRecords = pgTable("live_quiz_answer_records", {
+  id: text("id").primaryKey(),
+  roomCode: text("room_code").notNull(),
+  setId: text("set_id").notNull().references(() => sets.id, { onDelete: "cascade" }),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  correct: boolean("correct").notNull(),
+  finishedAt: timestamp("finished_at", { mode: "date" }).notNull(),
+});

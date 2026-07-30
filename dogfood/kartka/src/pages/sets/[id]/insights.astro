@@ -1,0 +1,121 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { t, resolveLocale } from "../../../i18n";
+import { getCurrentUser } from "../../../lib/session";
+import { getContainer } from "../../../di/container";
+import { getOwnedSet } from "../../../core/usecases/setUsecases";
+import { getSetInsights } from "../../../core/usecases/liveQuizInsightsUsecases";
+import { NotFoundError, ForbiddenError } from "../../../core/domain/errors";
+import type { Card } from "../../../core/domain/types";
+
+// Slice 16 (teacher insights): owner-only aggregate view of a set's ENTIRE
+// live-quiz history. Reuses getOwnedSet — the SAME ownership check every
+// other owner-only route in this app uses (see roadmap's key design note:
+// no new teacher/roster role, insights are just "whoever owns the source
+// set") — both here (403/404 before any page content renders) AND again
+// inside getSetInsights itself (see that usecase's header comment for why
+// the re-derivation matters, not just trusting this page's own check).
+
+const user = await getCurrentUser(Astro.cookies);
+if (!user) return Astro.redirect(`/login?next=${Astro.url.pathname}`);
+
+const locale = resolveLocale({
+  queryLang: Astro.url.searchParams.get("lang"),
+  acceptLanguage: Astro.request.headers.get("accept-language"),
+});
+
+const { setRepo, cardRepo, insightsRepo: liveQuizInsightsRepo } = await getContainer();
+const setId = Astro.params.id!;
+
+let set;
+try {
+  set = await getOwnedSet(setRepo, setId, user.id);
+} catch (err) {
+  if (err instanceof NotFoundError) return new Response(null, { status: 404 });
+  if (err instanceof ForbiddenError) return new Response(null, { status: 403 });
+  throw err;
+}
+
+const insights = await getSetInsights({ setRepo, cardRepo, insightsRepo: liveQuizInsightsRepo }, setId, user.id);
+
+const cards = await cardRepo.listAllBySet(setId);
+const cardById = new Map(cards.map((c) => [c.id, c]));
+
+/** Same short-preview logic as lib/fragments.ts's previewOf, for the question column. */
+function previewOf(card: Card | undefined): string {
+  if (!card) return "";
+  const p = card.payload as Record<string, unknown>;
+  switch (card.type) {
+    case "multiple_choice":
+      return String(p.question ?? "");
+    case "true_false":
+      return String(p.statement ?? "");
+    case "type_answer":
+      return String(p.prompt ?? "");
+    default:
+      return "";
+  }
+}
+---
+
+<BaseLayout title={t("insights.title", locale, { setTitle: set.title })} locale={locale}>
+  <a href={`/sets/${setId}`}>{t("insights.backToSet", locale)}</a>
+  <h1>{t("insights.title", locale, { setTitle: set.title })}</h1>
+  <p>{t("insights.intro", locale)}</p>
+
+  <section style="margin-top: var(--space-6)">
+    <h2>{t("insights.question.title", locale)}</h2>
+    {
+      insights.questionStats.length === 0 ? (
+        <p class="empty-state">{t("insights.question.empty", locale)}</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>{t("insights.question.column.question", locale)}</th>
+              <th>{t("insights.question.column.timesAsked", locale)}</th>
+              <th>{t("insights.question.column.percentCorrect", locale)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {insights.questionStats.map((qs) => (
+              <tr>
+                <td>{previewOf(cardById.get(qs.cardId))}</td>
+                <td>{qs.timesAsked}</td>
+                <td>{qs.percentCorrect === null ? t("insights.question.neverAsked", locale) : `${qs.percentCorrect}%`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+  </section>
+
+  <section style="margin-top: var(--space-6)">
+    <h2>{t("insights.student.title", locale)}</h2>
+    {
+      insights.studentStats.length === 0 ? (
+        <p class="empty-state">{t("insights.student.empty", locale)}</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>{t("insights.student.column.student", locale)}</th>
+              <th>{t("insights.student.column.timesAnswered", locale)}</th>
+              <th>{t("insights.student.column.percentCorrect", locale)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {insights.studentStats.map((ss) => (
+              <tr>
+                <td>{t("insights.student.label", locale, { n: ss.anonymizedIndex })}</td>
+                <td>{ss.timesAnswered}</td>
+                <td>{ss.percentCorrect}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+  </section>
+</BaseLayout>

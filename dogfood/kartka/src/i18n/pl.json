@@ -353,5 +353,22 @@
   "live.host.finished.teamPodium.title": "Najlepsza drużyna",
 
   "live.postGame.practiceSetTitle": "Powtórka z quizu na żywo",
-  "live.postGame.summary": "Dodano {count} fiszek do Twojej kolejki powtórek."
+  "live.postGame.summary": "Dodano {count} fiszek do Twojej kolejki powtórek.",
+
+  "insights.link": "Statystyki nauczyciela",
+  "insights.title": "Statystyki quizu na żywo — {setTitle}",
+  "insights.backToSet": "&larr; Wróć do zestawu",
+  "insights.intro": "Dane ze wszystkich dotychczasowych rund quizu na żywo dla tego zestawu.",
+  "insights.question.title": "Statystyki pytań",
+  "insights.question.column.question": "Pytanie",
+  "insights.question.column.timesAsked": "Liczba wystąpień",
+  "insights.question.column.percentCorrect": "% poprawnych",
+  "insights.question.neverAsked": "Jeszcze nie zadano",
+  "insights.question.empty": "Ten zestaw nie ma jeszcze żadnych pytań kwalifikujących się do quizu na żywo.",
+  "insights.student.title": "Wyniki uczniów (anonimowo)",
+  "insights.student.column.student": "Uczeń",
+  "insights.student.column.timesAnswered": "Liczba odpowiedzi",
+  "insights.student.column.percentCorrect": "% poprawnych",
+  "insights.student.label": "Uczeń {n}",
+  "insights.student.empty": "Ten zestaw nie był jeszcze grany w żadnej rundzie quizu na żywo."
 }

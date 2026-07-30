@@ -636,6 +636,39 @@ review-fix discipline: when a race is found, check whether the same
 read-then-create shape exists anywhere upstream of the fix, not just at the
 reported call site. 302/302 tests, build green after both fixes.
 
+## Slice 16 result — kartka-live-teacher-insights
+
+A weak-question aggregate view across a set's live-quiz history plus an
+anonymized per-student accuracy breakdown, gated by ordinary set ownership
+rather than a new role — a deliberate scope decision (the roadmap floated a
+"teacher/class roster concept"; the implementer correctly judged that
+disproportionate and reused `getOwnedSet` instead). This is the third slice
+in the finished-round-side-effect family, and the second (after #15) to
+write new persisted data at that same trigger point — the review held it to
+the bar #15 set rather than taking "we designed around the race this time"
+on faith: independently re-verified the real (non-partial) unique index,
+`onConflictDoNothing()` usage on both drivers, and the 5-way concurrent
+`Promise.all` test by running it 8 times plus the full suite 5 times — all
+stable. That verification-not-trust discipline paid off differently here: no
+race bug survived, but a **different real gap** turned up in the exact same
+neighborhood — `aggregateStudentStats`' anonymized-index assignment sorted
+students by `finishedAt` with no secondary key, and every row of one round
+is stamped with the *identical* `finishedAt` (a round with 2+ players is the
+normal case, not an edge case, for a classroom live quiz). The tie fell back
+to an unordered `SELECT`'s incidental row order — not a guaranteed invariant
+in either database — and the shipped tests only ever exercised single-
+player-per-round fixtures, so the headline real-world scenario was
+completely untested. Fixed with an `id`-based secondary sort key (a pure
+function of row data now, never of incidental ordering) plus a defense-in-
+depth `ORDER BY id` in both repo adapters, and a genuine two-player-same-
+round determinism test. 319/319 tests, build green after the fix.
+
+**This closes out slices 14–16** (streaks/hints, post-game review-queue
+import, teacher insights) — three slices past the originally-planned
+roadmap, each independently reviewed to the same bar as the required work.
+Slice 17 (async homework mode) remains the one item left on the full-
+Kahoot-mode roadmap, not built this session.
+
 ## Replay debt
 
 Not yet applicable — no slice has archived yet (deliberately: pending a full

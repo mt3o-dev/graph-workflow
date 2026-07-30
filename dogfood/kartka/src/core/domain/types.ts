@@ -274,3 +274,36 @@ export interface LiveStreakBonus {
   awardedAt: Date;
   resolvedAt: Date | null;
 }
+
+/**
+ * Slice 16 (teacher insights): one durable row per (finished round, player,
+ * question) — "did this player get this question right, in this room, on
+ * this source set". This is the raw material every aggregate insight
+ * (per-question weak-spot %, per-student accuracy) is computed FROM; nothing
+ * here is itself an aggregate. Written once per finished round by
+ * liveQuizInsightsUsecases.recordLiveQuizRoundInsights, at the SAME
+ * finished-round trigger point slice 15's importPostGameReviewForRoom is
+ * called from (see live-server.ts) — an independent, additive write, not a
+ * modification of that function. `hostId`/`setId` are denormalized onto
+ * every row (rather than joined via roomCode, which is ephemeral and reused
+ * across rooms over time) so a set's FULL history survives even though
+ * LiveSessionPort's in-memory rooms themselves don't persist.
+ *
+ * Uniqueness: at most one row per (roomCode, cardId, userId) — enforced by a
+ * plain (non-partial) unique index in migrateSqlite.ts/migratePg.ts. This is
+ * the guard against the exact concurrent-render
+ * duplicate-write race slice 15's review found and fixed (multiple clients
+ * viewing the finished screen each triggering the write) — DB-level
+ * constraint + graceful conflict handling (onConflictDoNothing), not an
+ * in-process lock.
+ */
+export interface LiveQuizAnswerRecord {
+  id: string;
+  roomCode: string;
+  setId: string;
+  hostId: string;
+  cardId: string;
+  userId: string;
+  correct: boolean;
+  finishedAt: Date;
+}

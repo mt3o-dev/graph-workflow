@@ -144,3 +144,18 @@ export const liveStreakBonuses = sqliteTable("live_streak_bonuses", {
   awardedAt: integer("awarded_at", { mode: "timestamp_ms" }).notNull(),
   resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
 });
+
+// Slice 16 (teacher insights): one row per (finished round, player, question)
+// — see LiveQuizInsightsRepoPort / LiveQuizAnswerRecord's doc comment in
+// domain/types.ts. Written once per finished round, independently of (and
+// additively alongside) slice 15's post-game review import.
+export const liveQuizAnswerRecords = sqliteTable("live_quiz_answer_records", {
+  id: text("id").primaryKey(),
+  roomCode: text("room_code").notNull(),
+  setId: text("set_id").notNull().references(() => sets.id, { onDelete: "cascade" }),
+  hostId: text("host_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  cardId: text("card_id").notNull().references(() => cards.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  correct: integer("correct", { mode: "boolean" }).notNull(),
+  finishedAt: integer("finished_at", { mode: "timestamp_ms" }).notNull(),
+});

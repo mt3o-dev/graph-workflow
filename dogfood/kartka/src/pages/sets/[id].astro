@@ -59,6 +59,8 @@ const liveCreateUrl = `${Astro.url.protocol}//${Astro.url.hostname}:${ENV.LIVE_W
   <h1>{t("cards.title", locale, { setTitle: set.title })}</h1>
   {set.description && <p>{set.description}</p>}
 
+  <p><a href={`/sets/${setId}/insights?lang=${locale}`}>{t("insights.link", locale)}</a></p>
+
   <Fragment set:html={visibilityHtml} />
 
   <details class="card" style="margin-bottom: var(--space-6)">
