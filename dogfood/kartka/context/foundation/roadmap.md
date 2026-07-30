@@ -86,46 +86,73 @@ push channel. Two ways to reconcile without abandoning the stack:
    for all of it: htmx's extension model + one isolated WebSocket-sidecar
    adapter, no custom protocol, no rearchitecting the rest of the app.
 
-## Token cost estimate (slices 2–17)
+## Token cost: estimated vs. actual (slices 1–13 built; 14–17 projected)
 
-Rough order-of-magnitude, anchored to slice 1's *measured* actuals: the
-implementer agent spent 224k tokens (200 tool calls) and the independent
-review agent spent 91k tokens (43 tool calls) — **~315k tokens for one
-bootstrap-sized slice with a review pass.** Later slices are additive
-(existing scaffold, ports, DI, i18n, design system already in place), so
-most should cost less than slice 1; the ones introducing a genuinely new
-subsystem (offline sync, the live-quiz transport layer) are the exceptions
-and estimated closer to slice-1 scale. These are planning estimates, not
-measurements — actual cost depends on how many review round-trips each
-slice needs (slice 1 needed one fix round; some may need more).
+Slices 1–13 are done — this table replaces the original pre-build estimates
+with measured `subagent_tokens` from every build + review agent call
+(fix-round work I did inline as the orchestrator, e.g. the timezone/IDOR/
+migration fixes, is NOT counted here — it's a smaller add-on on top, done at
+the main-loop model, not a subagent call).
 
-| slice | build (implementer) | review | slice total |
+| slice | estimated | actual (build+review) | ratio |
 |---|---|---|---|
-| 2 `kartka-llm-assist` | ~150k | ~60k | ~210k |
-| 3 `kartka-sharing` | ~100k | ~50k | ~150k |
-| 4 `kartka-admin` | ~150k | ~60k | ~210k |
-| 5 `kartka-fsrs` | ~100k | ~50k | ~150k |
-| 6 `kartka-offline` | ~200k | ~80k | ~280k |
-| 7 `kartka-rich-content` | ~120k | ~50k | ~170k |
-| 8 `kartka-cram-mode` | ~90k | ~40k | ~130k |
-| 9 `kartka-reminders` | ~130k | ~50k | ~180k |
-| 10 `kartka-a11y-reading` | ~80k | ~40k | ~120k |
-| 11 `kartka-live-quiz` (new transport subsystem) | ~220k | ~90k | ~310k |
-| 12 `kartka-live-teams` | ~90k | ~40k | ~130k |
-| 13 `kartka-live-host-screen` | ~150k | ~60k | ~210k |
-| 14 `kartka-live-streaks-hints` | ~110k | ~50k | ~160k |
-| 15 `kartka-live-post-game-review` | ~90k | ~40k | ~130k |
-| 16 `kartka-live-teacher-insights` | ~150k | ~60k | ~210k |
-| 17 `kartka-live-homework-mode` | ~130k | ~50k | ~180k |
-| **subtotal, slices 2–17** | | | **~2.93M** |
-| slice 1 actual (for reference) | 224k | 91k | 315k |
-| **epic total (1–17)** | | | **~3.25M tokens** |
+| 1 `kartka-core-scaffold` | 315k (reference) | 315,177 (224,408 + 90,769) | 1.00 |
+| 2 `kartka-llm-assist` | 210k | 247,299 (171,787 + 75,512) | 1.18 |
+| 3 `kartka-sharing` | 150k | 244,369 (167,364 + 77,005) | 1.63 |
+| 4 `kartka-admin` | 210k | 307,229 (219,301 + 87,928) | 1.46 |
+| 5 `kartka-fsrs` | 150k | 283,085 (213,708 + 69,377) | 1.89 |
+| 6 `kartka-offline` | 280k | 240,620 (146,396 + 94,224) | 0.86 |
+| 7 `kartka-rich-content` | 170k | 332,783 (226,685 + 106,098; excl. one failed retry attempt) | 1.96 |
+| 8 `kartka-cram-mode` | 130k | 286,690 (198,443 + 88,247) | 2.21 |
+| 9 `kartka-reminders` | 180k | 292,260 (214,602 + 77,658) | 1.62 |
+| 10 `kartka-a11y-reading` | 120k | 237,741 (176,850 + 60,891) | 1.98 |
+| 11 `kartka-live-quiz` | 310k | 362,661 (205,386 + 157,275) | 1.17 |
+| 12 `kartka-live-teams` | 130k | 218,475 (135,214 + 83,261) | 1.68 |
+| 13 `kartka-live-host-screen` | 210k | 277,362 (192,609 + 84,753) | 1.32 |
+| **total, slices 1–13** | **2.57M** | **3,645,751** | **1.42×** |
 
-That's ~33 agent calls (17 build + 17 review, slice 1 already spent) not
-counting my own orchestration turns (prompt-writing, spec decisions, gate
-routing, memory captures) — historically a smaller add-on, maybe +10–15%
-on top. Treat the whole-epic figure as a budgeting signal ("this is a
-few-million-token build if all 17 slices ship"), not a firm quote — the two
-biggest variance sources are review round-trips (each fix-and-re-review
+**Average actual/estimate ratio (slices 2–13, excluding the slice-1
+reference point): 1.58×, range 0.86×–2.21×.** The original estimates were
+anchored only to slice 1's cost and a rough "additive slices cost less"
+intuition; in practice every slice after the first came with the same
+depth of adversarial review, dual-locale i18n, ADR/TODO documentation, and
+(from slice 4 onward) a fix round when review found something — none of
+which the original per-slice guesses priced in. The one slice that came in
+*under* estimate (`kartka-offline`, 0.86×) was also the one slice whose
+implementer had the most pre-existing infrastructure to reuse (slice 1's
+PWA shell, existing review UI). The two worst-case slices (`cram-mode` 2.21×,
+`a11y-reading` 1.98×) were both nominally "S-effort, small" in the original
+sizing — small slices got under-estimated the most in relative terms,
+because a fixed documentation/testing/review overhead is a bigger fraction
+of a small slice's total cost than a large one's.
+
+## Projected cost, slices 14–17 (not yet built)
+
+Original rough estimates (130k–210k each, 680k subtotal) scaled by the
+observed 1.58× average ratio, with a low/high band from the observed
+0.86×–2.21× range rather than a false-precision single number:
+
+| slice | original estimate | low (×0.86) | mid (×1.58) | high (×2.21) |
+|---|---|---|---|---|
+| 14 `kartka-live-streaks-hints` | 160k | 138k | 253k | 354k |
+| 15 `kartka-live-post-game-review` | 130k | 112k | 205k | 287k |
+| 16 `kartka-live-teacher-insights` | 210k | 181k | 332k | 464k |
+| 17 `kartka-live-homework-mode` | 180k | 155k | 284k | 398k |
+| **subtotal, slices 14–17** | **680k** | **~585k** | **~1.07M** | **~1.50M** |
+
+Slice 16 carries the most risk of running toward the high end — it's the
+one remaining slice that adds genuinely new data model surface (a
+teacher/roster concept beyond the existing student/admin roles), the same
+shape of complexity that pushed slice 4 (admin, also a new-role-adjacent
+surface) to 1.46× and slice 11 (new subsystem) to 1.17× — new-subsystem
+slices have historically run closer to their estimate than small
+"just settings/UI" slices have, somewhat counterintuitively.
+
+**Revised full-epic projection (1–17), mid case:** 3,645,751 (actual,
+1–13) + ~1.07M (projected, 14–17) ≈ **4.7M tokens** — about 45% above the
+original 3.25M whole-epic guess made before any slice shipped. Treat this
+as the current budgeting signal for the remaining work, not a firm quote —
+the two biggest variance sources are still review round-trips (each
+fix-and-re-review
 cycle adds another review-agent pass) and whether the offline/live-quiz
 subsystems need more exploration than a typical additive slice.
