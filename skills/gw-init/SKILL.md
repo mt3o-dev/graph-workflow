@@ -49,16 +49,22 @@ lifecycle files, and a live memory store for everything else.
    `MEMORY_DB_PATH` resolution matches this project — a shared store pointed at the
    wrong project poisons both.
 
-3. **Git hygiene for the store.** The SQLite file is a binary; the legible dump is
-   the sync format. Ensure:
-   - `.gitignore` contains `context/memory-graph.db*`
-   - the memory repo's `scripts/dump_db.py` / `restore_db.py` round-trip is noted in
-     the project docs (dump before push, restore after pull, when the team shares
-     memory via git).
-   - **Team mode:** offer to install the git hooks that automate the round-trip —
-     a `pre-push` hook running `dump_db.py` and a `post-merge` hook running
-     `restore_db.py`. Ask before writing into `.git/hooks/` (or the repo's
-     configured hooks path); solo projects can skip.
+3. **Git hygiene for the store — one gitignore line, nothing else.** The tracked
+   artifact is the legible text dump; the SQLite file is a local build artifact the
+   store rebuilds on open and refreshes on close. Ensure `.gitignore` contains:
+
+   ```
+   context/memory-graph.db
+   context/memory-graph.db-*
+   context/memory-graph.db.bak
+   ```
+
+   `context/memory-graph.dump` is committed like any other text file, so it diffs and
+   merges natively. There is deliberately **no filter to register and no hook to
+   install**: a git clean/smudge filter needs local config that git never clones and
+   will never auto-register, which silently broke every fresh checkout in the old
+   design. If a project still has `filter=memory-db` in `.gitattributes`, remove it —
+   and if a `.db` path holds dump text (that breakage), the next store open heals it.
 
 4. **Wire CLAUDE.md.** Append the graph-workflow snippet (`CLAUDE.md.txt` from this
    pack) to the project's `CLAUDE.md` if not already present, so every future agent

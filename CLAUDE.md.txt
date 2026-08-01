@@ -99,8 +99,9 @@ the MCP tools are absent.
   epic id as a capture facet, and sibling slices' surviving nodes as
   parent_refs. One change = one plan, one review sitting — epics are grouped,
   never merged into one change.
-- `context/memory-graph.db` — the store (gitignored; sync via dump/restore
-  scripts).
+- `context/memory-graph.dump` — the tracked store, as legible text (diffs and
+  merges natively). `context/memory-graph.db` is a gitignored build artifact the
+  store rebuilds on open and refreshes on close; nothing to set up, no filter.
 - `context/foundation/tracker.md` — the issue-tracker binding (which tracker, the
   board's real state names, who may close). `tracker: none` is a valid answer.
 - `context/changes/<id>/change.md` carries `tracker:` alongside `memory_goal:` when

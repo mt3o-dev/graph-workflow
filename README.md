@@ -138,14 +138,19 @@ under the working directory it is launched in; set `MEMORY_DB_PATH` in the serve
 `env` only if you need a non-default location. One store per project — pointing a
 shared store at two projects poisons both.
 
-**Git rules for the store.** The SQLite file stays out of git (this repo's
-`.gitignore` shows the pattern: `context/memory-graph.db*`); the legible text dump
-is the sync format when a team shares memory:
+**Git rules for the store.** The SQLite file stays out of git (`context/memory-graph.db`
+in `.gitignore`); the tracked artifact is `context/memory-graph.dump`, an ordinary text
+file that diffs and merges natively. Nothing to set up — the store rebuilds the database
+from the dump on open and refreshes the dump on close, so `git clone` → run a command →
+it works, and a commit carries the diff without anyone remembering to dump.
 
 ```sh
-uv run python scripts/dump_db.py      # before push
-uv run python scripts/restore_db.py   # after pull
+uv run agentic-memory sync status   # which side is ahead, if you ever wonder
 ```
+
+There is no clean/smudge filter, deliberately: filter config is local-only and git will
+never auto-register it, so that design silently broke every fresh clone. See
+`docs/09_GIT_SYNC.md` in the memory repo.
 
 The human review GUI (staleness queue, tier promotion) runs from the same
 install: `uv run agentic-memory-gui` → http://127.0.0.1:8765.

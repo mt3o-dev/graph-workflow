@@ -81,7 +81,7 @@ context/
   changes/     # active changes: <change-id>/{change.md, plan.md, research.md}
   archive/     # immutable — nothing ever writes here
   foundation/  # PRD, roadmap, tech-stack (human source of truth)
-context/memory-graph.db   # the store — gitignored, synced via dump/restore
+context/memory-graph.dump # the store as tracked text (the .db is a gitignored build artifact)
 ```
 
 ### 2.3 Load the foundation (brownfield or right after writing the PRD)
@@ -632,10 +632,12 @@ invalidates (foundation nodes have the widest blast radius in the store — a de
 result is a project-level decision), capture new statements with CONTRADICTS
 edges, and let the human re-promote. Never sync doc→graph silently.
 
-**Sharing the store in a team.** The SQLite file is gitignored; the sync format
-is the legible dump (`scripts/dump_db.py` / `restore_db.py`). Dump before push,
-restore after pull. Two people writing the binary concurrently is undefined —
-treat the dump as the merge surface.
+**Sharing the store in a team.** `context/memory-graph.dump` is tracked plain text;
+the `.db` is gitignored and rebuilt from it. Nothing to run before push or after
+pull — the store refreshes the dump on close and rebuilds itself on open. Conflicts
+are ordinary text conflicts on the dump; resolve them there, and the next open picks
+up the resolution. Two people writing one `.db` concurrently is still undefined —
+the dump is the merge surface, as it always was, just without a filter to register.
 
 ---
 

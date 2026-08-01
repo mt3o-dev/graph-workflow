@@ -84,7 +84,7 @@ context/
   changes/     # aktywne zmiany: <change-id>/{change.md, plan.md, research.md}
   archive/     # niemutowalne — nic tu nigdy nie pisze
   foundation/  # PRD, roadmapa, tech-stack (ludzkie źródło prawdy)
-context/memory-graph.db   # store — w .gitignore, synchronizacja przez dump/restore
+context/memory-graph.dump # store jako śledzony tekst (.db to artefakt lokalny, w .gitignore)
 ```
 
 ### 2.3 Załadowanie fundamentów (brownfield albo zaraz po napisaniu PRD)
@@ -649,10 +649,13 @@ edycję (węzły fundamentowe mają najszerszy promień rażenia w storze — g�
 wynik to decyzja na poziomie projektu), capture nowych stwierdzeń z krawędziami
 CONTRADICTS i ludzka re-promocja. Nigdy nie synchronizuj dok→graf po cichu.
 
-**Współdzielenie store'a w zespole.** Plik SQLite jest w .gitignore; formatem
-synchronizacji jest czytelny dump (`scripts/dump_db.py` / `restore_db.py`).
-Dump przed pushem, restore po pullu. Równoległy zapis binarki przez dwie osoby
-jest niezdefiniowany — powierzchnią merge'a jest dump.
+**Współdzielenie store'a w zespole.** `context/memory-graph.dump` to śledzony,
+zwykły tekst; `.db` jest w .gitignore i odbudowywany z niego. Nie trzeba nic
+uruchamiać przed pushem ani po pullu — store odświeża dump przy zamknięciu i
+odbudowuje się przy otwarciu. Konflikty to zwykłe konflikty tekstowe na dumpie;
+rozwiąż je tam, a następne otwarcie podchwyci rozwiązanie. Równoległy zapis jednego
+`.db` przez dwie osoby wciąż jest niezdefiniowany — powierzchnią merge'a pozostaje
+dump, tylko bez filtra do rejestrowania.
 
 ---
 
