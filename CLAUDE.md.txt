@@ -103,6 +103,11 @@ step because the MCP tools are absent.
 - `context/memory-graph.dump` — the tracked store, as legible text (diffs and
   merges natively). `context/memory-graph.db` is a gitignored build artifact the
   store rebuilds on open and refreshes on close; nothing to set up, no filter.
+  If a merge conflicts in the dump, run `agentic-memory sync resolve` and `git add`
+  the result — never hand-edit the markers out, because git aligns similar blocks and
+  shows only their differing lines, so "keep both sides" can splice half of one entry
+  onto half of another. Memory commands refuse to run against a conflicted dump, so
+  you will be told rather than served a half-loaded graph.
 - `context/foundation/tracker.md` — the issue-tracker binding (which tracker, the
   board's real state names, who may close). `tracker: none` is a valid answer.
 - `context/changes/<id>/change.md` carries `tracker:` alongside `memory_goal:` when

@@ -225,6 +225,20 @@ The dump appears after your first capture. You never export or import anything: 
 store refreshes the dump when it finishes writing, and rebuilds itself from the dump
 when it starts. Just commit as usual.
 
+**If a merge conflicts in the dump**, one command finishes it:
+
+```sh
+agentic-memory sync resolve
+git add context/memory-graph.dump
+```
+
+It merges the two sides by id — two people adding different things always means keeping
+both. Do not edit the conflict markers out by hand: git lines up blocks that look alike
+and shows you only the lines that differ, so "keep both sides" can stitch half of one
+entry onto half of another. Nothing bad happens if you forget the command, because
+memory commands refuse to run against a conflicted dump and tell you this — they will
+not answer from a half-loaded graph, and will not overwrite the other person's work.
+
 ### Joining a project that already uses this
 
 ```sh

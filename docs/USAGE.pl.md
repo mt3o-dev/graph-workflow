@@ -656,10 +656,20 @@ CONTRADICTS i ludzka re-promocja. Nigdy nie synchronizuj dok→graf po cichu.
 **Współdzielenie store'a w zespole.** `context/memory-graph.dump` to śledzony,
 zwykły tekst; `.db` jest w .gitignore i odbudowywany z niego. Nie trzeba nic
 uruchamiać przed pushem ani po pullu — store odświeża dump przy zamknięciu i
-odbudowuje się przy otwarciu. Konflikty to zwykłe konflikty tekstowe na dumpie;
-rozwiąż je tam, a następne otwarcie podchwyci rozwiązanie. Równoległy zapis jednego
-`.db` przez dwie osoby wciąż jest niezdefiniowany — powierzchnią merge'a pozostaje
-dump, tylko bez filtra do rejestrowania.
+odbudowuje się przy otwarciu.
+
+Gdy merge zakończy się konfliktem w dumpie, uruchom **`agentic-memory sync resolve`**
+i zrób `git add` na wyniku: komenda łączy obie strony po id, co dla dwóch osób
+dodających różne rzeczy oznacza zachowanie obu. *Nie* usuwaj znaczników konfliktu
+ręcznie — git zestawia ze sobą bloki, które wyglądają podobnie, i pokazuje tylko
+różniące się linie, więc „zostaw obie strony” potrafi skleić połowę jednego węzła lub
+zdarzenia z połową drugiego, a wynik parsuje się bez żadnego błędu. Konfliktu nie da
+się przeoczyć: komendy pamięci odmawiają uruchomienia na dumpie z konfliktem, zamiast
+odpowiadać z częściowo wczytanego grafu, i odmawiają jego nadpisania, zamiast po cichu
+skasować pracę drugiej osoby.
+
+Równoległy zapis jednego `.db` przez dwie osoby wciąż jest niezdefiniowany —
+powierzchnią merge'a pozostaje dump, tylko bez filtra do rejestrowania.
 
 ---
 

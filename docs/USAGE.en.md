@@ -638,10 +638,19 @@ edges, and let the human re-promote. Never sync doc→graph silently.
 
 **Sharing the store in a team.** `context/memory-graph.dump` is tracked plain text;
 the `.db` is gitignored and rebuilt from it. Nothing to run before push or after
-pull — the store refreshes the dump on close and rebuilds itself on open. Conflicts
-are ordinary text conflicts on the dump; resolve them there, and the next open picks
-up the resolution. Two people writing one `.db` concurrently is still undefined —
-the dump is the merge surface, as it always was, just without a filter to register.
+pull — the store refreshes the dump on close and rebuilds itself on open.
+
+When a merge conflicts in the dump, run **`agentic-memory sync resolve`** and `git add`
+the result: it merges the two sides by id, which for two people adding different things
+means keeping both. Do *not* delete the markers by hand — git aligns blocks that look
+alike and reports only their differing lines, so "keep both sides" can splice half of
+one node or event onto half of another, and the result parses without complaint. You
+cannot miss the conflict by accident: memory commands refuse to run against a conflicted
+dump rather than answering from a half-loaded graph, and refuse to overwrite one rather
+than silently discarding the other side.
+
+Two people writing one `.db` concurrently is still undefined — the dump is the merge
+surface, as it always was, just without a filter to register.
 
 ---
 
