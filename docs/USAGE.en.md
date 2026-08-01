@@ -581,9 +581,14 @@ Use it, and say you did — the name is provisional. If the work depends on it b
 right, route the ratification to `/gw-resolve` or the GUI Domain tab first.
 
 **`capture_entity` says the entity already exists.** Correct and idempotent: the name
-is the key. It returns the existing node and does **not** overwrite the definition. If
-you disagree with the existing definition, capture a `concept` with a CONTRADICTS edge
-so the disagreement reaches review — never redefine the domain silently mid-change.
+is the key. It returns the existing node and does **not** overwrite the definition.
+
+**You disagree with an existing definition.** Note that a `CONTRADICTS` edge touching an
+entity is *rejected*: an entity asserts nothing, so nothing can contradict it. Two
+channels do apply — capture the correction as a `concept` with an `ABOUT` edge to the
+entity, and `append_event("CONTRADICTED", <entity-id>)` with your evidence, which flags
+it for the human who renames, redefines, or retires it. Never redefine the domain
+silently mid-change.
 
 **`entity_warnings` on capture ("close to existing entity `Customer`").** Unlike a
 facet warning, the entity was still created. That asymmetry is deliberate: entities

@@ -597,9 +597,14 @@ praca zależy od jej poprawności, najpierw skieruj ratyfikację do `/gw-resolve
 do zakładki Domain w GUI.
 
 **`capture_entity` mówi, że encja już istnieje.** Poprawnie i idempotentnie: kluczem
-jest nazwa. Zwraca istniejący węzeł i **nie** nadpisuje definicji. Jeśli nie zgadzasz
-się z istniejącą definicją, zcapture'uj `concept` z krawędzią CONTRADICTS, żeby spór
-trafił do review — nigdy nie redefiniuj domeny po cichu w środku zmiany.
+jest nazwa. Zwraca istniejący węzeł i **nie** nadpisuje definicji.
+
+**Nie zgadzasz się z istniejącą definicją.** Uwaga: krawędź `CONTRADICTS` dotykająca
+encji jest *odrzucana* — encja niczego nie twierdzi, więc nic nie może jej zaprzeczyć.
+Działają dwa inne kanały: zcapture'uj poprawkę jako `concept` z krawędzią `ABOUT` do
+encji oraz `append_event("CONTRADICTED", <id-encji>)` z dowodem, co oflaguje ją dla
+człowieka, który ją przemianuje, przedefiniuje albo wycofa. Nigdy nie redefiniuj domeny
+po cichu w środku zmiany.
 
 **`entity_warnings` przy capture („blisko istniejącej encji `Customer`").** W
 przeciwieństwie do ostrzeżenia o facecie, encja *została* utworzona. Ta asymetria

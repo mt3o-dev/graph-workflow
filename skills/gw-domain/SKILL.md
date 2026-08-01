@@ -242,8 +242,15 @@ plainly what the impact trace showed.
 - **The definition earns the entity.** One that does not distinguish it from its
   neighbours is a label. Make every definition say what the thing is *not*.
 - **Never overwrite a definition.** `capture_entity` on an existing name returns the
-  existing node and changes nothing. If you disagree with a ratified definition, capture
-  a `concept` with a `CONTRADICTS` edge so it reaches review.
+  existing node and changes nothing.
+- **An entity cannot be contradicted** — nothing can, because it asserts nothing. A
+  `CONTRADICTS` edge touching one is rejected by the surface. To dispute a definition,
+  use the two channels that *do* fit: capture the correction as a `concept` with an
+  `ABOUT` edge to the entity (so it ranks with it forever), and
+  `append_event("CONTRADICTED", <entity-id>, reason=<evidence>)`, which flags it for
+  the human — who renames, redefines, or retires it. The edge is a claim-vs-claim
+  relation; the event is "someone should look at this", and only the second applies to
+  a name.
 - **Attach as you go.** Every capture in every later session gets `ABOUT` edges to the
   entities it concerns. An entity with nothing attached is a dictionary entry, not a hub.
 - Standing rules apply: honest events only, no trust/flag/tier mutation, no entity
