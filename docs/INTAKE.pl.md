@@ -2,7 +2,7 @@
 
 *(English version: [INTAKE.en.md](INTAKE.en.md))*
 
-Dwanaście obszarów do przemyślenia **zanim** uruchomisz `/gw-init` na projekcie.
+Trzynaście obszarów do przemyślenia **zanim** uruchomisz `/gw-init` na projekcie.
 Każdy obszar zadaje 4–6 pytań, a każde pytanie ma przykład — albo użyteczną
 odpowiedź, albo to, co pójdzie nie tak bez niej. Pytania, których nie dało się
 pewnie osadzić w faktycznej mechanice workflow, zostały usunięte zamiast dopchane.
@@ -66,8 +66,32 @@ pierwszy szkic przed pierwszym capture, a nie na organiczne narastanie.
 4. Jaka jest stała instrukcja obsługi `facet_warnings` — kiedy agent powinien przyjąć sugerowaną istniejącą etykietę, a kiedy utrzymanie odrębnej nowej jest uzasadnione?
    *Użyteczna reguła: przyjmij sugestię, chyba że te dwa pojęcia kiedykolwiek będą musiały być recallowane osobno. `tax` vs `vat` mogą naprawdę się różnić (akcyza, podatek u źródła); `invoice` vs `invoicing` — nigdy.*
 
-5. Czy kluczowe terminy domenowe projektu są zdefiniowane na tyle spójnie, by stać się węzłami `concept` — czy może członkowie zespołu obecnie rozumieją to samo słowo różnie?
-   *Jeśli „konto" oznacza konto księgowe dla finansów, a login użytkownika dla inżynierii, scapture'uj teraz dwa odrębne koncepty z odrębnymi facetami — inaczej pierwszy recall, który je pomiesza, wprowadzi w błąd z pełną pewnością siebie.*
+5. Czy kluczowe terminy domenowe projektu są zdefiniowane na tyle spójnie, by stać się węzłami `entity` — czy może członkowie zespołu obecnie rozumieją to samo słowo różnie?
+   *Jeśli „konto" oznacza konto księgowe dla finansów, a login użytkownika dla inżynierii, to homonim: `/gw-domain` proponuje obie encje, każdą definiującą się wobec drugiej, a zespół wybiera nazwy rozróżniające. Zostawione samo sobie sprawi, że pierwszy recall, który je pomiesza, wprowadzi w błąd z pełną pewnością siebie.*
+
+## 2b. Model domeny
+
+Facety klasyfikują; **encje domenowe nazywają**. To inny rodzaj węzła o innej fizyce:
+encji nie da się zaprzeczyć (można ją tylko przemianować albo wycofać), nie ulega
+rozpadowi i przeżywa każdy sweep niezależnie od tieru — więc nieuważna przeżyje każdą
+zmianę, która mogła ją poprawić. Encje są też hubami grafu, jedynym miejscem, gdzie
+wyszukiwanie przechodzi krawędź wstecz, a to właśnie pozwala późniejszej zmianie
+odzyskać to, czego wcześniejsza dowiedziała się o tej samej rzeczy.
+
+1. Którego trybu potrzebuje ten projekt — **greenfield** (domena jest w głowach ludzi; użytkownik ją nazywa, agent zapisuje) czy **brownfield** (domena jest ukryta w kodzie; agent ekstrahuje z dowodem `plik:linia`, użytkownik recenzuje)?
+   *Przepisanie istniejącego produktu to zwykle oba: brownfield dla przenoszonych podsystemów, greenfield dla nowych. Uruchom je jako osobne przebiegi — rola recenzenta jest w każdym zupełnie inna, a zmieszanie ich w jednej paczce sprawia, że żaden nie zostanie zrobiony porządnie.*
+
+2. Czy zespół potrafi dziś podać jedną czystą definicję pięciu najważniejszych rzeczowników — łącznie z tym, czym każdy z nich **nie jest**?
+   *„Customer to strona, którą fakturujemy — nie osoba, która się loguje; to User" to definicja. „Klient systemu" to tautologia, która nie powstrzyma ani jednej pomyłki nazewniczej. Jeśli nikt nie umie ich wyprodukować, to sesja elicytacji JEST tą pracą i potrzebuje właściwych ludzi w pokoju.*
+
+3. Kto ratyfikuje zaproponowane encje i jak szybko? To inny akt niż promocja tieru i może to być inna osoba — raczej product owner niż tech lead.
+   *Nieratyfikowane encje nie są nieszkodliwym oczekiwaniem: przeżywają sweepy i nadal rankują w recallu z tagiem `proposed`. Zaległość, której nikt nie przerabia, oznacza, że język projektu jest ustalany agent-first, po jednej propozycji naraz.*
+
+4. Gdzie spodziewasz się rozjazdu między słownictwem kodu a słownictwem produktu i które wygrywa?
+   *Stare schematy zwykle niosą starszą nazwę (`client`), podczas gdy PRD i UI niosą aktualną (`customer`). Ustal regułę przed przebiegiem ekstrakcji, inaczej będziesz ją rozstrzygać raz na paczkę.*
+
+5. Czy istnieje już słowniczek, diagram modelu domeny albo mapa kontekstów? Czy jest na tyle aktualny, by zasiać zestaw encji, czy raczej zasadziłby nazwy, które kod porzucił?
+   *Nieaktualny słowniczek jest tu gorszy niż żaden: encja nie ulega rozpadowi, więc nazwa wydestylowana z diagramu z 2023 nie przegrywa z niczym i nigdy nie zostaje usunięta przez sweep.*
 
 ## 3. Granulacja i nazewnictwo zmian
 
@@ -141,6 +165,12 @@ się pierwsza zmiana.
 5. Kto rozstrzyga o kandydatach do konsolidacji przy każdym PR — węźle podsumowania zmiany i artefaktach CONFIRMED, które wypisuje /gw-review?
    *Przykład: „Recenzent PR-a albo promuje podsumowanie zmiany, albo jawnie je odrzuca na tym samym posiedzeniu." Niewypromowane podsumowanie zasypia przy sweepie, co niweczy jego cel — przyszłe recalle w tym rejonie nie dostają z epizodu nic.*
 
+6. Kto ratyfikuje **encje domenowe** i czy to ta sama osoba, która promuje tiery? Często nie powinna być — jedno to pytanie produktowe, drugie inżynierskie.
+   *Przykład: „Product owner potwierdza nazwy encji w zakładce Domain w GUI na cotygodniowym review; tech lead zajmuje się promocjami tierów przy każdym PR." Rozdzielenie ich chroni decyzję nazewniczą przed podjęciem jej przez tego, kto akurat recenzował diff.*
+
+7. Kto uruchamia okresowy przebieg `/gw-consolidate` i w jakiej kadencji? Podsumowanie epizodu per PR jest automatyczne; przebieg po powtarzalność między zmianami nie.
+   *Przykład: „Po każdej trzeciej zarchiwizowanej zmianie albo gdy /gw-review zgłosi kandydatów dwa PR-y z rzędu." Całkowite pominięcie tego jest ważnym wyborem — powiedz to wprost, zamiast zostawiać go w domyśle bez właściciela.*
+
 ## 6. Miks trybów wykonania
 
 Każda zmiana trafia do dokładnie jednego trybu wykonania: interaktywnego
@@ -149,6 +179,9 @@ Każda zmiana trafia do dokładnie jednego trybu wykonania: interaktywnego
 realna tylko wtedy, gdy warunki wstępne headless da się faktycznie spełnić — co
 zwykle oznacza pracę nad infrastrukturą testową przed pierwszym przebiegiem
 `/gw-goal`.
+
+0. Które skille w ogóle jesteś gotów uruchamiać bez nadzoru? Trzy z założenia nigdy nie są headless — `/gw-domain` i `/gw-wireframe` są zdefiniowane przez użytkownika w pętli, a `/gw-fix` wymaga osądu na kroku reprodukcji, chyba że ktoś już napisał test, który failuje.
+   *Przykład: „Headless: /gw-goal na zmianach z planem oraz /gw-fix tylko wtedy, gdy QA dostarczy test reprodukujący. Nigdy headless: modelowanie domeny, wireframing, zatwierdzanie konsolidacji." Bezobsługowy przebieg greenfield wymyśli domenę, a bezobsługowa poprawka bez reprodukcji naprawi coś obok i zgłosi sukces.*
 
 1. Jaki odsetek twoich typowych zmian jest ograniczony i weryfikowalny komendą — twardy warunek wstępny trybu headless?
    *Przykład: „Podbicia zależności, refaktory w stylu codemod i endpointy CRUD względem naszej suity testów API: headless. Wszystko, co dotyka silnika cenowego: interaktywnie." Jeśli szczera odpowiedź brzmi „prawie nic nie jest weryfikowalne komendą", planuj wyłącznie tryb interaktywny, dopóki to się nie zmieni.*
@@ -273,6 +306,9 @@ kontestowaną wiedzą — graf gnije dokładnie tak szybko, jak ludzie go ignoru
 3. Czy recenzenci będą egzekwować konsolidację przy `/gw-review`, czy w praktyce jest ona opcjonalna?
    *Przykład: pozycja checklisty PR — „węzeł podsumowania zmiany istnieje, a kandydaci do promocji rozstrzygnięci" — bo niewypromowane podsumowanie zasypia przy sweepie i epizod znika z żywego recallu.*
 
+3b. Kto pilnuje **zaległości modelu domeny** — liczby encji wciąż w stanie `proposed`?
+   *Przykład: raportuje ją ta sama checklista PR, a wynik powyżej pięciu wywołuje przebieg ratyfikacyjny w GUI. Zaległość, która tylko rośnie, oznacza, że słownictwo projektu ustalają propozycje agenta, których nikt nie przeczytał — a encje nie ulegają rozpadowi, więc to nigdy nie naprawi się samo.*
+
 4. Jak wygląda „zdrowy" stan tego grafu i kto to sprawdza?
    *Przykład: recalle wynoszą na wierzch głównie wypromowane, bezsporne węzły; kolejka review dąży do pustej po każdym cyklu PR. Gnicie: recalle startowe zdominowane tagami `disputed`, kandydaci do promocji nigdy nierozstrzygnięci, sweepy archiwizujące wszystko, bo nic nie zostało wypromowane.*
 
@@ -298,4 +334,4 @@ była dowodem, a nie kosztem utopionym.
    *Przykład: dokumenty fundamentowe zawsze były ludzkim źródłem prawdy, więc nic krytycznego dla wiedzy nie żyje wyłącznie w grafie; zacommitowany dump jest czytelnym tekstem, więc dawne decyzje pozostają greppowalne nawet bez serwera.*
 
 5. Jaki jest minimalny sensowny odwrót, krótszy niż pełne porzucenie?
-   *Przykład: zejdź do czystego 10x (same pliki), ale zachowaj `/gw-foundation` i konsolidację przy bramce review — dwa najcenniejsze punkty capture — zamiast wyjścia wszystko-albo-nic.*
+   *Przykład: zejdź do czystego 10x (same pliki), ale zachowaj `/gw-foundation`, `/gw-domain` i konsolidację przy bramce review — trzy najcenniejsze punkty capture — zamiast wyjścia wszystko-albo-nic. Model domeny jest z nich najtańszy w utrzymaniu i najwolniej gnije, bo encje zmieniają się znacznie rzadziej niż decyzje.*

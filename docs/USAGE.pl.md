@@ -22,10 +22,15 @@ obecnej).
 ```mermaid
 flowchart TD
     INIT["/gw-init<br/>(raz na projekt)"] --> FOUND["/gw-foundation<br/>destylacja PRD / ADR / tech-stack<br/>do kandydatów lifetime"]
-    FOUND --> NEW["/gw-new<br/>folder zmiany + węzeł Goal + recall startowy"]
-    NEW --> Q{Teren<br/>znany?}
+    FOUND --> DOM["/gw-domain<br/>rzeczowniki projektu jako encje<br/>greenfield: nazywa użytkownik<br/>brownfield: ty ekstrahujesz, on recenzuje"]
+    DOM --> NEW["/gw-new<br/>folder zmiany + węzeł Goal + recall startowy"]
+    NEW --> KIND{Jaki rodzaj<br/>pracy?}
+    KIND -- "błąd / refaktor" --> FIX["/gw-fix<br/>TDD: red → green → refactor<br/>(żadnej zmiany kodu przed czerwonym testem)"]
+    KIND -- "powierzchnia UI" --> WIRE["/gw-wireframe<br/>inwentarz ekranów, potem<br/>jeden ekran na turę z użytkownikiem"]
+    KIND -- "funkcjonalność" --> Q{Teren<br/>znany?}
     Q -- "nie" --> RES["/gw-research<br/>najpierw recall, eksploracja tylko luk,<br/>capture ustaleń"]
     Q -- "tak" --> PLAN
+    WIRE --> PLAN
     RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>plan.md, capture decyzji"]
     PLAN --> PLANREV["/gw-plan-review<br/>świeża sesja, niezależny recall,<br/>plan vs ustalone constrainty"]
     PLANREV -- "request changes" --> PLAN
@@ -34,11 +39,19 @@ flowchart TD
     MODE -- "tak" --> GOAL["/gw-goal<br/>pętla headless,<br/>człowiek dopiero przy PR"]
     IMPL --> REV["/gw-review<br/>code review + ludzka bramka pamięci<br/>+ konsolidacja epizodyczna→semantyczna"]
     GOAL --> REV
+    FIX --> REV
     REV -- "poprawki" --> IMPL
     REV -- "akceptacja" --> MERGE["merge"]
     MERGE --> ARCH["/gw-archive<br/>ostatni capture, deactivate + sweep,<br/>folder → context/archive/"]
     ARCH -.-> NEW
+    ARCH -.-> IDEA["/gw-ideate<br/>przekop graf w poszukiwaniu<br/>tego, co budować dalej"]
+    IDEA -.-> NEW
 ```
+
+Poza główną osią, poza kształtem zmiany: `/gw-domain` (język wszechobecny),
+`/gw-ideate` (co budować dalej), `/gw-consolidate` (destylacja powtarzalności zanim
+sweep uśpi szczegóły), `/gw-ask` (pytanie bez zmiany), `/gw-resolve` (praca nad
+ludzkimi kolejkami).
 
 ---
 
@@ -98,6 +111,52 @@ fundamentową w zawsze-żywym root secie, z którego czerpie każdy przyszły re
 > **Po co to?** Graf startuje pusty. Bez tego kroku pierwsze dziesięć zmian
 > działa na recallach, które nic nie wiedzą, a agenci wyprowadzają (albo
 > naruszają) PRD od zera.
+
+### 2.4 Modelowanie domeny — `/gw-domain`
+
+Destylacja fundamentów zbiera **twierdzenia** projektu. Ten krok zbiera jego
+**rzeczowniki**, a te zachowują się inaczej: encja domenowa *nazywa*, a nie
+*twierdzi*, więc nie da się jej zaprzeczyć (można ją tylko przemianować albo
+wycofać), nigdy nie ulega rozpadowi i przeżywa każdy sweep niezależnie od tieru —
+domena przeżywa zmiany, które jej dotykają.
+
+Encje są też **hubami** grafu. `ABOUT` to jedyny typ krawędzi, którego kierunek
+*odwrotny* jest przechodzony przy wyszukiwaniu, więc gdy artefakty zostaną podpięte
+do `Invoice`, późniejsza zmiana pracująca nad fakturami dostanie je w recallu — także
+te zcapture'owane pod innym celem, w zmianie zarchiwizowanej wiele miesięcy temu. To
+różnica między grafem, który odpowiada na *„co ustaliła ta zmiana?"*, a takim, który
+odpowiada na *„co wiemy o fakturach?"*.
+
+Dwa tryby; skill mówi wprost, w którym jest, zanim cokolwiek zaproponuje:
+
+| | **Greenfield** | **Brownfield** |
+|---|---|---|
+| Kto tworzy listę | Użytkownik nazywa domenę, agent zapisuje | Agent ekstrahuje ze schematu, modułów core, PRD; użytkownik recenzuje |
+| Zapisany dowód | Własne słowa użytkownika | `plik:linia` przy każdej propozycji |
+| Tryb porażki agenta | Wymyślanie encji — fikcja, pod którą potem powstaje kod | Proponowanie hydrauliki (`UserRepository`) jako domeny |
+| Wartościowy wynik | Definicja mówiąca, czym rzecz **nie jest** | **Ustalenia o rozjeździe**: synonimy, homonimy, terminy tylko-w-kodzie i tylko-w-mowie |
+| Kto ratyfikuje | **Człowiek** | **Człowiek** |
+
+Ostatni wiersz jest celowo identyczny. `capture_entity` zawsze ląduje jako
+`proposed`; potwierdza wyłącznie człowiek, w zakładce **Domain** w GUI. Agent, który
+proponuje i sam zatwierdza własną propozycję, nie jest żadną bramką.
+
+```
+capture_entity(name="Customer",
+               definition="Strona, którą fakturujemy. Nie osoba, która się loguje — to User.",
+               goal_ref="node_7f3a",
+               facets=["billing"],
+               evidence="src/lib/core/model/customer.ts:14")
+→ {node_id: "node_0a11", existing: false, status: "proposed"}
+```
+
+Recall następnie taguje ją: `[node:node_0a11] type=entity tier=short-term proposed`.
+Użyteczna, widocznie nieratyfikowana. Po potwierdzeniu tag zmienia się na `confirmed`.
+
+Poprawki (przemianowanie, rozdzielenie, scalenie, wycofanie) idą przez ten sam skill —
+zawsze z `impact_of` na początku, bo dla encji zwraca on wszystko, co o niej napisano,
+a głęboki wynik oznacza, że przemianowanie jest wydarzeniem na poziomie projektu, a nie
+porządkami.
 
 ---
 
@@ -235,13 +294,29 @@ Kandydaci do promocji (CONFIRMED, wyglądają na trwałe):
 - [node:node_0801] decyzja o zaokrąglaniu VAT per pozycja — podsumowanie zmiany od niej zależy; sugestia long-term
 - [node:node_0812] podsumowanie zmiany: „invoice-vat-rounding przełączyła VAT na zaokrąglanie per pozycja half-up…" — sugestia long-term
 
+Model domeny: 2 encje czekają na ratyfikację (Statement, Carrier).
+Konsolidacja: 1 kandydat — trzy zmiany zcapture'owały już „handlery webhooków muszą
+być idempotentne". Uruchom /gw-consolidate.
+
 Otwórz kolejkę review: `uv run agentic-memory-gui` → zakładka Review.
 ```
 
 `node_0812` to **artefakt konsolidacji** — jeden węzeł `concept` destylujący, co
-zmiana zrobiła i dlaczego, z krawędziami `DEPENDS_ON` do jej kluczowych decyzji.
-Po promocji przyszłe recalle w tym rejonie dostają esencję epizodu nawet wtedy,
-gdy szczegóły są już uśpione.
+zmiana zrobiła i dlaczego, z krawędziami `DEPENDS_ON` do jej kluczowych decyzji,
+`ABOUT` do encji dotkniętych przez zmianę i `CONSOLIDATES` zapisującymi, z czego
+został wydestylowany. Po promocji przyszłe recalle w tym rejonie dostają esencję
+epizodu nawet wtedy, gdy szczegóły są już uśpione.
+
+`CONSOLIDATES` to **wyłącznie kanał proweniencji** — waga 0 w polityce, więc walker
+wyszukiwania nigdy go nie przechodzi. Celowo: instancje są uśpione *z założenia*, a
+przechodzenie tej krawędzi przy zapytaniu cofałoby efekt sweepa. Pozostaje
+odpytywalna w GUI i przy pytaniach o proweniencję.
+
+Dwie ostatnie linie to nowsze bramki. **Zaległości modelu domeny** to encje
+zaproponowane przez agenta, których nikt nie ratyfikował — nadal rankują w recallu z
+tagiem `proposed`, więc rosnąca lista oznacza, że język projektu dryfuje
+agent-first. Linia **konsolidacji** raportuje `consolidation_candidates()`; review
+tylko je liczy, nie przerabia (od tego jest `/gw-consolidate`, z człowiekiem).
 
 ### 3.5 Archiwizacja — `/gw-archive`
 
@@ -285,6 +360,130 @@ Zachowania specyficzne dla headless:
 
 ---
 
+## 4a. Naprawa błędu — `/gw-fix`
+
+Poprawka to przyrost zmiany, nie zadanie na boku: change-id, węzeł Goal, zakres
+pamięci, review, archiwizacja. Od `/gw-implement` różni ją **ścieżka poprawności** —
+funkcjonalność weryfikuje się wobec planu, poprawkę wobec testu, który był czerwony
+*zanim* poprawka powstała.
+
+```
+/gw-new  →  invoice-vat-double-rounding
+recall   →  [node:node_0788] (invariant, long-term) Suma faktury równa sumie pozycji.
+            ↑ to inwariant JEST zgłoszeniem błędu, wyrażonym precyzyjnie
+reprodukcja → najmniejsze wejście pokazujące złą sumę; potwierdź z użytkownikiem
+impact_of → czy zapisana reguła jest dobra a kod zły, czy odwrotnie?
+RED      →  napisz test, który failuje; URUCHOM GO; wklej porażkę
+GREEN    →  minimalna zmiana; nowy test przechodzi; CAŁY suite przechodzi
+REFACTOR →  sprzątanie, suite zielony po każdym kroku, żaden test nietknięty
+capture  →  klasa pomyłki, nie diff
+```
+
+Trzy zasady niosą większość wartości:
+
+- **Żadnej zmiany kodu przed czerwonym testem.** Jeśli nie umiesz napisać testu,
+  który failuje, nie rozumiesz jeszcze błędu. „Poprawka jest oczywista" to dokładnie
+  ten moment, w którym ta zasada zostaje pominięta i regresja wraca.
+- **Błąd może być w grafie, nie w kodzie.** Jeśli kod wiernie realizuje zapisaną
+  regułę, która sama jest zła, to wiedza jest defektem: zcapture'uj poprawkę z
+  krawędzią `CONTRADICTS` i najpierw sprawdź `impact_of` — zła reguła z zależnymi
+  oznacza, że wszystko poniżej zbudowano na niej.
+- **Zapisuj klasę, nie instancję.** „Pieniędzy nie wolno zaokrąglać dwukrotnie" jest
+  odzyskiwalne przez następną zmianę; „linia 44 w invoice.ts zaokrąglała dwa razy" to
+  historia gita.
+
+Tryb refaktoru odwraca pętlę uczciwie: nie ma kroku czerwonego, więc siatką
+bezpieczeństwa jest pokrycie testami. Jeśli kod go nie ma, napisanie testów
+charakteryzujących *jest* pierwszą fazą — refaktor bez siatki to przepisanie z
+dodatkową pewnością siebie.
+
+Headless (`/gw-goal`) tylko wtedy, gdy ktoś już napisał test reprodukujący:
+reprodukcja to osąd, a agent bez nadzoru, który nie umie zreprodukować, naprawi coś
+obok i zgłosi sukces.
+
+## 4b. Projektowanie UI — `/gw-wireframe`
+
+Praca nad UI zawodzi w typowy sposób: agent generuje wiarygodne ekrany za jednym
+zamachem, użytkownik reaguje na gotowe, a poprawki kosztują więcej niż kosztowałby
+projekt. Ten skill zamienia to na pętlę, w której użytkownik koryguje kurs zanim
+powstanie jakikolwiek komponent.
+
+```
+recall + domain_model()  →  ograniczenia UX, reguły a11y, ratyfikowane rzeczowniki
+wykryj design system     →  system-bound | library-bound | unstyled — powiedziane wprost
+inwentarz ekranów        →  ⏸ użytkownik akceptuje LISTĘ (najtańszy punkt korekty)
+ekran po ekranie, 1/turę →  szkic układu · mapa komponentów · stany · zachowanie
+                            · uszanowane constrainty · ≤3 otwarte pytania  ⏸ czekaj
+capture                  →  decyzje strukturalne i rozstrzygnięcia o design systemie
+→ /gw-plan
+```
+
+Dwa zobowiązania czynią z tego część tego workflow, a nie ogólny prompt projektowy:
+
+- **Design system jest prawem, jeśli istnieje.** Wireframe'y nazywają istniejące
+  komponenty i tokeny. Gdy ekran potrzebuje czegoś, czego system nie ma, jest to
+  wystawione jako decyzja z opcjami i kosztem każdej — nigdy jako ciche odstępstwo,
+  bo tak umiera design system.
+- **Ekrany są zbudowane z encji domenowych.** Etykiety używają ratyfikowanych nazw.
+  Termin, którego model domeny nie zna, to propozycja do `/gw-domain`, a nie słowo,
+  które UI sobie ukuje.
+
+Wierność kończy się na strukturze i zachowaniu. Żadnych hexów ani krojów pisma —
+jeśli design system je definiuje, zacytuj token; jeśli nie, to decyzja, której projekt
+jeszcze nie podjął, a powiedzenie tego bije zgadywanie.
+
+Stany pusty i błędu są wireframe'owane wprost albo wprost wyłączone z zakresu. To tam
+kumulują się poprawki UI.
+
+## 4c. Szukanie, co budować dalej — `/gw-ideate`
+
+Ogólne generowanie pomysłów produkuje to, co zespół napisałby sam. To produkuje
+pomysły, **na które projekt już zapracował i ich nie zauważył** — bo projekt na tym
+workflow gromadzi precyzyjny zapis każdego odłożonego problemu i każdej zaakceptowanej
+luki, składany po jednej zmianie i nigdy nieczytany w całości.
+
+Sześć szwów, przekopywanych osobnymi recallami:
+
+| Szew | Co daje |
+|---|---|
+| Węzły `issue` | Backlog, co do którego zespół już się zgodził — najwyższa pewność |
+| Zaakceptowane luki | Odroczenia, których *powód* mógł już wygasnąć |
+| Obejścia w constraintach | Automatyzacja z już udokumentowanym bólem |
+| Niewykorzystane możliwości (`impact_of` zwraca mało) | Już zapłacone, jeszcze niezainkasowane |
+| Ślepe plamy domeny (encje bez niczego `ABOUT`) | Obszary produktu nazwane i nigdy niezbudowane |
+| Powracające spory w jednym rejonie | Model, który nie pasuje do rzeczywistości |
+
+**Dowód albo wytnij.** Każdy ocalały pomysł cytuje `[node:<id>]`, `plik:linia` albo
+wypowiedź użytkownika. Celuj w 6–10 ocalałych i raportuj listę wyciętych wraz z
+powodami — lista, z której nic nie odpadło, to lista, której nikt nie przesiał.
+Pomysły idą do `context/foundation/roadmap.md`; do grafu trafiają tylko *ustalenia*
+(nowe luki, ślepe plamy, wygasłe odroczenia).
+
+## 4d. Konsolidacja — `/gw-consolidate`
+
+Gdy trzy zmiany niezależnie odkryją to samo, uśpienie traci realny wzorzec.
+Konsolidacja to sposób, w jaki wzorzec przeżywa swoje epizody.
+
+```
+consolidation_candidates()   →  ≥3 żywe artefakty, ≥2 różne zakresy zmian, wspólny facet
+przeczytaj klaster           →  realny wzorzec | powtórzenie | fałszywy klaster?
+sformułuj abstrakcję         →  musi być prawdziwa dla przypadków, których ŻADNA instancja nie pokrywa
+przedstaw człowiekowi        →  on redaguje zdanie
+POST /api/consolidate        →  jego słowa, jego tier — jesteś skrybą
+```
+
+Wyłącznie addytywna: tworzy abstrakcję i ją podpina. Nic nie jest edytowane,
+archiwizowane, scalane ani przetierowane — instancje usypiają we własnym tempie, a
+abstrakcja zostaje żywa, bo człowiek ją wypromował.
+
+Test odróżniający realną abstrakcję od przeredagowanej instancji: **czy szkic jest
+prawdziwy dla przypadku, którego żadna instancja nie pokrywa?** Jeśli nie, klaster
+jest powtórzeniem — a to inne ustalenie: znaczy, że recall nie serwuje tego, co
+capture już zapisał.
+
+Nie konsoliduj encji domenowych. Encja to desygnat, a nie abstrakcja nad epizodami;
+kilka encji wyglądających na jedną to *scalenie*, a to `/gw-domain`.
+
 ## 5. Jak wiedza żyje i umiera
 
 ```mermaid
@@ -316,6 +515,31 @@ flowchart LR
 Agent rejestruje, że konflikt istnieje; nigdy nie decyduje, kto wygrywa. Trust
 jest wyliczany (folding) z journala przez uprzywilejowaną konserwację — żadne
 wywołanie agenta nie może go ustawić.
+
+Encje domenowe żyją według innej fizyki — drabina tożsamości zamiast drabiny
+ważności, a żywotność wynika z klasy, nie z tieru:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Zaproponowana: capture_entity<br/>(zawsze — i greenfield, i brownfield)
+    Zaproponowana --> Potwierdzona: człowiek ratyfikuje (zakładka Domain w GUI)
+    Potwierdzona --> Wycofana: człowiek wycofuje<br/>(przemianowana / rozdzielona / scalona / porzucona)
+    Zaproponowana --> Wycofana: człowiek odrzuca propozycję
+    Wycofana --> Potwierdzona: człowiek przywraca
+    Potwierdzona --> Potwierdzona: przeżywa KAŻDY sweep<br/>niezależnie od tieru
+    Zaproponowana --> Zaproponowana: też przeżywa — i nadal<br/>rankuje, z tagiem 'proposed'
+    note right of Wycofana
+        Nie kasowana. Jej krawędzie ABOUT
+        pozostają prześledzalne; opuszcza tylko
+        root set, więc następny sweep ją uśpi.
+    end note
+```
+
+Zwróć uwagę, co razem znaczą obie pętle własne: nieratyfikowana encja **nie** jest
+nieszkodliwym oczekiwaniem. Przeżywa sweepy i nadal rankuje w recallu z tagiem
+`proposed` — więc nieuważna propozycja przeżyje każdą zmianę, która mogła ją
+poprawić, a dobra nigdy nie stanie się ustalonym słownictwem. Dlatego `/gw-review`
+raportuje licznik zaległości przy każdym PR.
 
 ---
 
@@ -367,6 +591,44 @@ drugiego agenta *zobaczy* świeżą decyzję pierwszego — zwykle jako parę
 konflikt trafia do kolejki review zamiast po cichu do merge'a. Równoległość
 pozostaje ograniczona przepustowością review dokładnie z tego powodu.
 
+**Przywołana encja ma tag `proposed`.** Nazwał ją agent; żaden człowiek jej nie
+ratyfikował. Używaj jej i powiedz, że to robisz — nazwa jest prowizoryczna. Jeśli
+praca zależy od jej poprawności, najpierw skieruj ratyfikację do `/gw-resolve` albo
+do zakładki Domain w GUI.
+
+**`capture_entity` mówi, że encja już istnieje.** Poprawnie i idempotentnie: kluczem
+jest nazwa. Zwraca istniejący węzeł i **nie** nadpisuje definicji. Jeśli nie zgadzasz
+się z istniejącą definicją, zcapture'uj `concept` z krawędzią CONTRADICTS, żeby spór
+trafił do review — nigdy nie redefiniuj domeny po cichu w środku zmiany.
+
+**`entity_warnings` przy capture („blisko istniejącej encji `Customer`").** W
+przeciwieństwie do ostrzeżenia o facecie, encja *została* utworzona. Ta asymetria
+jest celowa: encje mają ludzką bramkę ratyfikacji, a „czy `Client` to to samo co
+`Customer`?" to pytanie o tożsamość, na które powinien odpowiedzieć człowiek patrząc
+na obie definicje. Ostrzeżenie trafia do wpisu w journalu propozycji, więc bramka je
+widzi.
+
+**Encja została wycofana, ale jej artefakty wciąż są podpięte.** Wycofanie osierociło
+je: tracą hub, który czynił je odnajdywalnymi między zmianami. Przepnij je przez
+`ABOUT` do encji zastępczej *zanim* człowiek wycofa starą — `/gw-domain` §C układa
+wszystkie cztery ruchy poprawkowe właśnie w tej kolejności.
+
+**Sweep zarchiwizował encję.** Tylko dwie możliwości: została wycofana albo nigdy nie
+była encją (węzeł `concept` o pojęciu domenowym jest związany z zakresem jak każdy
+inny artefakt). Sprawdź `domain_model(status="all")` — jeśli nazwy tam nie ma, została
+zapisana jako artefakt i potrzebuje prawdziwej encji.
+
+**`consolidation_candidates()` wciąż zwraca ten sam klaster.** Nie powinien —
+skonsolidowana instancja jest wykluczona z definicji. Jeśli wraca, konsolidacja nie
+została zatwierdzona (szkic powstał, człowiek nie rozstrzygnął). Jeśli klaster jest
+*powtórzeniem*, a nie wzorcem, powiedz to wprost i skieruj ustalenie dalej: powtarzane
+niemal identyczne capture'y znaczą, że recall nie serwuje tego, co capture już zapisał.
+
+**Poprawka błędu nie ma odtwarzalnego testu.** Wtedy nie jest gotowa na `/gw-fix`.
+Zcapture'uj `issue` z tym, co ustaliłeś i co wykluczyłeś, i zatrzymaj się. Spekulatywna
+poprawka jest nieodróżnialna od nowego błędu, a test to jedyna rzecz czyniąca poprawkę
+weryfikowalną przy review.
+
 **Headless wyczerpał retry.** Spodziewaj się `status: blocked`, węzła `issue` z
 dowodami i raportu przebiegu. Triage: napraw plan (zwykle) albo komendę
 weryfikacji (czasem), potem uruchom ponownie pod tym samym change-id.
@@ -401,8 +663,10 @@ jest niezdefiniowany — powierzchnią merge'a jest dump.
    agentów bez review to więcej niezrecenzowanego kodu *i* nieprzerobiona
    kolejka review.
 4. **Powierzchnia agenta nie może szkodzić** — brak mutacji trustu, czyszczenia
-   flag, promocji, archiwizacji. Jeśli krok workflow zdaje się którejś z nich
-   potrzebować — zły jest krok, nie powierzchnia.
+   flag, promocji, archiwizacji, ratyfikacji encji, zatwierdzania konsolidacji.
+   Jeśli krok workflow zdaje się którejś z nich potrzebować — zły jest krok, nie
+   powierzchnia. Agenci proponują, wykrywają, szkicują i rekomendują; każde z tych
+   działań kończy się u człowieka.
 5. **Jakość capture to sufit.** Retrieval jest deterministyczny (ten sam graf +
    to samo zapytanie → ten sam ranking; bez LLM w ścieżce zapytania), więc to,
    co serwuje recall, jest dokładnie tak dobre, jak to, co zapisał capture.
@@ -417,4 +681,11 @@ jest niezdefiniowany — powierzchnią merge'a jest dump.
    przez detektor kolizji — nie wolna chmura tagów.
 9. **plan.md to sekwencjonowanie, nie wiedza.** Może umrzeć razem ze zmianą;
    decyzje, które ucieleśniał, zostały scapture'owane na granicy planu i żyją
-   dalej.
+   dalej. To samo dotyczy `research.md` i `wireframes.md`.
+10. **Modelowanie domeny wymaga człowieka w pętli, w obu trybach.** Greenfield to
+    wywiad, brownfield to recenzja. Żaden nie działa bez nadzoru — bezobsługowy
+    przebieg greenfield wymyśli domenę, a bezobsługowy brownfield ratyfikuje
+    strukturę kodu tak, jakby była domeną.
+11. **Model domeny jest mnożnikiem jakości, nie warunkiem koniecznym.** Workflow
+    działa bez niego; recall jest tylko węższy, bo nic nie łączy artefaktów ponad
+    granicami zmian poza stożkiem celu i szczęściem embeddingów.
