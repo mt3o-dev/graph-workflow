@@ -30,13 +30,16 @@ lifecycle files, and a live memory store for everything else.
    needs no registration:
 
    ```sh
-   uv --project /path/to/agentic-memory-system run agentic-memory stale
+   agentic-memory stale
    ```
 
-   **`uv --project`, never `uv run --directory`.** The latter changes the working
-   directory, so the store resolves inside the memory system's own folder instead of
-   this project — the "shared store poisons both projects" failure, arrived at by
-   accident. Confirm what you actually opened with `agentic-memory sync status`.
+   The command is installed on PATH (`uv tool install --editable
+   /path/to/agentic-memory-system`) and resolves the store relative to the **working
+   directory**, so run it from the project root and it acts on this project. If it is
+   missing, tell the user to run that install — do not work around it by invoking the
+   memory system's checkout directly with `uv run --directory`, which moves the working
+   directory and opens the memory system's *own* store instead of this project's.
+   `agentic-memory sync status` shows which store you actually opened.
 
    If that answers, the workflow is usable *today*, in this session. Then register the
    MCP server as the optimization (better ergonomics where it is available), committed
@@ -44,8 +47,7 @@ lifecycle files, and a live memory store for everything else.
 
    ```sh
    claude mcp add --scope project agentic-memory \
-     --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
-     uv --project /path/to/agentic-memory-system run agentic-memory-mcp
+     --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- agentic-memory-mcp
    ```
 
    An MCP server binds at session start, so it takes effect in the *next* session, not

@@ -9,9 +9,10 @@ steps inside it.
 **Reaching the memory surface.** Prefer the `agentic-memory` MCP tools when this
 session has them. When it does not — a fresh clone, an unapproved `.mcp.json`, a
 config that landed mid-session — use the CLI, which needs no registration:
-`uv run agentic-memory --help` (same operations; `capture -` reads the body from
-stdin so prose never goes through shell quoting). Never skip a memory step because
-the MCP tools are absent.
+`agentic-memory --help` (same operations; `capture -` reads the body from stdin so
+prose never goes through shell quoting). It is installed on PATH and always acts on
+the project you are standing in, so it needs no path argument. Never skip a memory
+step because the MCP tools are absent.
 
 ```
 /gw-new → worktree → /gw-research → /gw-plan → /gw-plan-review → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive

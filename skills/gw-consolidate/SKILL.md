@@ -131,7 +131,7 @@ POST /api/consolidate
   "reason": "<why, in their words>" }
 ```
 
-(`uv run agentic-memory-gui` → **Domain** tab does the same thing with a form; either is
+(`agentic-memory-gui` → **Domain** tab does the same thing with a form; either is
 fine, same journal.) Lifetime requires `tier_confirmed` — the API enforces it.
 
 One item at a time, after they rule. Refuse "just consolidate all of them" — that is the

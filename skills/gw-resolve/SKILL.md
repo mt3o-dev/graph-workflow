@@ -24,7 +24,7 @@ ruling with extra steps.
 
 1. Locate the store (`context/memory-graph.db` of the project) and start the
    human surface if not already running:
-   `MEMORY_DB_PATH=<store> uv run agentic-memory-gui` (background,
+   `MEMORY_DB_PATH=<store> agentic-memory-gui` (background,
    127.0.0.1:8765). The skill drives its HTTP API; the human may keep the
    browser GUI open in parallel — same journal, no conflict.
 2. Pull the queue: `GET /api/review`. Order it for the session:

@@ -57,14 +57,15 @@ sweep), `/gw-ask` (a question, no change), `/gw-resolve` (work the human queues)
 ### 2.1 Prerequisites
 
 - [agentic-memory-system](https://github.com/mt3o-dev/agentic-memory-system)
-  cloned somewhere, with `uv` available.
+  cloned and installed on PATH:
+  `uv tool install --editable ~/tools/agentic-memory-system`
+  (see the README's **Set up a project** for the full walkthrough).
 - The MCP server registered with your agent client:
 
   ```sh
   # from your project root, so $PWD is the project:
   claude mcp add --scope project agentic-memory \
-    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
-    uv --project /path/to/agentic-memory-system run agentic-memory-mcp
+    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- agentic-memory-mcp
   ```
 
 - The `gw-*` skills copied into `~/.claude/skills/` (user-wide) or
@@ -104,8 +105,7 @@ The skill opens a dedicated `foundation` memory scope and distills the documents
 | Known accepted gap | `issue` | "No multi-currency support in v1; amounts assume PLN." |
 
 Everything captured is handed to you as a **lifetime-promotion candidate list**.
-Promote them in the GUI (from the project root:
-`uv --project /path/to/agentic-memory-system run agentic-memory-gui`) — this is a
+Promote them in the GUI (`agentic-memory-gui`, run from the project root) — this is a
 human-only action, and it is what puts foundation knowledge into the always-live
 root set that every future recall draws from.
 
@@ -294,7 +294,7 @@ Domain model: 2 entities awaiting ratification (Statement, Carrier).
 Consolidation: 1 candidate — 3 changes have now captured "webhook handlers must be
 idempotent". Run /gw-consolidate.
 
-Open the review queue: `uv run agentic-memory-gui` → Review tab.
+Open the review queue: `agentic-memory-gui` → Review tab.
 ```
 
 `node_0812` is the **consolidation artifact** — one `concept` node distilling what

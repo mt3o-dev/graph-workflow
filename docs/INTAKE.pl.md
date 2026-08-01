@@ -150,7 +150,7 @@ działań, spory się kumulują, nic nie jest promowane, a graf powoli degraduje
 do nierankowanego short-termowego szumu. Zdecyduj, kim są ludzie, zanim otworzy
 się pierwsza zmiana.
 
-1. Kto przerabia kolejkę review (`uv run agentic-memory-gui` → zakładka Review) i z jaką kadencją?
+1. Kto przerabia kolejkę review (`agentic-memory-gui` → zakładka Review) i z jaką kadencją?
    *Przykład: „Autor zmiany triażuje własne sporne węzły przy PR; tech lead przechodzi całą kolejkę w każdy piątek." Bez właściciela para `disputed` z pierwszego tygodnia wciąż jest nierozstrzygnięta w trzecim miesiącu, a każdy recall, który jej dotyka, zmusza agentów do rozumowania z obiema stronami.*
 
 2. Kto ma uprawnienia do promocji — zwłaszcza do tieru lifetime, który wymaga jawnego potwierdzenia w GUI?
@@ -298,7 +298,7 @@ rośnie, sporne węzły się piętrzą, a recall powoli zapełnia się nieaktual
 kontestowaną wiedzą — graf gnije dokładnie tak szybko, jak ludzie go ignorują.
 
 1. Kto przerabia kolejkę staleness/review i z jaką kadencją?
-   *Przykład: recenzent otwiera `uv run agentic-memory-gui` → zakładkę Review przy każdej bramce PR, plus cotygodniowy przegląd wszystkiego, co PR-y przeoczyły — kontra kolejka bez właściciela, w której każdy sporny węzeł pozostaje sporny na zawsze.*
+   *Przykład: recenzent otwiera `agentic-memory-gui` → zakładkę Review przy każdej bramce PR, plus cotygodniowy przegląd wszystkiego, co PR-y przeoczyły — kontra kolejka bez właściciela, w której każdy sporny węzeł pozostaje sporny na zawsze.*
 
 2. Kiedy faktycznie biegnie evaluator / uprzywilejowana konserwacja (folding trustu, regułowe rozstrzyganie flag) i kto ją wyzwala?
    *Przykład: zaplanowana cotygodniowa paczka — zmiany headless `/gw-goal` zależą od ścieżki reguły+evaluator dla swojej ważności, więc „nigdy" oznacza, że ich sprzeczności kumulują się bez triażu.*

@@ -104,10 +104,9 @@ Skills decide *when* to call; tools never embed judgment.
 
 ## Set up a project
 
-Two pieces get installed: **the memory system** (once per machine — one copy serves all
-your projects) and **the workflow skills** (copied into a project, or into your user
-scope so every project has them). Then three commands inside the project and you are
-running. About ten minutes.
+Everything you need is on this page — you do not have to read the memory system's docs
+to get running. Two things get installed once per machine, then three commands inside
+your project. About ten minutes.
 
 You need [`uv`](https://docs.astral.sh/uv/) and Claude Code. Nothing else.
 
@@ -115,32 +114,42 @@ You need [`uv`](https://docs.astral.sh/uv/) and Claude Code. Nothing else.
 
 ```sh
 git clone https://github.com/mt3o-dev/agentic-memory-system ~/tools/agentic-memory-system
-cd ~/tools/agentic-memory-system && uv sync
+uv tool install --editable ~/tools/agentic-memory-system
 ```
 
-Check it works:
+That puts three commands on your PATH — `agentic-memory`, `agentic-memory-gui`,
+`agentic-memory-mcp` — so every project can use memory without knowing where it lives.
+Check it:
 
 ```sh
-uv run agentic-memory --help
+agentic-memory --help
 ```
 
-That is the whole install. There is no server to register, no git filter to configure,
-and no background process — the workflow talks to memory by running this command.
+If your shell says "command not found", run `uv tool update-shell` and open a new
+terminal.
 
-### Step 2 — add the skills
+> Use `--editable`, and keep the clone. The GUI is served from files in that folder, so
+> deleting it (or installing without `--editable`) leaves you with a working command
+> line and a GUI that returns 503.
+
+There is no server to register, no git filter to configure, and nothing running in the
+background. The workflow talks to memory by running that command.
+
+### Step 2 — install the workflow skills (once per machine)
 
 ```sh
-cd /path/to/graph-workflow
-cp -r skills/gw-* ~/.claude/skills/        # every project gets them
-# or, just this one project:
-cp -r skills/gw-* /path/to/your-project/.claude/skills/
+git clone https://github.com/mt3o-dev/graph-workflow ~/tools/graph-workflow
+cp -r ~/tools/graph-workflow/skills/gw-* ~/.claude/skills/
 ```
 
-### Step 3 — tell the project about the workflow
+That makes `/gw-…` available in every project. To scope them to one project instead,
+copy into `<your-project>/.claude/skills/` and commit them.
 
-Paste the contents of `CLAUDE.md.txt` (from this repo) at the end of your project's
-`CLAUDE.md`. Create the file if it does not exist. This is what teaches every future
-Claude session the lifecycle and its rules.
+### Step 3 — tell your project about the workflow
+
+Paste the contents of `~/tools/graph-workflow/CLAUDE.md.txt` at the end of your
+project's `CLAUDE.md` (create the file if it does not exist). This is what teaches every
+future Claude session the lifecycle and its rules.
 
 ### Step 4 — run `/gw-init` in your project
 
@@ -151,7 +160,7 @@ Open Claude Code in your project and run:
 ```
 
 It creates the `context/` folders, checks that memory answers, adds the right
-`.gitignore` lines, and asks you a couple of setup questions. Safe to re-run.
+`.gitignore` lines, and asks a couple of setup questions. Safe to re-run.
 
 ### Step 5 — teach it about your project
 
@@ -163,26 +172,19 @@ useful. An empty graph knows nothing, so early sessions have nothing to recall.
 /gw-domain          # your project's nouns: Invoice, Customer, Shipment…
 ```
 
-Then open the review GUI and **approve what they proposed** — this part is yours, not
-the agent's:
+Then **approve what they proposed** — this part is yours, not the agent's:
 
 ```sh
 cd /path/to/your-project
-uv --project ~/tools/agentic-memory-system run agentic-memory-gui
-# → http://127.0.0.1:8765
+agentic-memory-gui          # → http://127.0.0.1:8765
 ```
 
 Open a node in the **Browse** tab to promote it, and use the **Domain** tab to confirm
 entities. Nothing an agent proposes counts as settled until you say so.
 
-> **Watch the directory.** Use `uv --project <path> run …`, not
-> `uv run --directory <path> …`. The second one *moves* into the memory system's folder,
-> so it opens the memory system's own store instead of your project's. `--project` keeps
-> you where you are, which is what you want — one store per project.
-
-**No PRD yet?** That is fine. Skip `/gw-foundation` and run `/gw-domain` — on a new
-project it interviews you about your domain; on an existing codebase it reads the code
-and brings you a list to review.
+**No PRD yet?** Fine. Skip `/gw-foundation` and run `/gw-domain` — on a new project it
+interviews you about your domain; on an existing codebase it reads the code and brings
+you a list to review.
 
 ### Step 6 — do your first change
 
@@ -203,11 +205,12 @@ the same loop under test-first discipline.
 
 ```sh
 cd /path/to/your-project
-uv --project ~/tools/agentic-memory-system run agentic-memory domain-model
+agentic-memory domain-model
 ```
 
 If that prints your entities (or says the domain is not modelled yet), everything is
-wired. If it errors, `/gw-init` did not finish — re-run it.
+wired. If the command is not found, Step 1 did not finish. If it errors, re-run
+`/gw-init`.
 
 ### What gets committed
 
@@ -218,8 +221,8 @@ wired. If it errors, `/gw-init` did not finish — re-run it.
 | `context/memory-graph.db` | no | the working database — rebuilt automatically from the dump |
 | `.claude/skills/gw-*` | yes, if project-scoped | so teammates get the same workflow |
 
-The dump appears after your first capture. You never have to export or import anything:
-the store refreshes the dump when it finishes writing, and rebuilds itself from the dump
+The dump appears after your first capture. You never export or import anything: the
+store refreshes the dump when it finishes writing, and rebuilds itself from the dump
 when it starts. Just commit as usual.
 
 ### Joining a project that already uses this
@@ -228,9 +231,8 @@ when it starts. Just commit as usual.
 git clone <the project>
 ```
 
-That is it. The first command any agent runs rebuilds the memory database from the
-committed dump. You only need Step 1 (the memory system on your machine) if you have
-not done it before.
+That is it — the first command any agent runs rebuilds the memory database from the
+committed dump. You only need Steps 1 and 2 if this is a new machine for you.
 
 ### Optional: the MCP server
 
@@ -241,25 +243,28 @@ memory — worth doing once you are past the first change:
 cd /path/to/your-project
 claude mcp add --scope project agentic-memory \
   --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
-  uv --project ~/tools/agentic-memory-system run agentic-memory-mcp
+  agentic-memory-mcp
 ```
 
 `--scope project` writes `.mcp.json` in the project, so commit it and everyone gets it.
-Setting `MEMORY_DB_PATH` matters here: Claude launches the server for you, from a
-directory you do not control, so pin the store rather than letting it guess.
 It takes effect in your **next** Claude session, not the current one. If the MCP tools
 are ever missing, nothing breaks — the workflow falls back to the command line.
 
+Setting `MEMORY_DB_PATH` matters: Claude launches this server for you, from a directory
+you do not control, so the store has to be pinned rather than guessed.
+
 ### Good to know
 
-- **One store per project.** It lives at `context/memory-graph.db` inside the project.
-  Pointing one store at two projects mixes their knowledge and spoils both — the usual
-  way that happens by accident is `uv run --directory …`, so prefer
-  `uv --project … run …` and set `MEMORY_DB_PATH` for anything long-running.
+- **One store per project**, at `context/memory-graph.db` inside it. The commands above
+  work on whichever project you are standing in — that is why they take no path.
+  Pointing one store at two projects mixes their knowledge and spoils both.
 - **The GUI is where you decide things.** Approving entities, resolving contradictions,
-  and promoting knowledge are human-only actions, by design. Agents propose; you rule.
+  and promoting knowledge are human-only actions by design. Agents propose; you rule.
 - **You cannot break it from a Claude session.** Nothing an agent can call deletes
   knowledge, edits trust, or approves its own proposals.
+- **Updating the memory system:** `git -C ~/tools/agentic-memory-system pull`. The
+  editable install picks it up; no reinstall needed unless dependencies changed
+  (`uv tool install --force --editable ~/tools/agentic-memory-system`).
 
 ## Execution-mode routing
 

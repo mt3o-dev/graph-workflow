@@ -59,15 +59,16 @@ ludzkimi kolejkami).
 
 ### 2.1 Wymagania wstępne
 
-- Sklonowany [agentic-memory-system](https://github.com/mt3o-dev/agentic-memory-system),
-  dostępne `uv`.
+- [agentic-memory-system](https://github.com/mt3o-dev/agentic-memory-system)
+  sklonowany i zainstalowany na PATH:
+  `uv tool install --editable ~/tools/agentic-memory-system`
+  (pełny przewodnik w sekcji **Set up a project** w README).
 - Serwer MCP zarejestrowany w kliencie agenta:
 
   ```sh
   # z katalogu projektu, żeby $PWD wskazywał na projekt:
   claude mcp add --scope project agentic-memory \
-    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
-    uv --project /path/to/agentic-memory-system run agentic-memory-mcp
+    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- agentic-memory-mcp
   ```
 
 - Skille `gw-*` skopiowane do `~/.claude/skills/` (globalnie) lub
@@ -107,8 +108,7 @@ normatywną** dokumentów do węzłów — nie streszczenia, lecz stwierdzenia:
 | Znana, zaakceptowana luka | `issue` | „Brak wielowalutowości w v1; kwoty zakładają PLN." |
 
 Wszystko, co zostało zcapture'owane, dostajesz jako **listę kandydatów do
-promocji lifetime**. Promuj w GUI (z katalogu projektu:
-`uv --project /path/to/agentic-memory-system run agentic-memory-gui`) — to działanie
+promocji lifetime**. Promuj w GUI (`agentic-memory-gui`, uruchomione z katalogu projektu) — to działanie
 wyłącznie ludzkie i to właśnie ono umieszcza wiedzę
 fundamentową w zawsze-żywym root secie, z którego czerpie każdy przyszły recall.
 
@@ -302,7 +302,7 @@ Model domeny: 2 encje czekają na ratyfikację (Statement, Carrier).
 Konsolidacja: 1 kandydat — trzy zmiany zcapture'owały już „handlery webhooków muszą
 być idempotentne". Uruchom /gw-consolidate.
 
-Otwórz kolejkę review: `uv run agentic-memory-gui` → zakładka Review.
+Otwórz kolejkę review: `agentic-memory-gui` → zakładka Review.
 ```
 
 `node_0812` to **artefakt konsolidacji** — jeden węzeł `concept` destylujący, co

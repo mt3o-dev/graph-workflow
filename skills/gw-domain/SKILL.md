@@ -214,7 +214,7 @@ plainly what the impact trace showed.
 1. **Present the proposal list**, each with its definition, provenance, and any
    `entity_warnings`.
 2. **The human confirms or retires each one** — GUI Domain tab
-   (`uv run agentic-memory-gui`), or you as their scribe:
+   (`agentic-memory-gui`), or you as their scribe:
    `POST /api/entities/{id}/confirm` / `/retire`, **one item at a time, after they say
    so**. Refuse batch "confirm all my proposals" requests; that is the agent ratifying
    with extra steps.

@@ -89,7 +89,7 @@ Surface the conflict with both readings and the evidence; never silently pick on
    Promotion candidates (CONFIRMED, look durable):
    - [node:<id>] <one-line content> — suggest mid-term → long-term
 
-   Open the review queue: `uv run agentic-memory-gui` → Review tab.
+   Open the review queue: `agentic-memory-gui` → Review tab.
    ```
 
    The `Store health` line is store-wide, not change-scoped: it makes the standing

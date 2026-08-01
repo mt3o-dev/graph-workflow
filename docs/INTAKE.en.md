@@ -147,7 +147,7 @@ surfaced to a person. If nobody owns those actions, disputes accumulate, nothing
 gets promoted, and the graph slowly degrades into unranked short-term noise.
 Decide who the humans are before the first change opens.
 
-1. Who works the review queue (`uv run agentic-memory-gui` → Review tab), and at what cadence?
+1. Who works the review queue (`agentic-memory-gui` → Review tab), and at what cadence?
    *Example: "The change author triages their own disputed nodes at PR time; the tech lead sweeps the whole queue every Friday." Without an owner, a `disputed` pair from week one is still unresolved in month three, and every recall that touches it forces agents to reason with both sides.*
 
 2. Who has promotion authority — especially for lifetime tier, which requires explicit confirmation in the GUI?
@@ -293,7 +293,7 @@ nodes pile up, and recall slowly fills with stale, contested knowledge — the
 graph rots exactly as fast as the humans ignore it.
 
 1. Who works the staleness/review queue, and on what cadence?
-   *Example: the reviewer opens `uv run agentic-memory-gui` → Review tab at every PR gate, plus a weekly sweep of anything the PRs missed — versus a queue nobody owns, where every disputed node stays disputed forever.*
+   *Example: the reviewer opens `agentic-memory-gui` → Review tab at every PR gate, plus a weekly sweep of anything the PRs missed — versus a queue nobody owns, where every disputed node stays disputed forever.*
 
 2. When does the evaluator / privileged maintenance (trust folding, rules-based flag resolution) actually run, and triggered by whom?
    *Example: a scheduled weekly batch — headless `/gw-goal` changes depend on the rules+evaluator path for validity, so "never" means their contradictions accumulate untriaged.*
