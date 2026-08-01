@@ -64,7 +64,10 @@ ludzkimi kolejkami).
 - Serwer MCP zarejestrowany w kliencie agenta:
 
   ```sh
-  claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+  # z katalogu projektu, żeby $PWD wskazywał na projekt:
+  claude mcp add --scope project agentic-memory \
+    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
+    uv --project /path/to/agentic-memory-system run agentic-memory-mcp
   ```
 
 - Skille `gw-*` skopiowane do `~/.claude/skills/` (globalnie) lub
@@ -104,8 +107,9 @@ normatywną** dokumentów do węzłów — nie streszczenia, lecz stwierdzenia:
 | Znana, zaakceptowana luka | `issue` | „Brak wielowalutowości w v1; kwoty zakładają PLN." |
 
 Wszystko, co zostało zcapture'owane, dostajesz jako **listę kandydatów do
-promocji lifetime**. Promuj w GUI (`uv run agentic-memory-gui` → kontrolki
-tierów) — to działanie wyłącznie ludzkie i to właśnie ono umieszcza wiedzę
+promocji lifetime**. Promuj w GUI (z katalogu projektu:
+`uv --project /path/to/agentic-memory-system run agentic-memory-gui`) — to działanie
+wyłącznie ludzkie i to właśnie ono umieszcza wiedzę
 fundamentową w zawsze-żywym root secie, z którego czerpie każdy przyszły recall.
 
 > **Po co to?** Graf startuje pusty. Bez tego kroku pierwsze dziesięć zmian

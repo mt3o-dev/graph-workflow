@@ -102,77 +102,164 @@ carries knowledge, the tracker carries work state for people outside the session
 Skills are **judgment and sequencing**; MCP tools are **deterministic operations**.
 Skills decide *when* to call; tools never embed judgment.
 
-## Installation
+## Set up a project
 
-### 1. Add agentic memory to the repo
+Two pieces get installed: **the memory system** (once per machine — one copy serves all
+your projects) and **the workflow skills** (copied into a project, or into your user
+scope so every project has them). Then three commands inside the project and you are
+running. About ten minutes.
 
-Install the memory system once (it serves any number of projects):
+You need [`uv`](https://docs.astral.sh/uv/) and Claude Code. Nothing else.
 
-```sh
-git clone https://github.com/mt3o-dev/agentic-memory-system /path/to/agentic-memory-system
-cd /path/to/agentic-memory-system && uv sync
-```
-
-Register the MCP server. Either user-wide:
+### Step 1 — install the memory system (once per machine)
 
 ```sh
-claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+git clone https://github.com/mt3o-dev/agentic-memory-system ~/tools/agentic-memory-system
+cd ~/tools/agentic-memory-system && uv sync
 ```
 
-or per-project, committed so every contributor gets it — `.mcp.json` in the
-project root:
-
-```json
-{
-  "mcpServers": {
-    "agentic-memory": {
-      "command": "uv",
-      "args": ["run", "--directory", "/path/to/agentic-memory-system", "agentic-memory-mcp"]
-    }
-  }
-}
-```
-
-**The store is project-local.** The server defaults to `context/memory-graph.db`
-under the working directory it is launched in; set `MEMORY_DB_PATH` in the server
-`env` only if you need a non-default location. One store per project — pointing a
-shared store at two projects poisons both.
-
-**Git rules for the store.** The SQLite file stays out of git (`context/memory-graph.db`
-in `.gitignore`); the tracked artifact is `context/memory-graph.dump`, an ordinary text
-file that diffs and merges natively. Nothing to set up — the store rebuilds the database
-from the dump on open and refreshes the dump on close, so `git clone` → run a command →
-it works, and a commit carries the diff without anyone remembering to dump.
+Check it works:
 
 ```sh
-uv run agentic-memory sync status   # which side is ahead, if you ever wonder
+uv run agentic-memory --help
 ```
 
-There is no clean/smudge filter, deliberately: filter config is local-only and git will
-never auto-register it, so that design silently broke every fresh clone. See
-`docs/09_GIT_SYNC.md` in the memory repo.
+That is the whole install. There is no server to register, no git filter to configure,
+and no background process — the workflow talks to memory by running this command.
 
-The human review GUI (staleness queue, tier promotion) runs from the same
-install: `uv run agentic-memory-gui` → http://127.0.0.1:8765.
-
-### 2. Install the skills
-
-Copy (or symlink) the skill directories into the target project or your user
-scope:
+### Step 2 — add the skills
 
 ```sh
-cp -r skills/gw-* ~/.claude/skills/          # user-wide
-# or: cp -r skills/gw-* <project>/.claude/skills/
+cd /path/to/graph-workflow
+cp -r skills/gw-* ~/.claude/skills/        # every project gets them
+# or, just this one project:
+cp -r skills/gw-* /path/to/your-project/.claude/skills/
 ```
 
-### 3. Wire the project
+### Step 3 — tell the project about the workflow
 
-Append `CLAUDE.md.txt` to the target project's `CLAUDE.md`, then run `/gw-init`
-inside the project — it scaffolds `context/`, verifies the MCP surface answers,
-and checks the gitignore rules. If the project already has foundation docs
-(PRD, ADRs, tech-stack), run `/gw-foundation` next so the first change's recall
-has something to serve, then `/gw-domain` so it has the project's own nouns to
-serve it *with*.
+Paste the contents of `CLAUDE.md.txt` (from this repo) at the end of your project's
+`CLAUDE.md`. Create the file if it does not exist. This is what teaches every future
+Claude session the lifecycle and its rules.
+
+### Step 4 — run `/gw-init` in your project
+
+Open Claude Code in your project and run:
+
+```
+/gw-init
+```
+
+It creates the `context/` folders, checks that memory answers, adds the right
+`.gitignore` lines, and asks you a couple of setup questions. Safe to re-run.
+
+### Step 5 — teach it about your project
+
+This is the step people skip, and it is the one that decides whether the first month is
+useful. An empty graph knows nothing, so early sessions have nothing to recall.
+
+```
+/gw-foundation      # reads your PRD, ADRs, tech-stack, lessons.md → knowledge nodes
+/gw-domain          # your project's nouns: Invoice, Customer, Shipment…
+```
+
+Then open the review GUI and **approve what they proposed** — this part is yours, not
+the agent's:
+
+```sh
+cd /path/to/your-project
+uv --project ~/tools/agentic-memory-system run agentic-memory-gui
+# → http://127.0.0.1:8765
+```
+
+Open a node in the **Browse** tab to promote it, and use the **Domain** tab to confirm
+entities. Nothing an agent proposes counts as settled until you say so.
+
+> **Watch the directory.** Use `uv --project <path> run …`, not
+> `uv run --directory <path> …`. The second one *moves* into the memory system's folder,
+> so it opens the memory system's own store instead of your project's. `--project` keeps
+> you where you are, which is what you want — one store per project.
+
+**No PRD yet?** That is fine. Skip `/gw-foundation` and run `/gw-domain` — on a new
+project it interviews you about your domain; on an existing codebase it reads the code
+and brings you a list to review.
+
+### Step 6 — do your first change
+
+```
+/gw-new             # names the work, opens its memory scope
+/gw-plan            # writes the plan, records the decisions
+/gw-implement       # builds it, phase by phase
+/gw-review          # reviews the code, hands you the memory queue
+/gw-archive         # after merge: tidies up, keeps what matters
+```
+
+Use `/gw-fix` instead of `/gw-plan` + `/gw-implement` for a bug or a refactor — it runs
+the same loop under test-first discipline.
+
+---
+
+### Did it work?
+
+```sh
+cd /path/to/your-project
+uv --project ~/tools/agentic-memory-system run agentic-memory domain-model
+```
+
+If that prints your entities (or says the domain is not modelled yet), everything is
+wired. If it errors, `/gw-init` did not finish — re-run it.
+
+### What gets committed
+
+| Path | Committed? | Why |
+|---|---|---|
+| `context/changes/`, `context/foundation/` | yes | thin lifecycle files — the change's goal, plan, status |
+| `context/memory-graph.dump` | **yes** | the memory graph, as plain text. Diffs and merges like code |
+| `context/memory-graph.db` | no | the working database — rebuilt automatically from the dump |
+| `.claude/skills/gw-*` | yes, if project-scoped | so teammates get the same workflow |
+
+The dump appears after your first capture. You never have to export or import anything:
+the store refreshes the dump when it finishes writing, and rebuilds itself from the dump
+when it starts. Just commit as usual.
+
+### Joining a project that already uses this
+
+```sh
+git clone <the project>
+```
+
+That is it. The first command any agent runs rebuilds the memory database from the
+committed dump. You only need Step 1 (the memory system on your machine) if you have
+not done it before.
+
+### Optional: the MCP server
+
+The workflow runs fine without it. Registering it gives Claude nicer, faster access to
+memory — worth doing once you are past the first change:
+
+```sh
+cd /path/to/your-project
+claude mcp add --scope project agentic-memory \
+  --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
+  uv --project ~/tools/agentic-memory-system run agentic-memory-mcp
+```
+
+`--scope project` writes `.mcp.json` in the project, so commit it and everyone gets it.
+Setting `MEMORY_DB_PATH` matters here: Claude launches the server for you, from a
+directory you do not control, so pin the store rather than letting it guess.
+It takes effect in your **next** Claude session, not the current one. If the MCP tools
+are ever missing, nothing breaks — the workflow falls back to the command line.
+
+### Good to know
+
+- **One store per project.** It lives at `context/memory-graph.db` inside the project.
+  Pointing one store at two projects mixes their knowledge and spoils both — the usual
+  way that happens by accident is `uv run --directory …`, so prefer
+  `uv --project … run …` and set `MEMORY_DB_PATH` for anything long-running.
+- **The GUI is where you decide things.** Approving entities, resolving contradictions,
+  and promoting knowledge are human-only actions, by design. Agents propose; you rule.
+- **You cannot break it from a Claude session.** Nothing an agent can call deletes
+  knowledge, edits trust, or approves its own proposals.
 
 ## Execution-mode routing
 

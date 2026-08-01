@@ -30,24 +30,32 @@ lifecycle files, and a live memory store for everything else.
    needs no registration:
 
    ```sh
-   uv run --directory /path/to/agentic-memory-system agentic-memory stale
+   uv --project /path/to/agentic-memory-system run agentic-memory stale
    ```
+
+   **`uv --project`, never `uv run --directory`.** The latter changes the working
+   directory, so the store resolves inside the memory system's own folder instead of
+   this project — the "shared store poisons both projects" failure, arrived at by
+   accident. Confirm what you actually opened with `agentic-memory sync status`.
 
    If that answers, the workflow is usable *today*, in this session. Then register the
    MCP server as the optimization (better ergonomics where it is available), committed
    so every contributor and every cloud session gets it:
 
    ```sh
-   claude mcp add --scope project agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+   claude mcp add --scope project agentic-memory \
+     --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- \
+     uv --project /path/to/agentic-memory-system run agentic-memory-mcp
    ```
 
    An MCP server binds at session start, so it takes effect in the *next* session, not
    this one — which is exactly why the CLI is the floor. Never report the workflow as
    unavailable because the MCP tools are absent.
 
-   The store defaults to `context/memory-graph.db` (project-local). Confirm
-   `MEMORY_DB_PATH` resolution matches this project — a shared store pointed at the
-   wrong project poisons both.
+   The store defaults to `context/memory-graph.db`, resolved against the **working
+   directory** — project-local as long as you launch from the project. For anything
+   Claude launches on your behalf (the MCP server), set `MEMORY_DB_PATH` explicitly
+   rather than relying on the cwd.
 
 3. **Git hygiene for the store — one gitignore line, nothing else.** The tracked
    artifact is the legible text dump; the SQLite file is a local build artifact the
