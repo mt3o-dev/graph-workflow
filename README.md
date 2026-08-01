@@ -17,11 +17,17 @@ worktree    → checkout = change activation = liveness root ON
 /gw-plan-review
             → independent plan gate: fresh session recalls the goal's settled
               constraints and checks plan.md against them before implementation
-/gw-implement / /gw-goal
+/gw-implement / /gw-goal / /gw-fix
             → per-phase recall → work → capture at phase boundaries → batched feedback
+              (/gw-fix runs the same loop under TDD: red before any source edit)
 /gw-review  → impl review + the human memory gate (staleness queue, promotions)
 merge       → /gw-archive: final capture, deactivate + sweep, folder → context/archive/
 ```
+
+Around that spine sit the skills that are not change-shaped: `/gw-domain` establishes the
+project's ubiquitous language as graph entities, `/gw-wireframe` designs UI surfaces with
+the user before a plan exists, `/gw-ideate` mines the graph for what to build next, and
+`/gw-consolidate` distils recurring knowledge before the sweep sends it dormant.
 
 **User guide** (worked example, diagrams, edge cases, assumptions):
 [docs/USAGE.en.md](docs/USAGE.en.md) · po polsku: [docs/USAGE.pl.md](docs/USAGE.pl.md)
@@ -34,9 +40,17 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 - **Goal-mandatory writes.** Every captured artifact serves a Goal node
   (`memory_goal` in `change.md`). The MCP surface rejects goal-less writes.
 - **Safety invariant.** Nothing an agent can call mutates trust, clears a review
-  flag, promotes a tier, or archives a node. Trust is *folded* from the journal;
-  flags resolve via the evaluator/human ladder; archival is a merge consequence.
-  Never add such a tool "for convenience".
+  flag, promotes a tier, archives a node, ratifies a domain entity, or commits a
+  consolidation. Trust is *folded* from the journal; flags resolve via the
+  evaluator/human ladder; archival is a merge consequence; entity ratification and
+  consolidation are human judgment. Agents propose, detect, draft, and recommend —
+  each of those ends at a person. Never add such a tool "for convenience".
+- **Names are not claims.** The graph holds two kinds of knowledge with different
+  physics. Artifacts *assert* (and decay, get contradicted, go dormant); domain
+  entities *name* (and never decay, are never consolidated, and survive every sweep
+  regardless of tier — the domain outlives the changes that touch it). Entities are
+  also the graph's hubs: `ABOUT` is the one edge whose reverse direction is walked,
+  so an entity pulls in what the project knows about it, across change boundaries.
 - **Graph replaces folders.** Per-change knowledge lives in one shared store; the
   change-id is a **facet** on nodes, not a directory. `context/changes/<id>/` keeps
   only the thin lifecycle files (change.md, plan.md).
@@ -64,15 +78,20 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 | `gw-init` | `10x-init` | MCP registration, store bootstrap |
 | `gw-ask` | — (new) | recall-only Q&A outside any change: foundation-scope recall, grounded answers with node cites, usage journaling |
 | `gw-foundation` | `10x-prd` / ADRs (downstream of) | distill foundation docs into lifetime-tier candidates in the root set |
+| `gw-domain` | — (new) | `domain_model` + `capture_entity`: the ubiquitous language as graph entities — greenfield elicitation or brownfield extraction, `ABOUT` wiring, `impact_of` before amendments, human ratification gate |
+| `gw-ideate` | — (new) | multi-seam recall over `issue`s, accepted gaps, under-used capability and domain blind spots → evidence-backed opportunities; findings captured, ideas routed to the roadmap |
 | `gw-new` | `10x-new` | `create_change`, goal-id recording, seed `recall_context` |
 | `gw-research` | `10x-research` | recall-first research, contradiction surfacing, feedback |
+| `gw-wireframe` | — (new) | recall UX constraints + `domain_model` before designing; screen inventory then one screen per turn with the user; design-system gaps surfaced as decisions and captured |
 | `gw-plan` | `10x-plan` | recall, `impact_of` pre-checks, plan-boundary capture |
 | `gw-plan-review` | `10x-plan-review` | fresh-session independent recall, plan vs settled constraints, dispute-side check |
 | `gw-implement` | `10x-implement` | per-phase recall, phase-boundary capture, batched feedback, `link` CONTRADICTS |
+| `gw-fix` | `10x-implement` (TDD variant) | recall-first reproduction, `impact_of` when the recorded rule is the bug, red→green→refactor, lesson captured as the class of mistake |
 | `gw-goal` | `/goal` / `claude -p` | same discipline compressed for headless runs; rules-path validity, no human gates until PR |
 | `gw-review` | `10x-impl-review` | staleness queue, disputed-node checklist, episodic→semantic consolidation, promotion candidates (human gate) |
 | `gw-archive` | `10x-archive` | completeness check, deactivate + sweep, immutable folder move |
 | `gw-resolve` | — (new) | joint human+agent resolution session over the disputed-node queue: evidence + recommendation per item, human rules, applied via the guided GUI API; promotion pass + deferred sweeps |
+| `gw-consolidate` | — (new) | `consolidation_candidates` → read the cluster → draft the abstraction → human commits via `/api/consolidate`; also gives the review-gate episode summary its `CONSOLIDATES` provenance |
 
 Skills are **judgment and sequencing**; MCP tools are **deterministic operations**.
 Skills decide *when* to call; tools never embed judgment.
@@ -141,13 +160,15 @@ Append `CLAUDE.md.txt` to the target project's `CLAUDE.md`, then run `/gw-init`
 inside the project — it scaffolds `context/`, verifies the MCP surface answers,
 and checks the gitignore rules. If the project already has foundation docs
 (PRD, ADRs, tech-stack), run `/gw-foundation` next so the first change's recall
-has something to serve.
+has something to serve, then `/gw-domain` so it has the project's own nouns to
+serve it *with*.
 
 ## Execution-mode routing
 
 | Change shape | Mode | Validity path |
 |---|---|---|
 | Multi-phase, needs judgment or manual gates | `/gw-implement` (interactive) | human checkpoints |
+| A defect or a behaviour-preserving refactor | `/gw-fix` (TDD) | a test that fails before the fix and passes after; full suite between steps |
 | Clear, bounded, plan already exists | `/gw-goal` or `claude -p` (headless) | deterministic rules + evaluator agent; humans only at PR/merge |
 
 One change per worktree, one fresh agent context per change. Parallelism is capped
@@ -159,6 +180,10 @@ throughput.
 - Integration design: `docs/05_10X_INTEGRATION.md` in agentic-memory-system
   (graph-replaces-folders, one-merged-lifecycle, the MCP surface, skills↔calls
   binding).
+- Domain entities and consolidation: `docs/06_DOMAIN_ENTITIES.md` and
+  `docs/07_CONSOLIDATION.md` in agentic-memory-system — the reasoning behind
+  `/gw-domain` and `/gw-consolidate`, including why the class was refactored from
+  "reference entities" and why both operations end at a human.
 - 10x framework reference: `reference/10x-workflow` in mt3o-dev/dx-workflow
   (10xDevs AI Toolkit).
 - The `memory-*` skills shipped with agentic-memory-system are the primitive

@@ -71,6 +71,34 @@ For each disputed node:
    never captured), capture it as a `decision` node via the agent surface —
    rulings resolve flags; captures preserve the why.
 
+## The domain-ratification pass (same session, after the queue)
+
+`GET /api/entities` — every entity still `proposed`. These are agent proposals about
+what the project's language *is*, and they carry a peculiar risk: entities never
+decay and survive every sweep, so an unratified wrong name outlives every change
+that could have corrected it, while an unratified *right* name keeps being served
+tagged `proposed` and never becomes settled vocabulary. Either way the backlog costs
+something.
+
+Per entity: the name, the definition, its provenance (the `file:line` it was
+extracted from, or the user's words that named it), how many artifacts are attached
+via `ABOUT`, and any collision warning from capture time. The human rules —
+`POST /api/entities/{id}/confirm` or `/retire`, one at a time, after they say so.
+
+Two rulings that are not confirm/retire, and you should offer them by name:
+**rename** (confirm nothing; route to `/gw-domain` §C, which re-attaches the
+artifacts first) and **merge** (two entities are one thing — again `/gw-domain`,
+because the artifacts must move before the loser is retired). Retiring an entity
+with artifacts still attached strands them.
+
+## The consolidation pass (same session, optional)
+
+`GET /api/consolidation/candidates` — cross-change recurrence worth abstracting.
+If the list is non-empty and the human has appetite, run `/gw-consolidate` Part 2
+here: read each cluster, draft the abstraction, let them edit the sentence, and
+`POST /api/consolidate` with their wording. Same scribe discipline as everything
+else in this session.
+
 ## The promotion pass (same session, after the queue)
 
 Present the accumulated promotion candidates (change summaries, CONFIRMED
@@ -91,8 +119,9 @@ change whose promotion candidates were not yet ruled on.
 
 ## End of session
 
-- Summary: items resolved (per action), deferred (with why), promotions made
-  and declined, sweeps run, queue size before → after.
+- Summary: items resolved (per action), deferred (with why), entities confirmed
+  and retired, consolidations committed, promotions made and declined, sweeps run,
+  queue size before → after.
 - Journal the session via the agent surface: `REVIEWED` events for nodes
   discussed but left unchanged — the reads feed ranking too.
 - Anything discovered mid-session that is change-shaped work (a dispute whose
@@ -102,7 +131,9 @@ change whose promotion candidates were not yet ruled on.
 ## Rules
 
 - Interactive only; a human ruling per item; no batch auto-apply; no ruling
-  inferred from "sounds good" — get the action word.
+  inferred from "sounds good" — get the action word. This covers entity
+  ratification and consolidation exactly as it covers flag resolution: "confirm all
+  my proposals" is the agent ratifying, with extra steps.
 - The agent's recommendation goes into the journal next to the human's choice —
   never adjust the recommendation after hearing the human lean.
 - Lifetime promotions and sweeps only on the human's explicit word.

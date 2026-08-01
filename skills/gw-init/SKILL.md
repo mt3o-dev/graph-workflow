@@ -60,6 +60,14 @@ lifecycle files, and a live memory store for everything else.
    normative `CLAUDE.md`/`AGENTS.md` rules too — a project migrating off plain 10x
    usually carries hard-won lessons that distil straight into constraint nodes.
 
+   Then `/gw-domain`, in the mode the project's state dictates: **brownfield**
+   (extract entities from the schema and core modules, with `file:line` evidence,
+   for the user to review) on an existing codebase, **greenfield** (the user names
+   the domain, you transcribe) on a new one. Foundation captures the project's
+   claims; the domain model captures its nouns, and the nouns are what the claims
+   hang off. Both passes end at the same human gate, and both are worth doing
+   before the first `/gw-new`.
+
    **One of the first lessons the graph must hold is the project's git workflow**:
    branching model, PR flow, merge strategy (merge/squash/rebase), commit
    conventions. If it is not settled yet, settle it with the humans now and have

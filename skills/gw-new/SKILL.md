@@ -96,8 +96,17 @@ event.
    change's liveness root is already ON from step 3.
 
 7. Hand off: state the change-id, the goal id, and what the seed recall surfaced
-   (especially any `disputed` blocks), then route — `/gw-research` if the ground is
-   unknown, `/gw-plan` if it is understood.
+   (especially any `disputed` blocks), then route:
+   - `/gw-research` if the ground is unknown;
+   - `/gw-domain` first if the change opens territory whose nouns the domain model
+     does not name (`domain_model()` comes back thin for this area) — planning
+     against unnamed entities is how the code and the product end up with different
+     words for one thing;
+   - `/gw-wireframe` first if the change builds or redesigns a UI surface — the
+     wireframe is an input to the plan, not an output of it;
+   - `/gw-fix` instead of `/gw-plan` if this is a defect or a behaviour-preserving
+     refactor — it carries its own TDD loop and needs no separate plan gate;
+   - `/gw-plan` if the ground is understood.
 
 ## Rules
 
