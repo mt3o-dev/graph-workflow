@@ -136,6 +136,16 @@ Surface the conflict with both readings and the evidence; never silently pick on
 7. An empty queue is a valid outcome — say so explicitly and move on; do not
   manufacture findings.
 
+## Part 3 — the tracker (skip if `tracker: none`)
+
+Per `/gw-track`: link the PR to the change's item, and post **one** comment carrying the
+verdict plus the memory-gate summary line. One comment per gate, never per finding — the
+findings live in the PR, where they can be replied to.
+
+Reconcile while you are there: if the item was closed while this change is open, or its
+acceptance criteria changed after the plan was approved, that is a finding for the human,
+not something to fix by writing.
+
 ## Verdict
 
 Close with one of:

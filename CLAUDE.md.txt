@@ -3,8 +3,15 @@
 ## graph-workflow — change lifecycle with graph memory
 
 This project uses the graph-workflow: the 10x change lifecycle fused with the
-agentic-memory-system graph (MCP server `agentic-memory`). One lifecycle, not two
-workflows — memory operations are steps inside it.
+agentic-memory-system graph. One lifecycle, not two workflows — memory operations are
+steps inside it.
+
+**Reaching the memory surface.** Prefer the `agentic-memory` MCP tools when this
+session has them. When it does not — a fresh clone, an unapproved `.mcp.json`, a
+config that landed mid-session — use the CLI, which needs no registration:
+`uv run agentic-memory --help` (same operations; `capture -` reads the body from
+stdin so prose never goes through shell quoting). Never skip a memory step because
+the MCP tools are absent.
 
 ```
 /gw-new → worktree → /gw-research → /gw-plan → /gw-plan-review → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive
@@ -28,6 +35,7 @@ workflows — memory operations are steps inside it.
 | Bounded, verifiable by command | `/gw-goal` or `claude -p` (headless; humans at PR only) |
 | Change reaches PR | `/gw-review` (code review + memory human gate) |
 | Merged | `/gw-archive` (final capture, deactivate+sweep, folder → archive) |
+| An issue tracker is in use (GitHub Issues, Linear, Jira) | `/gw-track` (adopt-or-create the item, push phases/status at gates, pull acceptance criteria, report divergence) |
 | Disputes/promotions accumulated, human present | `/gw-resolve` (joint queue session: agent presents+recommends, human rules, applied via guided GUI API) |
 | Several changes archived; recall keeps returning near-duplicates | `/gw-consolidate` (cross-change recurrence → one abstraction, drafted by you, committed by the human) |
 
@@ -59,11 +67,17 @@ workflows — memory operations are steps inside it.
   (USED/CONFIRMED/CONTRADICTED/REVIEWED/NOTED) before ending. Honest events only.
 - **Contradictions are recorded, never resolved** — CONTRADICTS edges and
   CONTRADICTED events flag for human review; that is the system working.
+- **Three surfaces, three jobs.** `context/changes/` holds lifecycle state, the
+  graph holds knowledge, the tracker holds work state. A decision recorded only in
+  an issue comment is a decision no future recall will serve — knowledge goes in the
+  graph, always, and the issue gets a pointer at most.
 - **Never** mutate trust, clear flags, promote tiers, archive nodes, ratify a
   domain entity, or commit a consolidation. Not possible via the agent surface; do
   not work around it. You may propose, detect, draft, and recommend — every one of
   those ends at a human.
-- **Degraded mode (memory server down): queue, don't skip.** Append every
+- **Degraded mode (store genuinely unreachable): queue, don't skip.** Try the CLI
+  transport first — "the MCP tools aren't registered" is not a degraded mode, it is
+  the other door. If the *store itself* is unreachable, append every
   would-be operation to `context/changes/<id>/memory-backlog.md` — create_change
   parameters, captures (content, type, edges, facets), events, promotion
   candidates — and replay them when the surface returns. Gates consume the
@@ -87,5 +101,9 @@ workflows — memory operations are steps inside it.
   never merged into one change.
 - `context/memory-graph.db` — the store (gitignored; sync via dump/restore
   scripts).
+- `context/foundation/tracker.md` — the issue-tracker binding (which tracker, the
+  board's real state names, who may close). `tracker: none` is a valid answer.
+- `context/changes/<id>/change.md` carries `tracker:` alongside `memory_goal:` when
+  a tracker is bound.
 
 <!-- END graph-workflow -->

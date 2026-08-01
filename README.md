@@ -29,6 +29,11 @@ project's ubiquitous language as graph entities, `/gw-wireframe` designs UI surf
 the user before a plan exists, `/gw-ideate` mines the graph for what to build next, and
 `/gw-consolidate` distils recurring knowledge before the sweep sends it dormant.
 
+`/gw-track` runs *along* the spine rather than beside it: where a project uses an issue
+tracker, it binds each change to one item and syncs at the same gates the memory
+operations fire at. Three surfaces, three jobs — files carry lifecycle state, the graph
+carries knowledge, the tracker carries work state for people outside the session.
+
 **User guide** (worked example, diagrams, edge cases, assumptions):
 [docs/USAGE.en.md](docs/USAGE.en.md) · po polsku: [docs/USAGE.pl.md](docs/USAGE.pl.md)
 
@@ -91,6 +96,7 @@ the user before a plan exists, `/gw-ideate` mines the graph for what to build ne
 | `gw-review` | `10x-impl-review` | staleness queue, disputed-node checklist, episodic→semantic consolidation, promotion candidates (human gate) |
 | `gw-archive` | `10x-archive` | completeness check, deactivate + sweep, immutable folder move |
 | `gw-resolve` | — (new) | joint human+agent resolution session over the disputed-node queue: evidence + recommendation per item, human rules, applied via the guided GUI API; promotion pass + deferred sweeps |
+| `gw-track` | — (new) | none — the tracker holds *work state*, the graph holds knowledge. Adopts or opens the item, pushes phases/status at the gates, pulls acceptance criteria as plan input, reports divergence instead of overwriting either side. Tracker-agnostic via `context/foundation/tracker.md` |
 | `gw-consolidate` | — (new) | `consolidation_candidates` → read the cluster → draft the abstraction → human commits via `/api/consolidate`; also gives the review-gate episode summary its `CONSOLIDATES` provenance |
 
 Skills are **judgment and sequencing**; MCP tools are **deterministic operations**.

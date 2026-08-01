@@ -26,13 +26,24 @@ lifecycle files, and a live memory store for everything else.
    `.gitignore` — the throwaway path for agent proof/probe artifacts (agents
    cannot `rm`, so scratch never belongs in `src/`).
 
-2. **Verify the memory server.** Check that the `agentic-memory` MCP server is
-   registered and its tools respond (any cheap read, e.g. `stale_nodes()`).
-   If missing, tell the user to register it:
+2. **Verify the memory surface — both doors.** The CLI is the default transport and
+   needs no registration:
 
    ```sh
-   claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+   uv run --directory /path/to/agentic-memory-system agentic-memory stale
    ```
+
+   If that answers, the workflow is usable *today*, in this session. Then register the
+   MCP server as the optimization (better ergonomics where it is available), committed
+   so every contributor and every cloud session gets it:
+
+   ```sh
+   claude mcp add --scope project agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+   ```
+
+   An MCP server binds at session start, so it takes effect in the *next* session, not
+   this one — which is exactly why the CLI is the floor. Never report the workflow as
+   unavailable because the MCP tools are absent.
 
    The store defaults to `context/memory-graph.db` (project-local). Confirm
    `MEMORY_DB_PATH` resolution matches this project — a shared store pointed at the
@@ -74,7 +85,14 @@ lifecycle files, and a live memory store for everything else.
    `/gw-foundation` capture it — every change, worktree, and headless run acts on
    these rules, so they must be recallable before the first `/gw-new`.
 
-6. Report what was created, what already existed, and whether the MCP surface is
+6. **Settle the tracker binding.** Ask which issue tracker the project uses, and write
+   `context/foundation/tracker.md` (tracker, repo/team, the board's *real* state names,
+   and `close_authority: human|workflow`). `tracker: none` is a complete answer — record
+   it, so later sessions stop asking. Probe that the adapter's operations actually answer
+   before the first change depends on them (`/gw-track` § Adapters). The normative parts
+   get distilled by `/gw-foundation` like any other project rule.
+
+7. Report what was created, what already existed, and whether the MCP surface is
    live. If the server is unreachable, say so plainly — the workflow degrades to
    files until it is fixed, and every would-be memory operation queues in
    `context/changes/<id>/memory-backlog.md` for replay (see the standing degraded-
