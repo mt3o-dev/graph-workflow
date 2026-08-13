@@ -248,6 +248,14 @@ git clone <the project>
 That is it — the first command any agent runs rebuilds the memory database from the
 committed dump. You only need Steps 1 and 2 if this is a new machine for you.
 
+For the project-management view over the same artifacts — changes on a board by
+lifecycle stage, the issue and dispute queue, node detail with the journal — this
+repo ships [`gui/`](gui/README.md): `PYTHONPATH=gui python3 -m pmview <project>`
+→ http://127.0.0.1:8766. It reads the store and the lifecycle folders directly and
+forwards every write to the review GUI above, so the safety invariant stays
+enforced in one place.
+
+### 2. Install the skills
 ### Optional: the MCP server
 
 The workflow runs fine without it. Registering it gives Claude nicer, faster access to
