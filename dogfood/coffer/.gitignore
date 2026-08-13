@@ -11,6 +11,9 @@ package/
 vite.config.ts.timestamp-*
 vite.config.js.timestamp-*
 
-# agentic-memory store (sync via dump/restore)
+# agentic-memory store: context/memory-graph.dump is the tracked source (plain text);
+# the .db is a local build artifact the store rebuilds on open. The old layout tracked
+# the .db through a git clean/smudge filter, which needs local config git never clones.
+context/memory-graph.db
 context/memory-graph.db-*
-!context/memory-graph.db
+context/memory-graph.db.bak

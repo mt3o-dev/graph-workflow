@@ -3,9 +3,12 @@
 .claude/settings.local.json
 graphify-out/
 
-# agentic-memory store — binary is local; sync via scripts/dump_db.py / restore_db.py
-context/memory-graph.db
-context/memory-graph.db-*
+# agentic-memory store: the .dump is tracked (plain text, diffs natively), the .db is
+# a LOCAL BUILD ARTIFACT the store rebuilds on open. Never track the .db — a git
+# clean/smudge filter cannot be auto-registered, which silently broke every fresh clone.
+**/context/memory-graph.db
+**/context/memory-graph.db-*
+**/context/memory-graph.db.bak
 
 # Python
 __pycache__/

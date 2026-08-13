@@ -67,7 +67,14 @@ dormant while promoted knowledge survives. Neither half is optional.
    deactivation (and the sweep's node count) in the message — future readers should
    see that the file archive and the graph dormancy happened together.
 
-8. **Epic bookkeeping.** If change.md carries `epic:`, update the epic's entry in
+8. **Close the tracker item** (skip if `tracker: none`). Per `/gw-track`: push the final
+   links — PR, session URL, and the change-summary node id — then `set_state` to done.
+   If the binding says `close_authority: human`, **propose** the close and say so rather
+   than doing it; a board where an agent closes tickets is a board people stop trusting.
+   An abandoned change closes as not-planned, which is real information — record it as
+   that, not as done.
+
+9. **Epic bookkeeping.** If change.md carries `epic:`, update the epic's entry in
    `context/foundation/roadmap.md`: mark this slice done, and hand the change's
    surviving node ids to the next slice's `parent_refs` (note them in the
    registry). Archiving the LAST slice closes the epic entry — stamp it with the

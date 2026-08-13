@@ -20,10 +20,15 @@ in order to not repeat or contradict this one).
 ```mermaid
 flowchart TD
     INIT["/gw-init<br/>(once per project)"] --> FOUND["/gw-foundation<br/>distill PRD / ADRs / tech-stack<br/>into lifetime candidates"]
-    FOUND --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
-    NEW --> Q{Territory<br/>known?}
+    FOUND --> DOM["/gw-domain<br/>the project's nouns as entities<br/>greenfield: user names them<br/>brownfield: you extract, user reviews"]
+    DOM --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
+    NEW --> KIND{What kind<br/>of work?}
+    KIND -- "defect / refactor" --> FIX["/gw-fix<br/>TDD: red → green → refactor<br/>(no source edit before a red test)"]
+    KIND -- "UI surface" --> WIRE["/gw-wireframe<br/>screen inventory, then<br/>one screen per turn with the user"]
+    KIND -- "feature" --> Q{Territory<br/>known?}
     Q -- "no" --> RES["/gw-research<br/>recall first, explore only the gap,<br/>capture findings"]
     Q -- "yes" --> PLAN
+    WIRE --> PLAN
     RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
     PLAN --> PLANREV["/gw-plan-review<br/>fresh session, independent recall,<br/>plan vs settled constraints"]
     PLANREV -- "request changes" --> PLAN
@@ -32,11 +37,18 @@ flowchart TD
     MODE -- "yes" --> GOAL["/gw-goal<br/>headless loop,<br/>humans only at PR"]
     IMPL --> REV["/gw-review<br/>code review + memory human gate<br/>+ episodic→semantic consolidation"]
     GOAL --> REV
+    FIX --> REV
     REV -- "request changes" --> IMPL
     REV -- "approve" --> MERGE["merge"]
     MERGE --> ARCH["/gw-archive<br/>final capture, deactivate + sweep,<br/>folder → context/archive/"]
     ARCH -.-> NEW
+    ARCH -.-> IDEA["/gw-ideate<br/>mine the graph for<br/>what to build next"]
+    IDEA -.-> NEW
 ```
+
+Off the spine, and not change-shaped: `/gw-domain` (the ubiquitous language),
+`/gw-ideate` (what to build next), `/gw-consolidate` (distil recurrence before the
+sweep), `/gw-ask` (a question, no change), `/gw-resolve` (work the human queues).
 
 ---
 
@@ -45,11 +57,15 @@ flowchart TD
 ### 2.1 Prerequisites
 
 - [agentic-memory-system](https://github.com/mt3o-dev/agentic-memory-system)
-  cloned somewhere, with `uv` available.
+  cloned and installed on PATH:
+  `uv tool install --editable ~/tools/agentic-memory-system`
+  (see the README's **Set up a project** for the full walkthrough).
 - The MCP server registered with your agent client:
 
   ```sh
-  claude mcp add agentic-memory -- uv run --directory /path/to/agentic-memory-system agentic-memory-mcp
+  # from your project root, so $PWD is the project:
+  claude mcp add --scope project agentic-memory \
+    --env MEMORY_DB_PATH="$PWD/context/memory-graph.db" -- agentic-memory-mcp
   ```
 
 - The `gw-*` skills copied into `~/.claude/skills/` (user-wide) or
@@ -69,7 +85,7 @@ context/
   changes/     # active changes: <change-id>/{change.md, plan.md, research.md}
   archive/     # immutable — nothing ever writes here
   foundation/  # PRD, roadmap, tech-stack (human source of truth)
-context/memory-graph.db   # the store — gitignored, synced via dump/restore
+context/memory-graph.dump # the store as tracked text (the .db is a gitignored build artifact)
 ```
 
 ### 2.3 Load the foundation (brownfield or right after writing the PRD)
@@ -89,13 +105,58 @@ The skill opens a dedicated `foundation` memory scope and distills the documents
 | Known accepted gap | `issue` | "No multi-currency support in v1; amounts assume PLN." |
 
 Everything captured is handed to you as a **lifetime-promotion candidate list**.
-Promote them in the GUI (`uv run agentic-memory-gui` → tier controls) — this is a
+Promote them in the GUI (`agentic-memory-gui`, run from the project root) — this is a
 human-only action, and it is what puts foundation knowledge into the always-live
 root set that every future recall draws from.
 
 > **Why bother?** The graph starts empty. Without this step, the first ten
 > changes run on recall bundles that know nothing, and agents re-derive (or
 > contradict) the PRD from scratch.
+
+### 2.4 Model the domain — `/gw-domain`
+
+Foundation distillation captures the project's **claims**. This captures its
+**nouns**, and they behave differently: a domain entity names something rather than
+asserting something, so it cannot be contradicted (only renamed or retired), it never
+decays, and it survives every sweep regardless of tier — the domain outlives the
+changes that touch it.
+
+Entities are also the graph's **hubs**. `ABOUT` is the one edge type whose *reverse*
+direction is walked during retrieval, so once artifacts are attached to `Invoice`, a
+later change working on invoices recalls them — including ones captured under a
+different goal, in a change archived months ago. That is the difference between a
+graph that answers *"what did this change decide?"* and one that answers *"what do we
+know about invoices?"*.
+
+Two modes, and the skill states which it is in before proposing anything:
+
+| | **Greenfield** | **Brownfield** |
+|---|---|---|
+| Who authors the list | The user names the domain; the agent transcribes | The agent extracts from schema, core modules, PRD; the user reviews |
+| Evidence recorded | The user's own words | `file:line` for every proposal |
+| The agent's failure mode | Inventing entities — fiction the codebase then gets built to match | Proposing plumbing (`UserRepository`) as domain |
+| The valuable output | A definition that says what the thing is **not** | The **drift findings**: synonyms, homonyms, code-only and talked-about-only terms |
+| Who ratifies | **The human** | **The human** |
+
+That last row is the same in both columns on purpose. `capture_entity` always lands
+`proposed`; only a human confirms, in the GUI's **Domain** tab. An agent that
+proposed and then confirmed its own proposal would not be a gate.
+
+```
+capture_entity(name="Customer",
+               definition="A party we invoice. Not the person who logs in — that is a User.",
+               goal_ref="node_7f3a",
+               facets=["billing"],
+               evidence="src/lib/core/model/customer.ts:14")
+→ {node_id: "node_0a11", existing: false, status: "proposed"}
+```
+
+Recall then tags it: `[node:node_0a11] type=entity tier=short-term proposed`. Usable,
+visibly unratified. Confirm it and the tag becomes `confirmed`.
+
+Amendments (rename, split, merge, retire) run through the same skill — always with
+`impact_of` first, because for an entity that returns everything written *about* it,
+and a deep result means the rename is a project-level event rather than a tidy-up.
 
 ---
 
@@ -229,13 +290,29 @@ Promotion candidates (CONFIRMED, look durable):
 - [node:node_0801] per-line VAT rounding decision — change summary depends on it; suggest long-term
 - [node:node_0812] change summary: "invoice-vat-rounding switched VAT to per-line half-up rounding…" — suggest long-term
 
-Open the review queue: `uv run agentic-memory-gui` → Review tab.
+Domain model: 2 entities awaiting ratification (Statement, Carrier).
+Consolidation: 1 candidate — 3 changes have now captured "webhook handlers must be
+idempotent". Run /gw-consolidate.
+
+Open the review queue: `agentic-memory-gui` → Review tab.
 ```
 
 `node_0812` is the **consolidation artifact** — one `concept` node distilling what
-the change did and why, with `DEPENDS_ON` edges into its key decisions. Promote it
-and future recalls in this territory get the episode's essence even after the
-detail goes dormant.
+the change did and why, with `DEPENDS_ON` edges into its key decisions, `ABOUT` edges
+to the entities the change touched, and `CONSOLIDATES` edges recording what it was
+distilled from. Promote it and future recalls in this territory get the episode's
+essence even after the detail goes dormant.
+
+`CONSOLIDATES` is a **provenance channel only** — policy weight 0, so the retrieval
+walker never crosses it. That is deliberate: the instances are dormant *on purpose*,
+and walking the edge at query time would undo the sweep. It stays queryable in the
+GUI and for provenance reads.
+
+The last two lines are the newer gates. The **domain-model backlog** is entities an
+agent proposed that nobody ratified — they still rank in recall tagged `proposed`, so
+a growing backlog means the project's language is drifting agent-first. The
+**consolidation** line reports `consolidation_candidates()`; the review only counts
+them, it does not work them (that is `/gw-consolidate`, with the human).
 
 ### 3.5 Archive — `/gw-archive`
 
@@ -279,6 +356,126 @@ Headless-specific behavior:
 
 ---
 
+## 4a. Fixing a bug — `/gw-fix`
+
+A fix is a change increment, not an errand: change-id, goal node, memory scope,
+review, archive. What differs from `/gw-implement` is the **validity path** — a
+feature is verified against a plan, a fix against a test that failed *before* the fix
+existed.
+
+```
+/gw-new  →  invoice-vat-double-rounding
+recall   →  [node:node_0788] (invariant, long-term) Grand total equals the sum of line totals.
+            ↑ the invariant IS the bug report, stated precisely
+reproduce → smallest input showing the wrong total; confirm with the user
+impact_of → is the recorded rule right and the code wrong, or the other way round?
+RED      →  write the failing test; RUN IT; paste the failure
+GREEN    →  minimal change; new test passes; FULL suite passes
+REFACTOR →  clean up, suite green after every step, no test edited
+capture  →  the class of mistake, not the diff
+```
+
+Three rules carry most of the value:
+
+- **No source edit before a red test.** If you cannot write a failing test, you have
+  not understood the bug. "The fix is obvious" is exactly when this gets skipped and
+  exactly when the regression returns.
+- **The bug may be in the graph, not the code.** If the code faithfully implements a
+  recorded rule that is itself wrong, the knowledge is the defect: capture the
+  correction with a `CONTRADICTS` edge, and check `impact_of` first — a wrong rule
+  with dependents means everything downstream was built on it.
+- **Capture the class, not the instance.** "Money must not be rounded twice" is
+  recallable by the next change; "line 44 of invoice.ts rounded twice" is git history.
+
+Refactor mode inverts the loop honestly: no red step, so the safety net is coverage.
+If the code has none, writing characterization tests *is* the first phase — a
+refactor without a net is a rewrite with extra confidence.
+
+Headless (`/gw-goal`) only when someone else already wrote the failing test:
+reproduction is judgment, and an unattended agent that cannot reproduce will fix
+something adjacent and report success.
+
+## 4b. Designing a UI — `/gw-wireframe`
+
+UI work fails the usual way: an agent generates plausible screens in one shot, the
+user reacts to the finished thing, and the rework costs more than the design would
+have. This skill trades that for a loop where the user redirects before any component
+is written.
+
+```
+recall + domain_model()  →  UX constraints, a11y rules, the ratified nouns
+detect design system     →  system-bound | library-bound | unstyled — declared out loud
+screen inventory         →  ⏸ user agrees the LIST first (cheapest correction point)
+per screen, one per turn →  layout sketch · component map · states · behavior
+                            · constraints honored · ≤3 open questions  ⏸ wait
+capture                  →  the structural decisions and the design-system rulings
+→ /gw-plan
+```
+
+Two commitments make it part of this workflow rather than a generic design prompt:
+
+- **The design system is law when one exists.** Wireframes name existing components
+  and tokens. When a screen needs something the system lacks, that is surfaced as a
+  decision with options and a cost each — never a silent one-off, which is how a
+  design system dies.
+- **Screens are made of domain entities.** Labels use ratified entity names. A term
+  the domain model lacks is a `/gw-domain` proposal, not a word the UI coins.
+
+Fidelity stops at structure and behavior. No hex codes, no font stacks — if the design
+system defines them, cite the token; if it does not, that is a decision the project
+has not made, and saying so beats guessing.
+
+Empty and error states are wireframed explicitly or explicitly ruled out of scope.
+They are where UI rework concentrates.
+
+## 4c. Finding what to build next — `/gw-ideate`
+
+Generic ideation produces what the team could have written themselves. This produces
+the ideas **the project has already earned and not noticed** — because a
+graph-workflow project accumulates a precise record of every problem it deferred and
+every gap it accepted, filed one change at a time and never read together.
+
+Six seams, mined as separate recalls:
+
+| Seam | Yields |
+|---|---|
+| `issue` nodes | The backlog the team already agreed exists — highest confidence |
+| Accepted gaps | Deferrals whose *reason* may have expired |
+| Workarounds in constraints | Automation with the pain already documented |
+| Under-used capability (`impact_of` returns little) | Already paid for, not yet collected on |
+| Domain blind spots (entities with nothing `ABOUT` them) | Product areas the project named and never built |
+| Recurring disputes in one territory | A model that does not fit reality |
+
+**Evidence or cut.** Every surviving idea cites a `[node:<id>]`, a `file:line`, or a
+user statement. Aim for 6–10 survivors, and report the cut list with reasons — a list
+that survived nothing is a list nobody screened. Ideas go to
+`context/foundation/roadmap.md`; only the *findings* (new gaps, blind spots, expired
+deferrals) go into the graph.
+
+## 4d. Consolidating — `/gw-consolidate`
+
+When three changes independently discover the same thing, dormancy loses a real
+pattern. Consolidation is how a pattern outlives its episodes.
+
+```
+consolidation_candidates()   →  ≥3 live artifacts, ≥2 distinct change scopes, shared facet
+read the cluster             →  a real pattern | repetition | a false cluster?
+draft the abstraction        →  must be true of cases NO instance covers
+present to the human         →  they edit the sentence
+POST /api/consolidate        →  their wording, their tier — you are the scribe
+```
+
+Strictly additive: it mints an abstraction and wires it. Nothing is edited, archived,
+merged, or re-tiered — the instances go dormant on their own schedule, and the
+abstraction stays live because a human promoted it.
+
+The test that separates a real abstraction from a reworded instance: **is the draft
+true of a case none of the instances cover?** If not, the cluster is repetition, which
+is a different finding — it means recall is not serving what capture already wrote.
+
+Do not consolidate domain entities. An entity is a referent, not an abstraction over
+episodes; several entities that look like one is a *merge*, and that is `/gw-domain`.
+
 ## 5. How knowledge lives and dies
 
 ```mermaid
@@ -309,6 +506,31 @@ flowchart LR
 
 The agent records that a conflict exists; it never decides who wins. Trust is
 folded from the journal by privileged maintenance — no agent call can set it.
+
+Domain entities live by different physics — an identity ladder rather than a validity
+one, and liveness by class rather than by tier:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Proposed: capture_entity<br/>(always — greenfield and brownfield alike)
+    Proposed --> Confirmed: human ratifies (GUI Domain tab)
+    Confirmed --> Retired: human retires<br/>(renamed / split / merged / dropped)
+    Proposed --> Retired: human rejects the proposal
+    Retired --> Confirmed: human reinstates
+    Confirmed --> Confirmed: survives EVERY sweep<br/>regardless of tier
+    Proposed --> Proposed: also survives — and keeps<br/>ranking, tagged 'proposed'
+    note right of Retired
+        Not deleted. Its ABOUT edges stay
+        traceable; it just leaves the root
+        set, so the next sweep sends it dormant.
+    end note
+```
+
+Note what the two self-loops mean together: an unratified entity is **not** harmless
+waiting. It survives sweeps and keeps ranking in recall, tagged `proposed` — so a
+careless proposal outlives every change that could have corrected it, and a good one
+never becomes settled vocabulary. That is why `/gw-review` reports the backlog count
+at every PR.
 
 ---
 
@@ -358,6 +580,47 @@ as a `disputed` pair once a CONTRADICTS edge lands. That's the system working:
 the conflict reaches the review queue instead of merging silently. Parallelism
 stays capped by review capacity for exactly this reason.
 
+**A recalled entity is tagged `proposed`.** An agent named it; no human ratified it.
+Use it, and say you did — the name is provisional. If the work depends on it being
+right, route the ratification to `/gw-resolve` or the GUI Domain tab first.
+
+**`capture_entity` says the entity already exists.** Correct and idempotent: the name
+is the key. It returns the existing node and does **not** overwrite the definition.
+
+**You disagree with an existing definition.** Note that a `CONTRADICTS` edge touching an
+entity is *rejected*: an entity asserts nothing, so nothing can contradict it. Two
+channels do apply — capture the correction as a `concept` with an `ABOUT` edge to the
+entity, and `append_event("CONTRADICTED", <entity-id>)` with your evidence, which flags
+it for the human who renames, redefines, or retires it. Never redefine the domain
+silently mid-change.
+
+**`entity_warnings` on capture ("close to existing entity `Customer`").** Unlike a
+facet warning, the entity was still created. That asymmetry is deliberate: entities
+have a human ratification gate, and "is `Client` the same as `Customer`?" is an
+identity question a person should answer while looking at both definitions. The
+warning is carried into the proposal's journal entry, so the gate sees it.
+
+**An entity was retired but its artifacts are still attached.** Retiring strands them:
+they lose the hub that made them findable across changes. Re-attach with `ABOUT` to
+the replacement entity *before* the human retires the old one — `/gw-domain` §C
+sequences all four amendment moves this way.
+
+**The sweep archived an entity.** Only two ways: it was retired, or it was never an
+entity (a `concept` node about a domain term is scope-bound like any other artifact).
+Check `domain_model(status="all")` — if the name is absent, it was captured as an
+artifact and needs a real entity.
+
+**`consolidation_candidates()` keeps returning the same cluster.** It should not — a
+consolidated instance is excluded by construction. If it recurs, the consolidation was
+never committed (drafted, then the human never ruled). If the cluster is *repetition*
+rather than a pattern, say so explicitly and route the finding: repeated near-identical
+captures mean recall is not serving what capture already wrote.
+
+**A bug fix has no reproducible test.** Then it is not ready for `/gw-fix`. Capture an
+`issue` with what you established and what you ruled out, and stop. A speculative fix
+is indistinguishable from a new bug, and the test is the only thing that makes the fix
+verifiable at review.
+
 **Headless run exhausted its retries.** Expect `status: blocked`, an `issue`
 node with the evidence, and a run report. Triage: fix the plan (usually) or the
 verification command (sometimes), then re-run under the same change-id.
@@ -373,10 +636,21 @@ invalidates (foundation nodes have the widest blast radius in the store — a de
 result is a project-level decision), capture new statements with CONTRADICTS
 edges, and let the human re-promote. Never sync doc→graph silently.
 
-**Sharing the store in a team.** The SQLite file is gitignored; the sync format
-is the legible dump (`scripts/dump_db.py` / `restore_db.py`). Dump before push,
-restore after pull. Two people writing the binary concurrently is undefined —
-treat the dump as the merge surface.
+**Sharing the store in a team.** `context/memory-graph.dump` is tracked plain text;
+the `.db` is gitignored and rebuilt from it. Nothing to run before push or after
+pull — the store refreshes the dump on close and rebuilds itself on open.
+
+When a merge conflicts in the dump, run **`agentic-memory sync resolve`** and `git add`
+the result: it merges the two sides by id, which for two people adding different things
+means keeping both. Do *not* delete the markers by hand — git aligns blocks that look
+alike and reports only their differing lines, so "keep both sides" can splice half of
+one node or event onto half of another, and the result parses without complaint. You
+cannot miss the conflict by accident: memory commands refuse to run against a conflicted
+dump rather than answering from a half-loaded graph, and refuse to overwrite one rather
+than silently discarding the other side.
+
+Two people writing one `.db` concurrently is still undefined — the dump is the merge
+surface, as it always was, just without a filter to register.
 
 ---
 
@@ -390,8 +664,9 @@ treat the dump as the merge surface.
 3. **Review capacity is the throughput cap.** More parallel agents without
    review means more unreviewed code *and* an unworked review queue.
 4. **The agent surface cannot do damage** — no trust mutation, no flag clearing,
-   no promotion, no archival. If a workflow step seems to need one of those,
-   the step is wrong, not the surface.
+   no promotion, no archival, no entity ratification, no consolidation commit. If a
+   workflow step seems to need one of those, the step is wrong, not the surface.
+   Agents propose, detect, draft, and recommend; each of those ends at a person.
 5. **Capture quality is the ceiling.** Retrieval is deterministic (same graph +
    same query → same ranking; no LLM in the query path), so what recall serves
    is exactly as good as what capture wrote. One cold-readable statement per
@@ -404,4 +679,12 @@ treat the dump as the merge surface.
 8. **Facet vocabulary is controlled.** New facets are a deliberate act, guarded
    by the collision detector — not a free-text tag cloud.
 9. **plan.md is sequencing, not knowledge.** It may die with the change; the
-   decisions it embodied were captured at the plan boundary and live on.
+   decisions it embodied were captured at the plan boundary and live on. The same
+   holds for `research.md` and `wireframes.md`.
+10. **Domain modelling needs a human in the loop, in both modes.** Greenfield is an
+    interview; brownfield is a review. Neither runs unattended — an unattended
+    greenfield pass invents the domain, and an unattended brownfield pass ratifies
+    the codebase's structure as if it were the domain.
+11. **The domain model is a quality multiplier, not a prerequisite.** The workflow
+    runs without it; recall is just narrower, because nothing links artifacts across
+    change boundaries except the goal cone and embedding luck.

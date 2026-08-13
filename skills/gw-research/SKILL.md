@@ -59,6 +59,12 @@ knowledge is the failure mode this skill exists to prevent.
    - `concept` for settled models ("the invoice aggregate owns line items"),
      `constraint` for things future work must respect, `issue` for problems left
      standing, `invariant` for properties that must always hold.
+   - A **name** is not a finding of this kind. If research surfaced a domain term
+     the model does not hold (`domain_model()` to check), that is a `/gw-domain`
+     proposal — research is where brownfield entities are most often discovered,
+     and where the evidence for them is already in hand. Note the candidates with
+     their `file:line` and route them; do not coin them here.
+   - Attach every capture to the entities it concerns with `ABOUT` edges.
    - One statement per artifact, written to be read cold later. Three small nodes
      beat one blob.
    - Every capture carries `goal_ref`, facets from the controlled vocabulary, and

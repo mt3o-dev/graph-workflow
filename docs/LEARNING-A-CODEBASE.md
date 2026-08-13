@@ -14,12 +14,13 @@ the whole design exists to prevent.
 flowchart TD
     INTAKE["Intake checklist<br/>(12 areas, humans in the room)"] --> INIT["/gw-init<br/>scaffold + MCP check"]
     INIT --> FOUND["/gw-foundation<br/>distill docs, lessons, git workflow<br/>→ lifetime candidates"]
-    FOUND --> PROMOTE["Human promotes in GUI<br/>(lifetime root set)"]
+    FOUND --> DOM["/gw-domain (brownfield mode)<br/>extract entities from schema + core,<br/>with file:line evidence"]
+    DOM --> PROMOTE["Human promotes + ratifies in GUI<br/>(lifetime root set, domain model)"]
     PROMOTE --> GRAPHIFY["graphify code graph<br/>(navigation layer)"]
     GRAPHIFY --> Q{What do you<br/>need right now?}
     Q -- "a question" --> ASK["/gw-ask<br/>recall-only, cites node ids,<br/>journals usage"]
     Q -- "systematic exploration" --> NEW["/gw-new<br/>'explore X to decide Y'<br/>(exploration IS the goal)"]
-    NEW --> RES["/gw-research<br/>recall first → explore only the gap<br/>→ capture durable residue"]
+    NEW --> RES["/gw-research<br/>recall first → explore only the gap<br/>→ capture durable residue + ABOUT edges"]
     ASK -.-> COMPOUND
     RES --> COMPOUND["The graph compounds:<br/>next recall serves what<br/>this session learned"]
     COMPOUND -.-> Q
@@ -49,6 +50,7 @@ understanding into graph artifacts:
 | **`lessons.md` + normative CLAUDE.md/AGENTS.md rules** | `constraint` nodes — the highest-value targets: they encode mistakes the project already paid for |
 | **The git workflow** (branching, PR flow, merge strategy, commit conventions) | one of the **first lessons** — every change, worktree, and headless run acts on it |
 | Intake answers | `constraint`/`decision` nodes (facet policy, capture line, mode routing) |
+| Domain terms in any of the above | **`entity` nodes** via `/gw-domain` — a name is not a claim, and it belongs in the domain model, not in a `concept` node |
 
 One statement per node, readable cold — a 40-node distillation that recall can
 rank beats one blob that always ranks or never does. Everything captured here is
@@ -56,6 +58,44 @@ a **lifetime-promotion candidate**: the human confirms in the GUI, which puts
 foundation knowledge into the always-live root set every future recall draws
 from. Without this step, the first ten changes run on empty recall bundles and
 agents re-derive (or contradict) the project's own documents.
+
+### Then `/gw-domain` — the project's nouns
+
+`/gw-foundation` captures the project's **claims**. `/gw-domain` in **brownfield
+mode** captures its **nouns**, and on an unfamiliar codebase this is the
+highest-yield learning pass available: extracting the domain forces you to read the
+schema and the core modules with one specific question, and it produces findings
+nothing else does.
+
+| Source | Yields |
+|---|---|
+| Persistence schema, migrations, ORM models | The entities with real identity — things with their own table usually have their own life |
+| Core/domain modules (the layer with no framework imports) | The team's own model, in their own types |
+| PRD / glossary | Often *aspirational*; where it disagrees with the code, propose the code's name and **flag the divergence** |
+| API surface, UI copy | The customer-facing vocabulary — often the real ubiquitous language while the code carries a legacy one |
+
+The uncontroversial entities are the easy half. The **drift findings** are why this
+pass is worth running on a codebase you do not know:
+
+- **synonyms** — `client` in the schema, `customer` in the PRD;
+- **homonyms** — `account` as a ledger account *and* as a login (propose both, each
+  defining itself against the other);
+- **code-only terms** — modelled but never spoken about: either a missing domain
+  concept or a leaked implementation detail; ask which;
+- **talked-about-only terms** — named by users, absent from the code. Frequently the
+  most valuable finding in the whole pass.
+
+Every proposal carries a `file:line`, so the reviewer checks it in seconds rather than
+adjudicating from memory. Propose in batches of 8–12 as a table and let the user
+strike, rename, and split rows **before** you capture. The persistent trap: the
+codebase's structure is not the domain — `UserRepository` is not an entity, `User`
+might be.
+
+Every entity lands `proposed`; the human ratifies in the GUI Domain tab. The payoff
+compounds with everything after it: `ABOUT` is the one edge type whose reverse
+direction retrieval walks, so once artifacts attach to `Invoice`, a session six months
+later that asks about invoices gets them — including ones captured under a different
+goal, in a change long since archived.
 
 ## Phase 2 — the navigation layer
 
@@ -132,7 +172,8 @@ learned the codebase."
 
 | Instead of… | The workflow does… |
 |---|---|
-| A week of "onboarding reading" that leaves no artifact | Foundation distillation + exploratory changes that leave ranked, recallable nodes |
+| A week of "onboarding reading" that leaves no artifact | Foundation distillation + domain extraction + exploratory changes that leave ranked, recallable nodes |
 | Asking the senior dev the same question quarterly | `/gw-ask` serving the settled answer with provenance, and ranking learning it matters |
+| "What do we call this?" answered differently by every team member | A ratified domain model — `domain_model()` answers it, and drift shows up as an explicit finding instead of silently splitting the vocabulary |
 | Onboarding docs that rot | Docs stay the human source of truth; their normative content lives in the graph, where staleness gets *flagged* (CONTRADICTS → review queue) instead of silently accumulating |
 | "The codebase is the documentation" | The codebase is what the code *is*; the graph holds what was *decided and learned* — the part `git blame` can't tell you |

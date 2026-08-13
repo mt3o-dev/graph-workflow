@@ -13,11 +13,17 @@ goes in the file.
 ## Steps
 
 1. **Load the scope.** `memory_goal` from `context/changes/<change-id>/change.md`;
-   read `research.md` if present. Then:
+   read `research.md` and `wireframes.md` if present. Then:
 
    ```
    recall_context(query="<what the plan must accomplish>", goal_ref=<goal_node_id>)
+   domain_model(status="confirmed")
    ```
+
+   The domain model is the plan's naming authority: phases, file names, and types
+   introduced by the plan use the ratified entity names. A term the model lacks is
+   either a `/gw-domain` proposal or the wrong word — never a name you coin in
+   plan.md and the codebase inherits forever.
 
    Constraints and invariants in the bundle are load-bearing: a plan that violates
    a recalled `constraint` node must either respect it or explicitly contradict it
@@ -63,6 +69,10 @@ goes in the file.
    - A decision that reverses a recalled node gets a CONTRADICTS edge to it — you
      are recording that the conflict exists; the flag and review it triggers are
      transparent side-effects, not yours to manage.
+   - Add `ABOUT` edges to the domain entities each decision concerns
+     (`domain_model()` for the ratified names). A plan decision attached to its
+     entity is reachable by every future change working in that territory; one
+     attached only to this change's goal dies with the change.
    - One statement per artifact. `tier` stays short/mid — promotion is never
      the agent's call.
 

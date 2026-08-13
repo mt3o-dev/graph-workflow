@@ -3,8 +3,16 @@
 ## graph-workflow — change lifecycle with graph memory
 
 This project uses the graph-workflow: the 10x change lifecycle fused with the
-agentic-memory-system graph (MCP server `agentic-memory`). One lifecycle, not two
-workflows — memory operations are steps inside it.
+agentic-memory-system graph. One lifecycle, not two workflows — memory operations are
+steps inside it.
+
+**Reaching the memory surface.** Prefer the `agentic-memory` MCP tools when this
+session has them. When it does not — a fresh clone, an unapproved `.mcp.json`, a
+config that landed mid-session — use the CLI, which needs no registration:
+`agentic-memory --help` (same operations; `capture -` reads the body from stdin so
+prose never goes through shell quoting). It is installed on PATH and always acts on
+the project you are standing in, so it needs no path argument. Never skip a memory
+step because the MCP tools are absent.
 
 ```
 /gw-new → worktree → /gw-research → /gw-plan → /gw-plan-review → /gw-implement | /gw-goal → /gw-review → merge → /gw-archive
@@ -16,15 +24,21 @@ workflows — memory operations are steps inside it.
 | --- | --- |
 | A question, no change open ("how does X work?", triage, onboarding) | `/gw-ask` (recall-only, foundation scope, journals usage, captures nothing) |
 | Foundation docs written or amended (PRD, tech-stack, ADRs) | `/gw-foundation` (distill into lifetime-tier candidates) |
+| The project's language is unmodelled, or a change opens new domain territory | `/gw-domain` (domain entities: greenfield elicitation or brownfield extraction; human ratifies) |
+| "What should we build next" / roadmap time / an epic just closed | `/gw-ideate` (mine the graph's issues, gaps and blind spots for evidence-backed opportunities) |
 | Starting any unit of work | `/gw-new` (folder + Goal node + seed recall — always first) |
 | Territory unknown | `/gw-research` (recall first, explore the gap, capture findings) |
+| A UI surface to build or redesign | `/gw-wireframe` (screen inventory → one screen per turn with the user → build decisions; obeys the design system) |
 | Ready to design the work | `/gw-plan` (recall + impact_of + plan.md + plan-boundary capture) |
 | Plan written, before implementation | `/gw-plan-review` (fresh session, independent recall, plan vs settled constraints) |
 | Multi-phase / needs judgment | `/gw-implement` (interactive, per-phase memory loop, human gates) |
+| A bug, a regression, or a behaviour-preserving refactor | `/gw-fix` (TDD: red before any source edit, minimal green, then refactor — a full change increment) |
 | Bounded, verifiable by command | `/gw-goal` or `claude -p` (headless; humans at PR only) |
 | Change reaches PR | `/gw-review` (code review + memory human gate) |
 | Merged | `/gw-archive` (final capture, deactivate+sweep, folder → archive) |
+| An issue tracker is in use (GitHub Issues, Linear, Jira) | `/gw-track` (adopt-or-create the item, push phases/status at gates, pull acceptance criteria, report divergence) |
 | Disputes/promotions accumulated, human present | `/gw-resolve` (joint queue session: agent presents+recommends, human rules, applied via guided GUI API) |
+| Several changes archived; recall keeps returning near-duplicates | `/gw-consolidate` (cross-change recurrence → one abstraction, drafted by you, committed by the human) |
 
 ### Standing rules (apply to every session)
 
@@ -38,6 +52,15 @@ workflows — memory operations are steps inside it.
 - **Speak the graph's vocabulary.** List the controlled facet vocabulary before
   the session's first capture (MCP vocabulary read if available, else GUI or the
   committed dump); query recalls with the graph's own terms, not paraphrases.
+- **Speak the domain's vocabulary too.** `domain_model()` once per session, before
+  naming anything in code, tests, plans, or UI copy. Use the ratified entity names;
+  a term the model lacks is a `/gw-domain` proposal, not a word you coin. Attach
+  every capture to the entities it concerns with `ABOUT` edges — that wiring is what
+  makes an entity a hub instead of a dictionary entry.
+- **Names are not claims.** A thing the project refers to (`Invoice`, `Customer`)
+  is a domain entity via `capture_entity`, not an artifact. The test: can you
+  disagree with it? Entities never decay and survive every sweep, so a careless one
+  outlives every change that could have corrected it — and only a human ratifies.
 - **Navigate code through the graphify MCP** when the project has a code
   knowledge graph (`graphify-out/` present) — graph queries for architecture and
   file relationships first; raw grep/read is the fallback, not the default.
@@ -45,9 +68,17 @@ workflows — memory operations are steps inside it.
   (USED/CONFIRMED/CONTRADICTED/REVIEWED/NOTED) before ending. Honest events only.
 - **Contradictions are recorded, never resolved** — CONTRADICTS edges and
   CONTRADICTED events flag for human review; that is the system working.
-- **Never** mutate trust, clear flags, promote tiers, or archive nodes. Not
-  possible via the agent surface; do not work around it.
-- **Degraded mode (memory server down): queue, don't skip.** Append every
+- **Three surfaces, three jobs.** `context/changes/` holds lifecycle state, the
+  graph holds knowledge, the tracker holds work state. A decision recorded only in
+  an issue comment is a decision no future recall will serve — knowledge goes in the
+  graph, always, and the issue gets a pointer at most.
+- **Never** mutate trust, clear flags, promote tiers, archive nodes, ratify a
+  domain entity, or commit a consolidation. Not possible via the agent surface; do
+  not work around it. You may propose, detect, draft, and recommend — every one of
+  those ends at a human.
+- **Degraded mode (store genuinely unreachable): queue, don't skip.** Try the CLI
+  transport first — "the MCP tools aren't registered" is not a degraded mode, it is
+  the other door. If the *store itself* is unreachable, append every
   would-be operation to `context/changes/<id>/memory-backlog.md` — create_change
   parameters, captures (content, type, edges, facets), events, promotion
   candidates — and replay them when the surface returns. Gates consume the
@@ -69,7 +100,17 @@ workflows — memory operations are steps inside it.
   epic id as a capture facet, and sibling slices' surviving nodes as
   parent_refs. One change = one plan, one review sitting — epics are grouped,
   never merged into one change.
-- `context/memory-graph.db` — the store (gitignored; sync via dump/restore
-  scripts).
+- `context/memory-graph.dump` — the tracked store, as legible text (diffs and
+  merges natively). `context/memory-graph.db` is a gitignored build artifact the
+  store rebuilds on open and refreshes on close; nothing to set up, no filter.
+  If a merge conflicts in the dump, run `agentic-memory sync resolve` and `git add`
+  the result — never hand-edit the markers out, because git aligns similar blocks and
+  shows only their differing lines, so "keep both sides" can splice half of one entry
+  onto half of another. Memory commands refuse to run against a conflicted dump, so
+  you will be told rather than served a half-loaded graph.
+- `context/foundation/tracker.md` — the issue-tracker binding (which tracker, the
+  board's real state names, who may close). `tracker: none` is a valid answer.
+- `context/changes/<id>/change.md` carries `tracker:` alongside `memory_goal:` when
+  a tracker is bound.
 
 <!-- END graph-workflow -->

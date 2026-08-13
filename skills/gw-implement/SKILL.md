@@ -70,6 +70,19 @@ change.md):
 - Route to `/gw-review` — it collects every disputed node this change touched into
   the PR's human gate.
 
+## When a phase turns out to be a bug fix
+
+Implementation regularly surfaces a defect that is not what the phase was for. Two
+outcomes, and the difference matters:
+
+- **The defect blocks this phase** → switch to the `/gw-fix` discipline *inside* the
+  phase: reproduce, write the failing test, minimal green, then continue. The TDD
+  order is not optional just because you are mid-phase — a fix without a red test is
+  the regression you will meet again.
+- **The defect does not block this phase** → capture it as an `issue` with the
+  evidence and keep going. It becomes its own `/gw-fix` change. Silently folding an
+  unrelated fix into a feature change makes the review unable to attribute anything.
+
 ## Phase-parallel execution (orchestrator + subagents)
 
 Phases may run as parallel subagents under one orchestrating session, sharing

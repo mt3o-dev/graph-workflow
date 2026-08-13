@@ -56,6 +56,21 @@ recall → attempt → verify → (fail: diagnose, retry ≤ N) → capture+jour
 - Never merge, never archive, never resolve flags — those live at the human end
   of the lifecycle.
 
+## Which skills may run headless
+
+`/gw-implement`'s per-phase work compresses into this loop cleanly. Two of the newer
+skills do not, and one does conditionally:
+
+- **`/gw-fix`** — headless **only when the reproduction is already a failing test**
+  someone else wrote. Reproduction is judgment: an unattended agent that cannot
+  reproduce will fix something adjacent and report success. With a red test in hand
+  the loop is fully command-verifiable.
+- **`/gw-domain`** and **`/gw-wireframe`** — never. Both are defined by a user in the
+  loop (elicitation, per-screen review); running them unattended produces exactly the
+  invented domain and one-shot UI they exist to prevent.
+- **`/gw-consolidate`** and **`/gw-ideate`** — the read halves are safe to run
+  headless and report; the commits (consolidating, opening changes) are not.
+
 ## Rules
 
 - One change per worktree, one fresh context per run. Parallelism is capped by

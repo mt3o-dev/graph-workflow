@@ -86,7 +86,14 @@ event.
    cross-change knowledge arrives for free: constraints, invariants, and lifetime
    concepts touching this goal, ranked. Read it before deciding anything.
 
-6. **Worktree (parallel work).** If this change runs alongside others:
+6. **Bind the tracker** (skip if `context/foundation/tracker.md` says `tracker: none`,
+   or the project has no binding). Per `/gw-track`: `find` an item carrying this
+   change-id's marker and adopt it, else `create` one; record `tracker:` and
+   `tracker_url:` in change.md next to `memory_goal:`. If the work *came from* an
+   existing issue, pull its acceptance criteria into the change now — they are
+   product authority and `/gw-plan-review` will check the plan against them.
+
+7. **Worktree (parallel work).** If this change runs alongside others:
 
    ```sh
    git worktree add ../<repo>-<change-id> -b <change-id>
@@ -95,9 +102,18 @@ event.
    One change per worktree, one fresh agent context per worktree. The active
    change's liveness root is already ON from step 3.
 
-7. Hand off: state the change-id, the goal id, and what the seed recall surfaced
-   (especially any `disputed` blocks), then route — `/gw-research` if the ground is
-   unknown, `/gw-plan` if it is understood.
+8. Hand off: state the change-id, the goal id, the tracker key (if any), and what the seed recall surfaced
+   (especially any `disputed` blocks), then route:
+   - `/gw-research` if the ground is unknown;
+   - `/gw-domain` first if the change opens territory whose nouns the domain model
+     does not name (`domain_model()` comes back thin for this area) — planning
+     against unnamed entities is how the code and the product end up with different
+     words for one thing;
+   - `/gw-wireframe` first if the change builds or redesigns a UI surface — the
+     wireframe is an input to the plan, not an output of it;
+   - `/gw-fix` instead of `/gw-plan` if this is a defect or a behaviour-preserving
+     refactor — it carries its own TDD loop and needs no separate plan gate;
+   - `/gw-plan` if the ground is understood.
 
 ## Rules
 

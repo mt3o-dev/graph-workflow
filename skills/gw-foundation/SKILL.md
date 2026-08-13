@@ -77,6 +77,15 @@ sweep, ranked into every relevant recall.
    survive in the root set by design; anything the human declined goes dormant,
    which is the correct verdict recorded.
 
+6. **Hand off to `/gw-domain`.** Foundation distillation captures the project's
+   *claims*; it does not capture its *nouns*. Domain terms encountered here become
+   `concept` nodes only when they are a settled model with something to assert —
+   the bare names (`Invoice`, `Customer`, `Shipment`) belong in the domain model as
+   entities, where they never decay, survive every sweep, and act as hubs the
+   foundation constraints attach to with `ABOUT`. Note the terms you met while
+   distilling and hand that list to `/gw-domain` as its starting inventory; on a
+   brownfield project it runs in extraction mode against the code as well.
+
 ## Amendments
 
 **Concurrency rule:** amend foundation docs only *between* a change's gates —
