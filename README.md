@@ -125,6 +125,13 @@ uv run python scripts/restore_db.py   # after pull
 The human review GUI (staleness queue, tier promotion) runs from the same
 install: `uv run agentic-memory-gui` → http://127.0.0.1:8765.
 
+For the project-management view over the same artifacts — changes on a board by
+lifecycle stage, the issue and dispute queue, node detail with the journal — this
+repo ships [`gui/`](gui/README.md): `PYTHONPATH=gui python3 -m pmview <project>`
+→ http://127.0.0.1:8766. It reads the store and the lifecycle folders directly and
+forwards every write to the review GUI above, so the safety invariant stays
+enforced in one place.
+
 ### 2. Install the skills
 
 Copy (or symlink) the skill directories into the target project or your user

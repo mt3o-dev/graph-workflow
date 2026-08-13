@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph Workflow — Project Board</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Graph&nbsp;Workflow</h1>
+  <nav class="tabs">
+    <button data-view="board" class="active">Board</button>
+    <button data-view="issues">Issues</button>
+    <button data-view="search">Search</button>
+  </nav>
+  <select id="project" aria-label="Project"></select>
+  <span id="memory-status" class="pill" title="the write path"></span>
+</header>
+
+<main>
+  <section id="view-board" class="view"></section>
+  <section id="view-issues" class="view hidden"></section>
+  <section id="view-search" class="view hidden">
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="Search node bodies, paths and ids…" autocomplete="off">
+    </div>
+    <div id="search-results" class="list"></div>
+  </section>
+</main>
+
+<aside id="drawer" class="drawer hidden" aria-label="Detail"></aside>
+<div id="scrim" class="scrim hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
