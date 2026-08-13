@@ -36,6 +36,11 @@ touch the store.
    - `disputed` blocks: present BOTH sides and say the matter is contested —
      an unresolved dispute served as settled truth is the worst failure this
      skill can produce.
+   - `type=entity` blocks tagged `proposed`: the name is an agent's proposal that
+     no human has ratified. Say so when you lean on one — "what do we call this"
+     answered from an unratified proposal is how a guess becomes the vocabulary.
+     `domain_model()` answers "what is X" and "what do we call this" directly, and
+     is usually a better first read than `recall_context` for terminology questions.
    - `tier=short-term` blocks belong to some change's working memory — say so
      if you lean on one.
    - The graph knows nothing on the topic → say that plainly; a made-up answer

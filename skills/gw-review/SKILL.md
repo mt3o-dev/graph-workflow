@@ -89,7 +89,7 @@ Surface the conflict with both readings and the evidence; never silently pick on
    Promotion candidates (CONFIRMED, look durable):
    - [node:<id>] <one-line content> — suggest mid-term → long-term
 
-   Open the review queue: `uv run agentic-memory-gui` → Review tab.
+   Open the review queue: `agentic-memory-gui` → Review tab.
    ```
 
    The `Store health` line is store-wide, not change-scoped: it makes the standing
@@ -101,26 +101,50 @@ Surface the conflict with both readings and the evidence; never silently pick on
    human write is journaled, so manual intervention never breaks derived state.
 
 4. **Consolidate the episode (episodic → semantic).** After merge the change's
-   un-promoted detail goes dormant — so distill NOW what must outlive it:
+   un-promoted detail goes dormant — so distill NOW what must outlive it. This is
+   `/gw-consolidate` Part 1; run it here rather than as a separate session.
 
    - Capture **one change-summary artifact**: what this change did, the outcome,
      and why — written to be read cold by a future change that recalls this
      territory. Type `concept`, tier `mid-term`, with DEPENDS_ON edges to the
      change's key decision/constraint nodes (so recalling the summary pulls the
-     specifics within reach even when they are dormant).
+     specifics within reach even when they are dormant), CONSOLIDATES edges to what
+     it was distilled from (provenance — never walked at recall time, so the summary
+     does not drag the dormant detail back), and ABOUT edges to the domain entities
+     the change touched.
    - Re-read the change's captured artifacts and pick the ones with cross-change
      value: constraints and invariants almost always qualify; decisions qualify
      when a future change could plausibly reverse them unknowingly; narrationish
      leftovers do not.
+   - Run `consolidation_candidates()` once and report the count. It is a read; if
+     cross-change recurrence has accumulated, say so and route to
+     `/gw-consolidate` — do not work the candidates inside the review.
 
-5. **Suggest, never resolve.** List the change-summary node plus the mid-term
+5. **Report the domain-model backlog.** `domain_model(status="proposed")` — entities
+   an agent proposed that nobody has ratified. Unratified entities still rank in
+   recall tagged `proposed`, so a growing backlog means the project's language is
+   drifting agent-first. One line in the checklist, same as store health. If this
+   change captured artifacts that name a domain concept with no entity, that is a
+   finding: route it to `/gw-domain`.
+
+6. **Suggest, never resolve.** List the change-summary node plus the mid-term
    artifacts that were CONFIRMED and read as durable as **promotion candidates**,
    each with a one-line why. This list is what survives in live recall after the
    sweep — an unpromoted candidate goes dormant with the rest. The human promotes
    in the GUI; the agent never does.
 
-6. An empty queue is a valid outcome — say so explicitly and move on; do not
+7. An empty queue is a valid outcome — say so explicitly and move on; do not
   manufacture findings.
+
+## Part 3 — the tracker (skip if `tracker: none`)
+
+Per `/gw-track`: link the PR to the change's item, and post **one** comment carrying the
+verdict plus the memory-gate summary line. One comment per gate, never per finding — the
+findings live in the PR, where they can be replied to.
+
+Reconcile while you are there: if the item was closed while this change is open, or its
+acceptance criteria changed after the plan was approved, that is a finding for the human,
+not something to fix by writing.
 
 ## Verdict
 

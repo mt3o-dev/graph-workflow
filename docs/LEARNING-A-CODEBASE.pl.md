@@ -14,12 +14,13 @@ awarii, przed którym cały projekt ma chronić.
 flowchart TD
     INTAKE["Checklist intake<br/>(12 obszarów, ludzie przy stole)"] --> INIT["/gw-init<br/>scaffold + weryfikacja MCP"]
     INIT --> FOUND["/gw-foundation<br/>destylacja dokumentów, lessons, git workflow<br/>→ kandydaci lifetime"]
-    FOUND --> PROMOTE["Człowiek promuje w GUI<br/>(lifetime root set)"]
+    FOUND --> DOM["/gw-domain (tryb brownfield)<br/>ekstrakcja encji ze schematu i core,<br/>z dowodem plik:linia"]
+    DOM --> PROMOTE["Człowiek promuje i ratyfikuje w GUI<br/>(lifetime root set, model domeny)"]
     PROMOTE --> GRAPHIFY["Graf kodu graphify<br/>(warstwa nawigacji)"]
     GRAPHIFY --> Q{Czego potrzebujesz<br/>w tej chwili?}
     Q -- "pytanie" --> ASK["/gw-ask<br/>tylko recall, cytuje node id,<br/>journaluje użycie"]
     Q -- "systematyczna eksploracja" --> NEW["/gw-new<br/>'zbadaj X, żeby zdecydować Y'<br/>(eksploracja JEST celem)"]
-    NEW --> RES["/gw-research<br/>najpierw recall → eksploruj tylko lukę<br/>→ capture trwałego osadu"]
+    NEW --> RES["/gw-research<br/>najpierw recall → eksploruj tylko lukę<br/>→ capture trwałego osadu + krawędzie ABOUT"]
     ASK -.-> COMPOUND
     RES --> COMPOUND["Graf się kumuluje:<br/>następny recall serwuje to,<br/>czego nauczyła się ta sesja"]
     COMPOUND -.-> Q
@@ -49,6 +50,7 @@ zrozumienie, w artefakty grafu:
 | **`lessons.md` + normatywne reguły CLAUDE.md/AGENTS.md** | węzły `constraint` — cele o najwyższej wartości: kodują błędy, za które projekt już zapłacił |
 | **Git workflow** (branching, PR flow, strategia merge, konwencje commitów) | jedna z **pierwszych lekcji** — każda zmiana, worktree i przebieg headless na nim działa |
 | Odpowiedzi z intake | węzły `constraint`/`decision` (polityka facetów, linia capture, routing trybów) |
+| Terminy domenowe w którymkolwiek z powyższych | **węzły `entity`** przez `/gw-domain` — nazwa to nie twierdzenie i należy do modelu domeny, nie do węzła `concept` |
 
 Jedno zdanie na węzeł, czytelne na zimno — destylacja na 40 węzłów, które
 recall umie rankować, bije jednego blob-a, który zawsze rankuje albo nigdy.
@@ -57,6 +59,44 @@ potwierdza w GUI, co wkłada wiedzę fundamentową do zawsze-żywego root setu, 
 którego czerpie każdy przyszły recall. Bez tego kroku pierwsze dziesięć zmian
 działa na pustych bundlach recall i agenci wyprowadzają od nowa (albo
 zaprzeczają) własnym dokumentom projektu.
+
+### Następnie `/gw-domain` — rzeczowniki projektu
+
+`/gw-foundation` zbiera **twierdzenia** projektu. `/gw-domain` w **trybie
+brownfield** zbiera jego **rzeczowniki**, a na nieznanej bazie kodu to najbardziej
+wydajny przebieg uczenia się, jaki jest dostępny: ekstrakcja domeny zmusza cię do
+przeczytania schematu i modułów core z jednym konkretnym pytaniem i produkuje
+ustalenia, których nie da nic innego.
+
+| Źródło | Co daje |
+|---|---|
+| Schemat persystencji, migracje, modele ORM | Encje z prawdziwą tożsamością — rzeczy z własną tabelą zwykle mają własne życie |
+| Moduły core/domain (warstwa bez importów frameworka) | Własny model zespołu, w ich własnych typach |
+| PRD / słowniczek | Często *aspiracyjne*; tam gdzie nie zgadza się z kodem, zaproponuj nazwę z kodu i **oznacz rozjazd** |
+| Powierzchnia API, teksty UI | Słownictwo skierowane do klienta — często prawdziwy język wszechobecny, podczas gdy kod niesie starszy |
+
+Bezsporne encje to łatwa połowa. **Ustalenia o rozjeździe** są powodem, dla którego
+warto uruchomić ten przebieg na bazie kodu, której nie znasz:
+
+- **synonimy** — `client` w schemacie, `customer` w PRD;
+- **homonimy** — `account` jako konto księgowe *i* jako login (zaproponuj oba, każdy
+  definiujący się wobec drugiego);
+- **terminy tylko-w-kodzie** — modelowane, ale nikt o nich nie mówi: albo brakujące
+  pojęcie domenowe, albo przeciekający szczegół implementacyjny; zapytaj który;
+- **terminy tylko-w-mowie** — nazywane przez użytkowników, nieobecne w kodzie. Często
+  najcenniejsze ustalenie całego przebiegu.
+
+Każda propozycja niesie `plik:linia`, więc recenzent sprawdza ją w sekundy, zamiast
+rozstrzygać z pamięci. Proponuj paczkami po 8–12 w formie tabeli i pozwól
+użytkownikowi wykreślić, przemianować i rozdzielić wiersze **zanim** cokolwiek
+zcapture'ujesz. Uporczywa pułapka: struktura bazy kodu to nie domena —
+`UserRepository` nie jest encją, `User` być może jest.
+
+Każda encja ląduje jako `proposed`; człowiek ratyfikuje w zakładce Domain w GUI.
+Zysk kumuluje się ze wszystkim, co potem: `ABOUT` to jedyny typ krawędzi, którego
+kierunek odwrotny przechodzi wyszukiwanie, więc gdy artefakty zostaną podpięte do
+`Invoice`, sesja pół roku później pytająca o faktury dostanie je — łącznie z tymi
+zcapture'owanymi pod innym celem, w zmianie dawno zarchiwizowanej.
 
 ## Faza 2 — warstwa nawigacji
 
@@ -134,7 +174,8 @@ się codebase'u" według tego workflow.
 
 | Zamiast… | Workflow robi… |
 |---|---|
-| Tydzień „czytania onboardingowego", po którym nie zostaje artefakt | Destylacja foundation + zmiany eksploracyjne zostawiające rankowane, recall'owalne węzły |
+| Tydzień „czytania onboardingowego", po którym nie zostaje artefakt | Destylacja foundation + ekstrakcja domeny + zmiany eksploracyjne zostawiające rankowane, recall'owalne węzły |
 | Pytanie seniora o to samo co kwartał | `/gw-ask` serwujący ustaloną odpowiedź z pochodzeniem, a ranking uczy się, że to ważne |
+| „Jak to nazywamy?" — z inną odpowiedzią od każdego członka zespołu | Ratyfikowany model domeny: `domain_model()` odpowiada, a rozjazd wychodzi jako jawne ustalenie zamiast po cichu rozszczepiać słownictwo |
 | Dokumenty onboardingowe, które gniją | Dokumenty pozostają ludzkim źródłem prawdy; ich normatywna treść żyje w grafie, gdzie nieświeżość jest *flagowana* (CONTRADICTS → kolejka review) zamiast cicho narastać |
 | „Codebase jest dokumentacją" | Codebase to to, czym kod *jest*; graf trzyma to, co *zdecydowano i czego się nauczono* — część, której `git blame` nie powie |

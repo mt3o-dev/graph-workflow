@@ -2,7 +2,7 @@
 
 *(Polska wersja: [INTAKE.pl.md](INTAKE.pl.md))*
 
-Twelve areas to think through **before** running `/gw-init` on a project. Each
+Thirteen areas to think through **before** running `/gw-init` on a project. Each
 area asks 4–6 questions, and every question carries an example — either a usable
 answer or what goes wrong without one. Questions that could not be grounded
 confidently in the workflow's actual mechanics were dropped rather than padded.
@@ -64,8 +64,32 @@ draft before the first capture, not organic accretion.
 4. What is the standing instruction for handling `facet_warnings` — when should an agent accept the suggested existing label, and when is keeping a distinct new one justified?
    *A usable rule: accept the suggestion unless the two concepts would ever need to be recalled separately. `tax` vs `vat` may genuinely differ (excise, withholding); `invoice` vs `invoicing` never will.*
 
-5. Are the project's core domain terms defined consistently enough to become `concept` nodes — or do team members currently mean different things by the same word?
-   *If "account" means a ledger account to finance and a user login to engineering, capture two distinct concepts with distinct facets now — otherwise the first recall that mixes them misleads with full confidence.*
+5. Are the project's core domain terms defined consistently enough to become `entity` nodes — or do team members currently mean different things by the same word?
+   *If "account" means a ledger account to finance and a user login to engineering, that is a homonym: `/gw-domain` proposes both, each defining itself against the other, and the team picks disambiguating names. Left alone, the first recall that mixes them misleads with full confidence.*
+
+## 2b. The domain model
+
+Facets classify; **domain entities name**. They are a different kind of node with
+different physics: an entity cannot be contradicted (only renamed or retired), never
+decays, and survives every sweep regardless of tier — so a careless one outlives every
+change that could have corrected it. Entities are also the graph's hubs, the only place
+retrieval walks an edge backwards, which is what lets a later change recall what an
+earlier one learned about the same thing.
+
+1. Which mode does this project need — **greenfield** (the domain lives in people's heads; the user names it and the agent transcribes) or **brownfield** (the domain is implicit in code; the agent extracts with `file:line` evidence and the user reviews)?
+   *A rewrite of an existing product is usually both: brownfield for the subsystems being carried over, greenfield for the new ones. Run them as separate passes — the reviewer's job is completely different in each, and mixing them in one batch means neither gets done properly.*
+
+2. Can the team state, today, one clean definition for the five most important nouns — including what each one is **not**?
+   *"A Customer is a party we invoice — not the person who logs in; that's a User" is a definition. "A customer of the system" is a tautology that will not stop a single naming mistake. If nobody can produce these, the elicitation session IS the work, and it needs the right people in the room.*
+
+3. Who ratifies proposed entities, and how quickly? This is a different act from tier promotion, and it may be a different person — a product owner rather than a tech lead.
+   *Unratified entities are not harmless waiting: they survive sweeps and keep ranking in recall tagged `proposed`. A backlog that nobody works means the project's language is being set agent-first, one proposal at a time.*
+
+4. Where do you expect the code's vocabulary and the product's vocabulary to disagree, and which one wins?
+   *Legacy schemas usually carry the older name (`client`) while the PRD and the UI carry the current one (`customer`). Decide the rule before the extraction pass, or you will re-litigate it once per batch.*
+
+5. Is there a glossary, a domain model diagram, or a bounded-context map already? Is it current enough to seed the entity set, or would it plant names the code abandoned?
+   *A stale glossary is worse than none here: an entity never decays, so a name distilled from a 2023 diagram outranks nothing and is never swept.*
 
 ## 3. Change granularity & naming
 
@@ -123,7 +147,7 @@ surfaced to a person. If nobody owns those actions, disputes accumulate, nothing
 gets promoted, and the graph slowly degrades into unranked short-term noise.
 Decide who the humans are before the first change opens.
 
-1. Who works the review queue (`uv run agentic-memory-gui` → Review tab), and at what cadence?
+1. Who works the review queue (`agentic-memory-gui` → Review tab), and at what cadence?
    *Example: "The change author triages their own disputed nodes at PR time; the tech lead sweeps the whole queue every Friday." Without an owner, a `disputed` pair from week one is still unresolved in month three, and every recall that touches it forces agents to reason with both sides.*
 
 2. Who has promotion authority — especially for lifetime tier, which requires explicit confirmation in the GUI?
@@ -138,6 +162,12 @@ Decide who the humans are before the first change opens.
 5. Who rules on the consolidation candidates at each PR — the change-summary node and CONFIRMED artifacts /gw-review lists?
    *Example: "The PR reviewer either promotes the change summary or explicitly declines it in the same sitting." An unpromoted summary goes dormant at sweep, which defeats its purpose — future recalls in that territory get nothing from the episode.*
 
+6. Who ratifies **domain entities**, and is it the same person who promotes tiers? It often should not be — one is a product question, the other an engineering one.
+   *Example: "The product owner confirms entity names in the GUI Domain tab at the weekly review; the tech lead handles tier promotions at each PR." Splitting them keeps a naming decision from being made by whoever happened to be reviewing the diff.*
+
+7. Who runs the periodic `/gw-consolidate` pass, and on what cadence? The per-PR episode summary is automatic; the cross-change recurrence pass is not.
+   *Example: "After every third archived change, or whenever /gw-review reports candidates two PRs running." Skipping it entirely is a valid choice — say so, rather than leaving it implicitly owned by nobody.*
+
 ## 6. Execution-mode mix
 
 Every change routes to exactly one execution mode: interactive `/gw-implement`
@@ -145,6 +175,9 @@ Every change routes to exactly one execution mode: interactive `/gw-implement`
 verification, humans only at PR). The routing decision is only real if the
 headless preconditions can actually be met — which usually means test
 infrastructure work before the first `/gw-goal` run.
+
+0. Which skills are you willing to run unattended at all? Three are never headless by design — `/gw-domain` and `/gw-wireframe` are defined by a user in the loop, and `/gw-fix` needs judgment for the reproduction step unless someone else already wrote the failing test.
+   *Example: "Headless: /gw-goal on plan-backed changes, and /gw-fix only when QA files a reproducing test. Never headless: domain modelling, wireframing, consolidation commits." An unattended greenfield domain pass invents the domain, and an unattended fix without a reproduction fixes something adjacent and reports success.*
 
 1. What share of your typical changes is bounded and verifiable by a command — the hard precondition for headless mode?
    *Example: "Dependency bumps, codemod-style refactors, and CRUD endpoints against our API test suite: headless. Anything touching the pricing engine: interactive." If the honest answer is "almost nothing is command-verifiable," plan for interactive-only until that changes.*
@@ -260,13 +293,16 @@ nodes pile up, and recall slowly fills with stale, contested knowledge — the
 graph rots exactly as fast as the humans ignore it.
 
 1. Who works the staleness/review queue, and on what cadence?
-   *Example: the reviewer opens `uv run agentic-memory-gui` → Review tab at every PR gate, plus a weekly sweep of anything the PRs missed — versus a queue nobody owns, where every disputed node stays disputed forever.*
+   *Example: the reviewer opens `agentic-memory-gui` → Review tab at every PR gate, plus a weekly sweep of anything the PRs missed — versus a queue nobody owns, where every disputed node stays disputed forever.*
 
 2. When does the evaluator / privileged maintenance (trust folding, rules-based flag resolution) actually run, and triggered by whom?
    *Example: a scheduled weekly batch — headless `/gw-goal` changes depend on the rules+evaluator path for validity, so "never" means their contradictions accumulate untriaged.*
 
 3. Will reviewers enforce consolidation at `/gw-review`, or is it optional in practice?
    *Example: a PR checklist item — "change-summary node exists and promotion candidates ruled on" — because an unpromoted summary goes dormant at the sweep and the episode vanishes from live recall.*
+
+3b. Who watches the **domain-model backlog** — the count of entities still `proposed`?
+   *Example: the same PR checklist reports it, and anything over five triggers a ratification pass in the GUI. A backlog that only grows means the project's vocabulary is being set by agent proposals nobody read, and entities never decay, so it never self-corrects.*
 
 4. What does "healthy" look like for this graph, and who checks?
    *Example: recalls surface mostly promoted, undisputed nodes; the review queue trends to empty after each PR cycle. Rotting: seed recalls dominated by `disputed` tags, promotion candidates never ruled on, sweeps archiving everything because nothing was promoted.*
@@ -293,4 +329,4 @@ decision to continue is evidence, not sunk cost.
    *Example: foundation docs were always the human source of truth, so nothing knowledge-critical lives only in the graph; the committed dump is legible text, so past decisions remain greppable even with the server gone.*
 
 5. What is the minimum viable retreat, short of full abandonment?
-   *Example: drop to plain 10x (files only) but keep `/gw-foundation` and the review-gate consolidation — the two highest-value capture points — rather than an all-or-nothing exit.*
+   *Example: drop to plain 10x (files only) but keep `/gw-foundation`, `/gw-domain`, and the review-gate consolidation — the three highest-value capture points — rather than an all-or-nothing exit. The domain model is the cheapest of the three to maintain and the slowest to rot, since entities change far less often than decisions.*
