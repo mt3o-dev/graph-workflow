@@ -300,6 +300,35 @@ One change per worktree, one fresh agent context per change. Parallelism is capp
 by review capacity — more agents without review is more unreviewed code, not more
 throughput.
 
+## Building & installing
+
+The repo carries dogfood apps, tests, and vendored agent skills, but the shippable
+pieces are small. `scripts/build.py` (stdlib only) emits two **install-only-what-you-
+need** assets into `dist/`:
+
+```bash
+make dist          # or: python3 scripts/build.py all
+```
+
+- **`pmview.pyz`** — the board GUI as one runnable [zipapp](https://docs.python.org/3/library/zipapp.html).
+  No install, no dependencies:
+
+  ```bash
+  python3 pmview.pyz ~/my-project        # or ./pmview.pyz after chmod +x
+  ```
+
+- **`gw-skills-<ver>.tar.gz`** — the `gw-*` agentic-memory skills plus an installer:
+
+  ```bash
+  tar xzf gw-skills-*.tar.gz && cd gw-skills-*
+  ./install.sh                           # → ~/.claude/skills
+  ./install.sh --target ~/.agent/skills  # or .kiro / .opencode / a project dir
+  ./install.sh --pmview ../pmview.pyz    # also drop the board tool on PATH
+  ```
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds both and
+attaches them to the GitHub Release.
+
 ## Provenance
 
 - Integration design: `docs/05_10X_INTEGRATION.md` in agentic-memory-system

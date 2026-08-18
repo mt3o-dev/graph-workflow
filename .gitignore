@@ -17,6 +17,9 @@ graphify-out/
 **/context/memory-graph.db-*
 **/context/memory-graph.db.bak
 
+# Build output (scripts/build.py)
+/dist/
+
 # Python
 __pycache__/
 *.py[cod]
