@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "rgba(16, 24, 40, .35)",
+        "createdAt": "2026-08-14T07:24:29.186Z",
+        "reason": "agent decision: --scrim is the modal drawer overlay, a translucent scrim (not a brand-palette color); documented in DESIGN.md Elevation + sidecar"
+      }
+    ]
+  }
+}

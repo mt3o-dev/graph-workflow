@@ -3,6 +3,13 @@
 .claude/settings.local.json
 graphify-out/
 
+# impeccable (design skill): keep the design system + shared config; ignore local
+# consent and per-session runtime state.
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/live/roots.json
+.impeccable/live/sessions/
+
 # agentic-memory store: the .dump is tracked (plain text, diffs natively), the .db is
 # a LOCAL BUILD ARTIFACT the store rebuilds on open. Never track the .db — a git
 # clean/smudge filter cannot be auto-registered, which silently broke every fresh clone.

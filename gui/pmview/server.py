@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import re
+import subprocess
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,6 +23,27 @@ from .memory import MemoryAPI, MemoryError_, MemoryUnavailable
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 STORE_NAMES = ("memory-graph.db",)
+
+
+def _git_info(root: Path) -> dict:
+    """Origin remote and current branch, read on demand. Any failure (no git, not a
+    repo, detached HEAD) degrades to `None` rather than raising — this is a local
+    convenience read, never a hard dependency."""
+    def run(*args: str) -> str | None:
+        try:
+            done = subprocess.run(
+                ["git", "-C", str(root), *args],
+                capture_output=True, text=True, timeout=2,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        out = done.stdout.strip()
+        return out if done.returncode == 0 and out else None
+
+    return {
+        "origin": run("remote", "get-url", "origin"),
+        "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
+    }
 
 
 @dataclass
@@ -114,6 +136,26 @@ class ProjectView:
             "store_missing": store is None,
         }
 
+    def detail(self) -> dict:
+        """The header info popover: identity plus on-disk size, graph totals, and
+        git origin. Heavier than `info()` (it shells out to git), so it lives on its
+        own endpoint rather than riding every board fetch."""
+        store = self.project.store
+        size = None
+        if store:
+            size = sum(
+                sidecar.stat().st_size
+                for suffix in ("", "-wal", "-shm")
+                if (sidecar := store.with_name(store.name + suffix)).is_file()
+            )
+        board = self.board()
+        return {
+            **self.info(),
+            "size_bytes": size,
+            "totals": {**board.board()["totals"], "edges": len(board.graph.edges)},
+            "git": _git_info(self.project.root),
+        }
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "gw-pmview"
@@ -184,6 +226,10 @@ class Handler(BaseHTTPRequestHandler):
         view = self._view(query)
         if view is None:
             return self._error("no such project", 404)
+
+        if path == "/api/project":
+            return self._send(view.detail())
+
         board = view.board()
 
         if path == "/api/board":

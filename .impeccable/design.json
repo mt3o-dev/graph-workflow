@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-14T00:00:00Z",
+  "title": "Design System: pmview",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Signal Blue", "canonical": "#2f6fdb", "darkValue": "#7aa5f0", "tonalRamp": ["#0d1f3f", "#132c5c", "#1b3f82", "#2456ad", "#2f6fdb", "#5a8fe6", "#8fb4ef", "#c7dbf8"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#171a1f", "darkValue": "#e7eaee", "tonalRamp": ["#0b0d10", "#171a1f", "#2a2f38", "#414855", "#667085", "#98a2b3", "#c5cbd4", "#eef0f3"] },
+      "surface-page": { "role": "neutral", "displayName": "Page", "canonical": "#f6f7f9", "darkValue": "#14171c" },
+      "surface-panel": { "role": "neutral", "displayName": "Panel", "canonical": "#ffffff", "darkValue": "#1c2027" },
+      "line": { "role": "neutral", "displayName": "Line", "canonical": "#e3e6ea", "darkValue": "#2c323b" },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#667085", "darkValue": "#98a2b3" },
+      "warn": { "role": "tertiary", "displayName": "Warn", "canonical": "#b54708", "darkValue": "#f0a35e" },
+      "danger": { "role": "tertiary", "displayName": "Danger", "canonical": "#b42318", "darkValue": "#f18b82" },
+      "ok": { "role": "tertiary", "displayName": "Ok", "canonical": "#067647", "darkValue": "#5cc38f" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Title", "purpose": "Product title in the top bar." },
+      "section-label": { "displayName": "Section Label", "purpose": "Uppercase column/section headers, Ink Muted." },
+      "stat": { "displayName": "Stat", "purpose": "The number on a stat tile." },
+      "meta": { "displayName": "Meta", "purpose": "Metadata, pills, goals, events — always Ink Muted." },
+      "mono": { "displayName": "Mono", "purpose": "Node ids, edge kinds — identifiers and data only." }
+    },
+    "shadows": [
+      { "name": "ambient", "value": "0 1px 2px rgba(16,24,40,.06), 0 4px 12px rgba(16,24,40,.05)", "purpose": "Resting elevation for panels in light mode; none in dark." },
+      { "name": "raised", "value": "0 6px 18px rgba(16,24,40,.12), 0 2px 6px rgba(16,24,40,.08)", "purpose": "Hover lift on cards/list items and the toast. Dark: 0 8px 24px rgba(0,0,0,.5)." }
+    ],
+    "overlays": [
+      { "name": "scrim", "token": "--scrim", "value": "rgba(16,24,40,.35)", "purpose": "Translucent veil behind the modal detail drawer. An overlay utility, deliberately outside the brand palette." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.2,.7,.3,1)", "purpose": "The single easing for every state transition." },
+      { "name": "dur-fast", "value": "120ms", "purpose": "Color/border/filter state changes." },
+      { "name": "dur-base", "value": "180ms", "purpose": "Shadow, transform lift, and the toast entrance." }
+    ],
+    "breakpoints": [
+      { "name": "drawer-fullscreen", "value": "620px", "purpose": "Below this, the detail drawer spans the full viewport width (min(620px,100vw))." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The confident affirmative action (Save, Confirm).",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: var(--space-2xs) var(--space-md); font: var(--text-base)/1.5 var(--font-sans); cursor: pointer; transition: filter var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); } .ds-btn-primary:hover { filter: brightness(1.06); box-shadow: var(--shadow); transform: translateY(-1px); } .ds-btn-primary:active { transform: translateY(0); filter: brightness(.97); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Quiet alternative action; recedes next to primary.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { background: none; color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-2xs) var(--space-md); font: var(--text-base)/1.5 var(--font-sans); cursor: pointer; transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); } .ds-btn-secondary:hover { border-color: var(--accent); color: var(--accent); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A change on the board — flat at rest, lifts one pixel on hover.",
+      "html": "<div class=\"ds-card\"><strong>Add token system</strong><p class=\"ds-card-goal\">Establish spacing/type/radius/motion scales.</p></div>",
+      "css": ".ds-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-md); box-shadow: var(--shadow); cursor: pointer; transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); } .ds-card:hover { border-color: var(--accent); box-shadow: var(--shadow-raised); transform: translateY(-1px); } .ds-card-goal { color: var(--muted); font-size: var(--text-meta); margin: var(--space-3xs) 0 0; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "pill",
+      "description": "A label/status token; status variants tint text AND border to the hue, fill stays transparent.",
+      "html": "<span class=\"ds-pill\">facet</span> <span class=\"ds-pill ds-pill-danger\">contradicted</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: var(--space-3xs); font-size: var(--text-meta); padding: 1px var(--space-xs); border-radius: var(--radius-pill); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; } .ds-pill-danger { color: var(--danger); border-color: currentColor; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "Node search; accent glow on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search nodes…\">",
+      "css": ".ds-input { width: 100%; max-width: 620px; padding: var(--space-sm) var(--space-md); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); font: var(--text-base)/1.5 var(--font-sans); transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); } .ds-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }"
+    },
+    {
+      "name": "Tab",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Pill tab in the sticky top bar; recessed Page fill when active.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">Board</button><button class=\"ds-tab\">Issues</button></div>",
+      "css": ".ds-tabs { display: flex; gap: var(--space-3xs); } .ds-tab { background: none; border: 1px solid transparent; padding: var(--space-3xs) var(--space-md); border-radius: var(--radius-pill); color: var(--muted); cursor: pointer; font: var(--text-base)/1.5 var(--font-sans); transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out); } .ds-tab:hover { color: var(--ink); } .ds-tab-active { background: var(--bg); border-color: var(--line); color: var(--ink); }"
+    },
+    {
+      "name": "Stat Tile",
+      "kind": "custom",
+      "refersTo": "stat-tile",
+      "description": "A headline metric on the board; number over a muted label. Alert variant turns the number Warn.",
+      "html": "<div class=\"ds-stat\"><b>12</b><span>changes</span></div>",
+      "css": ".ds-stat { display: inline-block; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-xs) var(--space-md); min-width: 92px; } .ds-stat b { display: block; font-size: var(--text-stat); font-weight: var(--weight-strong); } .ds-stat span { color: var(--muted); font-size: var(--text-meta); }"
+    },
+    {
+      "name": "Info Popover",
+      "kind": "custom",
+      "description": "Header (i) dialog: two-column key/value grid; closes only on explicit action, never outside-click.",
+      "html": "<div class=\"ds-popover\"><div class=\"ds-pop-head\"><h2>Project info</h2><button class=\"ds-pop-close\" aria-label=\"Close\">×</button></div><div class=\"ds-row\"><span class=\"ds-key\">Nodes</span><span class=\"ds-val\">63</span></div><div class=\"ds-row\"><span class=\"ds-key\">Origin</span><span class=\"ds-val\" style=\"font-family:var(--font-mono)\">git@github.com:mt3o-dev/rashDrawingXR.git</span></div></div>",
+      "css": ".ds-popover { width: min(720px, calc(100vw - var(--space-2xl))); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-raised); padding: var(--space-md) var(--space-lg) var(--space-lg); color: var(--ink); } .ds-pop-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--space-md); } .ds-pop-close { background: none; border: none; color: var(--muted); font-size: var(--text-stat); line-height: 1; cursor: pointer; } .ds-pop-close:hover { color: var(--ink); } .ds-row { display: grid; grid-template-columns: 100px 1fr; gap: var(--space-md); padding: var(--space-2xs) 0; border-top: 1px solid var(--line); } .ds-row:first-of-type { border-top: none; padding-top: 0; } .ds-key { color: var(--muted); font-size: var(--text-meta); } .ds-val { word-break: break-word; }"
+    },
+    {
+      "name": "Edge Kind Badge",
+      "kind": "custom",
+      "description": "Relationship label: drawn icon + type, one semantic color per edge kind. Node name in Ink leads the meta line.",
+      "html": "<div class=\"ds-edge\"><span class=\"ds-kind ds-kind-accent\"><svg viewBox=\"0 0 16 16\" width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2.5 8h9M8 4.5 11.5 8 8 11.5\"/></svg>DEPENDS_ON</span><div><div>Migrate config reads to config-layers</div><div class=\"ds-path\"><span class=\"ds-name\">/goal/m1-config-layers-migration</span> · goal · 443d7aa2</div></div></div>",
+      "css": ".ds-edge { display: flex; gap: var(--space-xs); align-items: baseline; padding: var(--space-2xs) 0; border-top: 1px solid var(--line); } .ds-kind { display: inline-flex; align-items: center; gap: var(--space-3xs); min-width: 108px; font-size: var(--text-micro); color: var(--muted); } .ds-kind-accent { color: var(--accent); } .ds-kind-ok { color: var(--ok); } .ds-kind-warn { color: var(--warn); } .ds-kind-danger { color: var(--danger); } .ds-path { font-family: var(--font-mono); font-size: var(--text-meta); color: var(--muted); } .ds-name { color: var(--ink); }"
+    },
+    {
+      "name": "Breadcrumb Trail",
+      "kind": "nav",
+      "description": "Drill path change -> node -> node; ancestors are clickable, current is inert.",
+      "html": "<nav class=\"ds-crumbs\"><button class=\"ds-crumb\">m1-config-layers</button><span class=\"ds-sep\">›</span><button class=\"ds-crumb\">human-ruling</button><span class=\"ds-sep\">›</span><span class=\"ds-crumb ds-current\">worker-m2</span></nav>",
+      "css": ".ds-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3xs); font-size: var(--text-meta); } .ds-crumb { background: none; border: none; padding: 0; cursor: pointer; color: var(--muted); font: inherit; } .ds-crumb:hover { color: var(--accent); text-decoration: underline; } .ds-current { color: var(--ink); } .ds-sep { color: var(--muted); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Control Room",
+    "overview": "pmview is the surface a human watches while autonomous agents work. Its job is to let a supervisor scan the whole state of a change-and-memory workflow and act on the one thing that needs them — so the interface stays calm, legible, and out of the way. Hierarchy is carried by weight, tonal panels, and hairline rules rather than color or ornament. The world is light-and-dark twins that share one set of shape, spacing, and motion tokens and swap only their color primitives. Surfaces are flat at rest and depth is a response to intent: cards and list items lift a single pixel with a soft shadow the moment the operator hovers a target.",
+    "keyCharacteristics": [
+      "Flat at rest, one-pixel lift on hover — depth means 'actionable'.",
+      "Accent used sparingly: interactive and selected states only.",
+      "Tonal panels + 1px lines do the structural work, in both themes.",
+      "One motion grammar: ease-out, 120–180ms, honored down to prefers-reduced-motion.",
+      "System sans for reading, mono strictly for identifiers and data."
+    ],
+    "rules": [
+      { "name": "The Accent-Is-A-Verb Rule", "body": "Signal Blue only appears on something the operator can interact with or has selected. If a blue element does nothing, it's a bug.", "section": "colors" },
+      { "name": "The Twin-World Rule", "body": "Light and dark differ only in the nine color primitives; shape, spacing, type, and motion tokens are shared. Never fork a component's geometry per theme.", "section": "colors" },
+      { "name": "The Mono-Means-Data Rule", "body": "Monospace is for identifiers, data, and measurements — never as a costume for 'technical'. Prose is always sans.", "section": "typography" },
+      { "name": "The Flat-Until-Touched Rule", "body": "A surface is flat at rest. Shadow appears as a response to hover, focus, or the toast — never as static decoration.", "section": "elevation" },
+      { "name": "The Name-First Rule", "body": "In any id · type · name line, the human-meaningful name is the darkest, largest-weight token; ids and types recede to muted mono.", "section": "components" },
+      { "name": "The Persisted-Chrome Rule", "body": "Drawer width and dock side are user state, not layout defaults — remember them across opens, never reset them on navigation.", "section": "components" },
+      { "name": "The One-Hue-Per-Category Rule", "body": "Map edge types and status onto the existing semantic tokens (accent/ok/warn/danger) and differentiate with drawn icons; never invent a new hue for a category.", "section": "colors" }
+    ],
+    "dos": [
+      "Do reach for a spacing, radius, type, or color token for every value; the CSS custom properties on :root are the source of truth and the DESIGN.md frontmatter mirrors them.",
+      "Do keep the accent for interactive and selected states only.",
+      "Do let hover lift signal actionability — 1px translate + shadow-raised, on ease-out 120–180ms.",
+      "Do tint secondary text on any colored surface from that hue or Ink Muted — never a flat gray drop-in.",
+      "Do keep light and dark identical except for the nine color primitives."
+    ],
+    "donts": [
+      "Don't introduce a build step, framework, CSS-in-JS, or npm dependency — the styling contract is plain CSS + class names shared with app.js.",
+      "Don't add a colored border-left/border-right above 1px, gradient text, or zero-blur block shadows.",
+      "Don't use monospace as decoration; reserve it for identifiers and data.",
+      "Don't rename or drop the component class names — they are the API between style.css and app.js.",
+      "Don't ship a hover/focus state without a resting counterpart, or motion without honoring prefers-reduced-motion."
+    ]
+  }
+}
