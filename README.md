@@ -326,8 +326,32 @@ make dist          # or: python3 scripts/build.py all
   ./install.sh --pmview ../pmview.pyz    # also drop the board tool on PATH
   ```
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds both and
-attaches them to the GitHub Release.
+Both are **standalone** — grab only the one you need. The board tool has no
+dependency on the skills, and the skills bundle carries its own installer; neither
+pulls in the rest of the repo.
+
+### Releasing
+
+Releases are cut from a version tag. The version lives in one place —
+`__version__` in [`gui/pmview/__init__.py`](gui/pmview/__init__.py) — and both the
+local build and CI read it (CI prefers the tag).
+
+1. Bump `__version__` (e.g. `0.1.0` → `0.2.0`) and commit.
+2. Tag and push:
+
+   ```bash
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+3. The pushed tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+   which runs `python scripts/build.py all --version 0.2.0` on a clean checkout and
+   **attaches `pmview.pyz` and `gw-skills-0.2.0.tar.gz` to the GitHub Release** for
+   that tag (the release is created if it doesn't exist).
+
+Nothing is published from a developer's machine and no build output is committed —
+`dist/` is gitignored, and the tag is the only trigger. To dry-run what a release
+would contain, `make dist` and inspect `dist/` locally.
 
 ## Provenance
 
