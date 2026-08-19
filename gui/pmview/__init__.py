@@ -6,4 +6,6 @@ Writes are delegated to the agentic-memory-system GUI API so the safety invarian
 stays enforced in exactly one place.
 """
 
+__version__ = "0.1.0"
+
 __all__ = ["board", "graph", "lifecycle", "memory", "server"]

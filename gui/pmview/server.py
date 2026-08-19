@@ -13,6 +13,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -21,7 +22,6 @@ from . import lifecycle
 from .board import Board
 from .memory import MemoryAPI, MemoryError_, MemoryUnavailable
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
 STORE_NAMES = ("memory-graph.db",)
 
 
@@ -278,14 +278,21 @@ class Handler(BaseHTTPRequestHandler):
     # --- static -------------------------------------------------------------
 
     def _static(self, path: str) -> None:
+        # Serve from package resources, not a filesystem path: this reads the same
+        # whether pmview runs from source, an installed wheel, or a zipapp (.pyz),
+        # where the static files live inside the archive and have no real path.
         rel = "index.html" if path in ("/", "") else path.lstrip("/")
-        target = (STATIC_DIR / rel).resolve()
-        if not target.is_file() or STATIC_DIR not in target.parents:
+        parts = [p for p in rel.split("/") if p not in ("", ".")]
+        if not parts or any(p == ".." for p in parts):  # no traversal out of static/
             self.send_error(404)
             return
-        data = target.read_bytes()
+        try:
+            data = resources.files("pmview").joinpath("static", *parts).read_bytes()
+        except (FileNotFoundError, IsADirectoryError, OSError, ModuleNotFoundError):
+            self.send_error(404)
+            return
         self.send_response(200)
-        self.send_header("Content-Type", mimetypes.guess_type(target.name)[0] or "text/plain")
+        self.send_header("Content-Type", mimetypes.guess_type(parts[-1])[0] or "text/plain")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)

@@ -300,6 +300,59 @@ One change per worktree, one fresh agent context per change. Parallelism is capp
 by review capacity — more agents without review is more unreviewed code, not more
 throughput.
 
+## Building & installing
+
+The repo carries dogfood apps, tests, and vendored agent skills, but the shippable
+pieces are small. `scripts/build.py` (stdlib only) emits two **install-only-what-you-
+need** assets into `dist/`:
+
+```bash
+make dist          # or: python3 scripts/build.py all
+```
+
+- **`pmview.pyz`** — the board GUI as one runnable [zipapp](https://docs.python.org/3/library/zipapp.html).
+  No install, no dependencies:
+
+  ```bash
+  python3 pmview.pyz ~/my-project        # or ./pmview.pyz after chmod +x
+  ```
+
+- **`gw-skills-<ver>.tar.gz`** — the `gw-*` agentic-memory skills plus an installer:
+
+  ```bash
+  tar xzf gw-skills-*.tar.gz && cd gw-skills-*
+  ./install.sh                           # → ~/.claude/skills
+  ./install.sh --target ~/.agent/skills  # or .kiro / .opencode / a project dir
+  ./install.sh --pmview ../pmview.pyz    # also drop the board tool on PATH
+  ```
+
+Both are **standalone** — grab only the one you need. The board tool has no
+dependency on the skills, and the skills bundle carries its own installer; neither
+pulls in the rest of the repo.
+
+### Releasing
+
+Releases are cut from a version tag. The version lives in one place —
+`__version__` in [`gui/pmview/__init__.py`](gui/pmview/__init__.py) — and both the
+local build and CI read it (CI prefers the tag).
+
+1. Bump `__version__` (e.g. `0.1.0` → `0.2.0`) and commit.
+2. Tag and push:
+
+   ```bash
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+3. The pushed tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml),
+   which runs `python scripts/build.py all --version 0.2.0` on a clean checkout and
+   **attaches `pmview.pyz` and `gw-skills-0.2.0.tar.gz` to the GitHub Release** for
+   that tag (the release is created if it doesn't exist).
+
+Nothing is published from a developer's machine and no build output is committed —
+`dist/` is gitignored, and the tag is the only trigger. To dry-run what a release
+would contain, `make dist` and inspect `dist/` locally.
+
 ## Provenance
 
 - Integration design: `docs/05_10X_INTEGRATION.md` in agentic-memory-system
