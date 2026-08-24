@@ -493,6 +493,29 @@ class PrototypeServingTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.fetch(path)[0], 404)
 
+    def test_the_picker_ships_and_serves_without_its_own_route(self) -> None:
+        """pin.js sits in static/, so `_static` serves it — already traversal-
+        guarded, already inside the zipapp. Declaring a route for it AND putting
+        it in static/ would have 404'd through the fallthrough."""
+        status, _, body = self.fetch("/_gw/pin.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"gw-pin", body)
+        self.assertIn(b"data-gw-region", body)
+        # It renders no input and holds no text: the parent owns every field.
+        for forbidden in (b"<input", b"<textarea", b"fetch(", b"localStorage"):
+            self.assertNotIn(forbidden, body)
+        self.assertEqual(self.fetch("/_gw/../server.py")[0], 404)
+
+    def test_a_prototype_cannot_carry_an_inline_script(self) -> None:
+        """The rung-2 ban is enforced by the CSP, not by review: script-src omits
+        'unsafe-inline', so an inline script in a prototype simply does not run."""
+        _, headers, _ = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        directives = dict(
+            (d.split(" ", 1)[0], d) for d in headers["Content-Security-Policy"].split("; "))
+        self.assertNotIn("unsafe-inline", directives["script-src"])
+        self.assertIn("unsafe-inline", directives["style-src"])
+        self.assertEqual(directives["connect-src"], "connect-src 'none'")
+
     def test_design_routes_are_off_when_the_bind_is_not_loopback(self) -> None:
         server = build_server([Project("graph-workflow", REPO)], "0.0.0.0", 0,
                               memory_url="http://127.0.0.1:9")

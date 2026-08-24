@@ -429,3 +429,17 @@ main { padding: var(--space-xl); }
   background: var(--panel);
 }
 .design-main .filters { margin-bottom: 0; }
+
+/* A pinned region, drawn as a thumbnail of where in the screen it sits. The
+   geometry arrives from the frame as four normalised numbers the parent clamps
+   and writes into custom properties — never into markup. */
+.pin {
+  position: relative; width: 100%; aspect-ratio: 12 / 10;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm);
+}
+.pin i {
+  position: absolute;
+  left: var(--px); top: var(--py); width: var(--pw); height: var(--ph);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  border: 1px solid var(--accent); border-radius: 2px;
+}
