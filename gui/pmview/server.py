@@ -22,7 +22,10 @@ from . import lifecycle
 from .board import Board
 from .memory import MemoryAPI, MemoryError_, MemoryUnavailable
 
-STORE_NAMES = ("memory-graph.db",)
+# Order matters: the live SQLite store wins when present, and a fresh clone that
+# has only the committed text dump still gets a board. `graph.load()` sniffs the
+# SQLite magic, so both names go down the same read path.
+STORE_NAMES = ("memory-graph.db", "memory-graph.dump")
 
 
 def _git_info(root: Path) -> dict:
@@ -89,6 +92,17 @@ class ProjectView:
         self._board: Board | None = None
         self._stamp: tuple | None = None
 
+    @staticmethod
+    def _file_stamp(path: Path) -> tuple | None:
+        """(mtime, size) or None. A file can vanish between the glob and the stat —
+        `handle_error` is not overridden, so an unguarded `stat()` prints a traceback
+        into the terminal the operator is watching."""
+        try:
+            stat = path.stat()
+        except OSError:
+            return None
+        return (stat.st_mtime_ns, stat.st_size)
+
     def _fingerprint(self) -> tuple:
         store = self.project.store
         parts: list = []
@@ -98,17 +112,16 @@ class ProjectView:
         # cards straight after an edit.
         if store:
             for suffix in ("", "-wal", "-shm"):
-                sidecar = store.with_name(store.name + suffix)
-                stat = sidecar.stat() if sidecar.is_file() else None
-                parts.append((stat.st_mtime_ns, stat.st_size) if stat else None)
+                parts.append(self._file_stamp(store.with_name(store.name + suffix)))
         else:
             parts.append(None)
         for sub in ("changes", "archive"):
             root = self.project.context / sub
             if root.is_dir():
                 parts.append(tuple(
-                    (str(p.relative_to(root)), p.stat().st_mtime_ns)
+                    (str(p.relative_to(root)), stamp)
                     for p in sorted(root.rglob("*.md"))
+                    if (stamp := self._file_stamp(p)) is not None
                 ))
         return tuple(parts)
 
@@ -144,9 +157,9 @@ class ProjectView:
         size = None
         if store:
             size = sum(
-                sidecar.stat().st_size
+                stamp[1]
                 for suffix in ("", "-wal", "-shm")
-                if (sidecar := store.with_name(store.name + suffix)).is_file()
+                if (stamp := self._file_stamp(store.with_name(store.name + suffix))) is not None
             )
         board = self.board()
         return {
@@ -161,6 +174,10 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "gw-pmview"
     views: dict[str, ProjectView] = {}
     memory: MemoryAPI = MemoryAPI()
+    #: Same-origin spellings of this server's own bind. Never a literal — the port
+    #: is chosen at startup and `localhost` and `127.0.0.1` are different origins
+    #: to a browser even though they are the same socket.
+    allowed_origins: frozenset[str] = frozenset()
 
     # --- plumbing -----------------------------------------------------------
 
@@ -185,14 +202,45 @@ class Handler(BaseHTTPRequestHandler):
             return next(iter(self.views.values()), None)
         return self.views.get(name)
 
+    #: A write body is a node body or a short reason — never a payload. Anything
+    #: larger is a mistake or an attack, and reading it costs memory either way.
+    MAX_BODY = 1 << 20
+
     def _payload(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
         if not length:
             return {}
         try:
             return json.loads(self.rfile.read(length).decode())
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return {}
+
+    def _write_allowed(self) -> bool:
+        """Guard the write proxy against a page the operator merely *visited*.
+
+        pmview binds to loopback, but loopback is not a boundary a browser
+        respects: any site can POST here cross-origin. Requiring JSON is what
+        actually stops it — a form, an image or a `sendBeacon` can only send
+        simple content types, and `application/json` forces a preflight this
+        server never answers. `Origin` is then checked *when present*; it is not
+        required, because a missing `Origin` means the caller is not a browser
+        (curl, a script, a test) and has the operator's own shell anyway.
+        """
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            self._error("writes must be application/json", 415, code="unsupported_media_type")
+            return False
+
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > self.MAX_BODY:
+            self._error("request body too large", 413, code="body_too_large")
+            return False
+
+        origin = self.headers.get("Origin")
+        if origin and origin not in self.allowed_origins:
+            self._error("cross-origin write refused", 403, code="forbidden_origin")
+            return False
+        return True
 
     def _proxy(self, call) -> None:
         """Run one write against the memory API, translating its failure modes."""
@@ -254,6 +302,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib naming
         path = urlparse(self.path).path
+        if not self._write_allowed():
+            return
         payload = self._payload()
 
         if match := re.fullmatch(r"/api/nodes/([^/]+)/body", path):
@@ -298,6 +348,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
+def _origins(host: str, port: int) -> frozenset[str]:
+    """Every spelling of this bind a browser could send as `Origin`."""
+    hosts = {host}
+    if host in ("127.0.0.1", "localhost", "::1", ""):
+        hosts |= {"127.0.0.1", "localhost", "[::1]"}
+    return frozenset(f"http://{h}:{port}" for h in hosts if h)
+
+
 def build_server(projects: list[Project], host: str, port: int,
                  memory_url: str, verbose: bool = False) -> ThreadingHTTPServer:
     handler = type("BoundHandler", (Handler,), {
@@ -305,5 +363,8 @@ def build_server(projects: list[Project], host: str, port: int,
         "memory": MemoryAPI(memory_url),
     })
     server = ThreadingHTTPServer((host, port), handler)
+    # After the bind, not before: `port` may be 0 (ephemeral), and the origin a
+    # browser sends carries the port it actually connected to.
+    handler.allowed_origins = _origins(host, server.server_address[1])
     server.verbose = verbose  # type: ignore[attr-defined]
     return server

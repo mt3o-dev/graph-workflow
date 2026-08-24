@@ -29,13 +29,27 @@ REPO = Path(__file__).resolve().parents[2]
 COFFER = REPO / "dogfood" / "coffer"
 
 
+def store_path(root: Path = COFFER) -> Path:
+    """The store as a fresh clone actually finds it.
+
+    `context/memory-graph.db` is gitignored — it is a local build artifact the
+    store rebuilds from the committed text dump. Tests that named the `.db`
+    literally passed only on a machine that had already opened the project.
+    """
+    for name in server_mod.STORE_NAMES:
+        candidate = root / "context" / name
+        if candidate.is_file():
+            return candidate
+    raise AssertionError(f"no store under {root / 'context'} (looked for {server_mod.STORE_NAMES})")
+
+
 def load_board(root: Path = COFFER) -> Board:
-    return Board(lifecycle.scan(root / "context"), graph_mod.load(root / "context" / "memory-graph.db"))
+    return Board(lifecycle.scan(root / "context"), graph_mod.load(store_path(root)))
 
 
 class DumpParsingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.graph = graph_mod.load(COFFER / "context" / "memory-graph.db")
+        self.graph = graph_mod.load(store_path())
 
     def test_reads_nodes_edges_and_events(self) -> None:
         self.assertGreater(len(self.graph.nodes), 100)
@@ -307,6 +321,38 @@ class SqliteStoreTests(unittest.TestCase):
         self.assertIsNot(view.board(), first)
 
 
+class StoreResolutionTests(unittest.TestCase):
+    """A fresh clone has the committed dump and no `.db` — the board must work
+    from what git actually carries."""
+
+    def test_the_committed_dump_is_a_store(self) -> None:
+        self.assertEqual(store_path(COFFER).name, "memory-graph.dump")
+        self.assertFalse((COFFER / "context" / "memory-graph.db").exists(),
+                         "precondition: the .db is gitignored, so it is absent here")
+        self.assertGreater(len(graph_mod.load(store_path(COFFER)).nodes), 100)
+
+    def test_the_live_sqlite_store_wins_when_both_are_present(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context").mkdir()
+        make_sqlite_store(root / "context" / "memory-graph.db").close()
+        (root / "context" / "memory-graph.dump").write_text(
+            "# agentic-memory-system dump\n# format_version: 1\n", encoding="utf-8")
+        self.assertEqual(Project("t", root).store.name, "memory-graph.db")
+
+    def test_a_file_that_vanishes_mid_scan_does_not_crash_the_fingerprint(self) -> None:
+        """`rglob` yields a path, then the file goes away before `stat()`. The
+        handler does not override `handle_error`, so an unguarded stat prints a
+        traceback into the terminal the operator is watching."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context" / "changes" / "c1").mkdir(parents=True)
+        (root / "context" / "changes" / "c1" / "change.md").write_text("# c1", encoding="utf-8")
+        view = server_mod.ProjectView(Project("t", root))
+        self.assertIsNone(server_mod.ProjectView._file_stamp(root / "nope" / "gone.md"))
+        self.assertTrue(view.board().board()["stages"] is not None)
+
+
 class DiscoveryTests(unittest.TestCase):
     def test_parent_directory_expands_to_each_project(self) -> None:
         names = {p.name for p in discover([REPO / "dogfood"])}
@@ -315,7 +361,7 @@ class DiscoveryTests(unittest.TestCase):
     def test_project_directory_is_used_directly(self) -> None:
         projects = discover([COFFER])
         self.assertEqual([p.name for p in projects], ["coffer"])
-        self.assertEqual(projects[0].store, COFFER / "context" / "memory-graph.db")
+        self.assertEqual(projects[0].store, store_path())
 
 
 class ServerTests(unittest.TestCase):
@@ -352,6 +398,56 @@ class ServerTests(unittest.TestCase):
         except urllib.error.HTTPError as exc:
             return exc.code, json.loads(exc.read())
 
+    def raw_post(self, path: str, body: bytes, **headers):
+        request = urllib.request.Request(
+            self.base + path, data=body, method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            return exc.code, json.loads(exc.read())
+
+    # --- the write guard ----------------------------------------------------
+    # pmview binds to loopback, but loopback is not a boundary a browser
+    # respects. These three cover the shapes a page the operator merely visited
+    # could actually send.
+
+    def test_a_write_that_is_not_json_is_refused(self) -> None:
+        """A cross-origin form or `sendBeacon` can only send a simple content
+        type, and a simple request needs no preflight — so this is the one that
+        would otherwise get through."""
+        status, body = self.raw_post(
+            "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+            **{"Content-Type": "text/plain;charset=UTF-8"})
+        self.assertEqual(status, 415)
+        self.assertEqual(body["code"], "unsupported_media_type")
+
+    def test_a_write_from_a_foreign_origin_is_refused(self) -> None:
+        status, body = self.raw_post(
+            "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+            **{"Content-Type": "application/json", "Origin": "http://evil.example"})
+        self.assertEqual(status, 403)
+        self.assertEqual(body["code"], "forbidden_origin")
+
+    def test_a_write_from_this_servers_own_origin_is_allowed_through(self) -> None:
+        """Reaching `memory_unavailable` means the guard passed it: the request
+        got as far as the proxy, which is dead in this fixture."""
+        for origin in (self.base, "http://localhost:%d" % self.server.server_address[1]):
+            with self.subTest(origin=origin):
+                status, body = self.raw_post(
+                    "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+                    **{"Content-Type": "application/json", "Origin": origin})
+                self.assertEqual(status, 503)
+                self.assertEqual(body["code"], "memory_unavailable")
+
+    def test_a_write_with_no_origin_is_allowed_through(self) -> None:
+        """No `Origin` means no browser — curl, a script, a test. The operator
+        already has their own shell; refusing here buys nothing and breaks
+        scripting."""
+        status, body = self.post("/api/nodes/x/tier", {"tier": "lifetime"})
+        self.assertEqual(status, 503)
+        self.assertEqual(body["code"], "memory_unavailable")
+
     def test_projects_and_board(self) -> None:
         status, projects = self.get("/api/projects")
         self.assertEqual(status, 200)
@@ -386,7 +482,7 @@ class ServerTests(unittest.TestCase):
         self.assertIn("reason", payload)
 
     def test_writes_report_memory_unavailable_and_change_nothing(self) -> None:
-        before = (COFFER / "context" / "memory-graph.db").read_bytes()
+        before = store_path().read_bytes()
         for path, payload in (
             ("/api/nodes/66cd3d85-2920-4768-8953-4fd191446b5c/body", {"body": "rewritten"}),
             ("/api/nodes/66cd3d85-2920-4768-8953-4fd191446b5c/tier", {"tier": "lifetime"}),
@@ -397,7 +493,7 @@ class ServerTests(unittest.TestCase):
                 status, body = self.post(path, payload)
                 self.assertEqual(status, 503)
                 self.assertEqual(body["code"], "memory_unavailable")
-        self.assertEqual((COFFER / "context" / "memory-graph.db").read_bytes(), before,
+        self.assertEqual(store_path().read_bytes(), before,
                          "the board must never write to the store itself")
 
     def test_empty_body_is_rejected_before_it_reaches_the_memory_api(self) -> None:
