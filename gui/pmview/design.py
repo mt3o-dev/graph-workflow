@@ -506,6 +506,98 @@ def design_system(root: Path) -> dict:
     }
 
 
+# ---------------------------------------------------------------- serving
+
+#: What a prototype directory may serve. An allowlist, because this route reads
+#: real files off the project's disk rather than out of the package.
+PROTO_EXTS = frozenset({".html", ".htm", ".css", ".js", ".mjs", ".svg", ".png",
+                        ".jpg", ".jpeg", ".webp", ".gif", ".woff", ".woff2", ".json"})
+ASSET_EXTS = frozenset({".css", ".woff", ".woff2", ".ttf", ".otf", ".svg", ".png",
+                        ".jpg", ".jpeg", ".webp", ".gif"})
+
+_BINDING_RE = re.compile(r"^\s*(stylesheet|font|asset)\s*:\s*(.+?)\s*$", re.M)
+
+
+def stylesheet_allowlist(root: Path) -> set[str]:
+    """Exact project-relative paths a prototype may load, from
+    `context/foundation/design-bindings.md`.
+
+    A prototype must wear the project's *real* shipping stylesheet — copying it
+    into `context/design/` would duplicate token values into git, and there is no
+    build step to generate one. So pmview serves the project's own file, from an
+    **exact allowlist**: not a prefix, not a regex. Membership is a set lookup,
+    and nothing derived from a request path ever reaches a join.
+    """
+    path = root / "context" / "foundation" / "design-bindings.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return set()
+
+    base = root.resolve()
+    allow: set[str] = set()
+    for _, raw in _BINDING_RE.findall(text):
+        raw = raw.strip().strip("`").lstrip("/")
+        if not raw or raw.startswith(("http://", "https://", "//")):
+            continue
+        candidate = Path(raw)
+        if candidate.is_absolute() or ".." in candidate.parts:
+            continue
+        if candidate.suffix.lower() not in ASSET_EXTS:
+            continue
+        try:
+            resolved = (base / candidate).resolve()
+        except OSError:
+            continue
+        # Bounds the *resolved* path, so a symlink out of the project cannot be
+        # allowlisted by naming an innocent-looking relative path.
+        if resolved.is_relative_to(base) and resolved.is_file():
+            allow.add(str(candidate).replace(os.sep, "/"))
+    return allow
+
+
+def helper_origins(root: Path, surface: str) -> list[str]:
+    """Origins for a running impeccable live helper, if there is one.
+
+    The port is persisted by `recordInjection` into
+    `.impeccable/live/inject-journal.json` (`live/frameworks/journal.mjs`), and
+    the script tag it injects points at **localhost**, not 127.0.0.1
+    (`live/frameworks/script-src.mjs`) — a CSP listing only the numeric spelling
+    blocks the helper outright.
+    """
+    directory = surface_dir(root, surface)
+    candidates = [p for p in (
+        directory / ".impeccable" / "live" / "inject-journal.json" if directory else None,
+        root / ".impeccable" / "live" / "inject-journal.json",
+    ) if p is not None]
+    for path in candidates:
+        try:
+            port = json.loads(path.read_text(encoding="utf-8")).get("port")
+        except (OSError, json.JSONDecodeError, AttributeError):
+            continue
+        if isinstance(port, int) and 0 < port < 65536:
+            return [f"http://localhost:{port}", f"http://127.0.0.1:{port}"]
+    return []
+
+
+#: Spliced before the LAST `</body>` when the Design tab frames a prototype.
+#: Additive only: no query parameter may ever subtract a security header, so
+#: there is no `?raw=1`. Every other consumer — the standalone tab, impeccable
+#: live — gets the file's bytes verbatim, which is what keeps live's own on-disk
+#: injection byte-exact.
+PIN_TAG = ('<script src="/_gw/pin.js" data-gw-surface="{surface}" '
+           'data-gw-screen="{screen}"></script>')
+
+
+def splice_pin(html: bytes, surface: str, screen: str) -> bytes:
+    tag = PIN_TAG.format(surface=surface, screen=screen).encode()
+    marker = b"</body>"
+    at = html.rfind(marker)
+    if at == -1:
+        return html + tag
+    return html[:at] + tag + html[at:]
+
+
 # ---------------------------------------------------------------- the roll-up
 
 def surfaces(root: Path) -> list[dict]:

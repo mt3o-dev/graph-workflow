@@ -420,3 +420,12 @@ main { padding: var(--space-xl); }
   .design-split { grid-template-columns: 1fr; }
   .composer { position: static; }
 }
+
+/* A prototype, framed. Ratio-locked like the schematic it replaces, so toggling
+   between the two does not reflow the pane around it. */
+.protoframe {
+  width: 100%; aspect-ratio: 12 / 10;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel);
+}
+.design-main .filters { margin-bottom: 0; }

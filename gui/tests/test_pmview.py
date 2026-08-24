@@ -414,6 +414,92 @@ class DesignLaneTests(unittest.TestCase):
                 self.assertIsNone(design_mod.surface_dir(self.root, name))
 
 
+class PrototypeServingTests(unittest.TestCase):
+    """`/proto/` and `/assets/` read real files off a project's disk, which is a
+    different threat surface from `_static` reading package resources."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.server = build_server(
+            [Project("graph-workflow", REPO)], "127.0.0.1", 0,
+            memory_url="http://127.0.0.1:9")
+        cls.base = "http://127.0.0.1:%d" % cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.proto = "/proto/graph-workflow/gui-pmview-static-index-html"
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=5)
+
+    def fetch(self, path: str):
+        try:
+            with urllib.request.urlopen(self.base + path, timeout=10) as response:
+                return response.status, dict(response.headers), response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, dict(exc.headers), b""
+
+    def test_a_prototype_is_served_with_a_fully_templated_csp(self) -> None:
+        status, headers, body = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        self.assertEqual(status, 200)
+        self.assertIn(b"data-gw-region", body)
+        csp = headers["Content-Security-Policy"]
+        port = self.server.server_address[1]
+        # No origin in a header is ever a literal: the port is a CLI flag, and
+        # pmview answers on three spellings of the same socket. Listing one — or
+        # hardcoding 8766 — blanks the prototype for whoever typed the other.
+        for spelling in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+            self.assertIn(spelling, csp)
+        self.assertNotIn("8766", csp)
+        self.assertIn("default-src 'none'", csp)
+        self.assertIn("frame-ancestors", csp)
+        # script-src must NOT carry 'unsafe-inline' — that is what makes the
+        # rung-2 ban on inline <script> enforceable rather than advisory.
+        script_src = [d for d in csp.split("; ") if d.startswith("script-src")][0]
+        self.assertNotIn("unsafe-inline", script_src)
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+
+    def test_pin_is_additive_and_everything_else_is_verbatim(self) -> None:
+        _, _, plain = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        _, _, pinned = self.fetch(self.proto + "/screens/design-tab-empty.html?pin=1")
+        self.assertNotIn(b"_gw/pin.js", plain,
+                         "verbatim bytes are what keep impeccable live's own injection exact")
+        self.assertEqual(pinned.count(b"_gw/pin.js"), 1)
+        self.assertLess(pinned.rfind(b"pin.js"), pinned.rfind(b"</body>"))
+
+    def test_the_proto_route_is_bounded_to_its_surface(self) -> None:
+        for label, path in (
+            ("traversal", "/../../../../etc/passwd"),
+            ("encoded", "/%2e%2e/%2e%2e/etc/passwd"),
+            ("the store", "/../memory-graph.dump"),
+            ("a non-servable extension", "/asks.jsonl"),
+            ("an unknown surface", "/screens/nope.html"),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual(self.fetch(self.proto + path)[0], 404)
+        self.assertEqual(
+            self.fetch("/proto/nope/gui-pmview-static-index-html/screens/x.html")[0], 404)
+
+    def test_assets_serves_only_the_exact_allowlist(self) -> None:
+        status, _, body = self.fetch("/assets/graph-workflow/gui/pmview/static/style.css")
+        self.assertEqual(status, 200)
+        self.assertIn(b"--accent", body)
+        for path in ("/assets/graph-workflow/gui/pmview/server.py",
+                     "/assets/graph-workflow/../../../etc/passwd",
+                     "/assets/graph-workflow/context/memory-graph.dump",
+                     "/assets/nope/gui/pmview/static/style.css"):
+            with self.subTest(path=path):
+                self.assertEqual(self.fetch(path)[0], 404)
+
+    def test_design_routes_are_off_when_the_bind_is_not_loopback(self) -> None:
+        server = build_server([Project("graph-workflow", REPO)], "0.0.0.0", 0,
+                              memory_url="http://127.0.0.1:9")
+        self.addCleanup(server.server_close)
+        self.assertFalse(server.RequestHandlerClass.design_enabled)
+
+
 class StoreResolutionTests(unittest.TestCase):
     """A fresh clone has the committed dump and no `.db` — the board must work
     from what git actually carries."""

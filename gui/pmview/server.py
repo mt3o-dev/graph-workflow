@@ -306,6 +306,12 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path, query = parsed.path, parse_qs(parsed.query)
 
+        if self.design_enabled:
+            if match := re.fullmatch(r"/proto/([^/]+)/([^/]+)/(.+)", path):
+                return self._proto(match.group(1), match.group(2), match.group(3), query)
+            if match := re.fullmatch(r"/assets/([^/]+)/(.+)", path):
+                return self._assets(match.group(1), match.group(2))
+
         if not path.startswith("/api/"):
             return self._static(path)
 
@@ -485,6 +491,116 @@ class Handler(BaseHTTPRequestHandler):
         # No `view.invalidate()`: the desk is not the board, and nothing here
         # touched the store.
         self._send({"appended": appended, "batch": batch_id, "lines": lines})
+
+    def _csp(self, helper: list[str]) -> str:
+        """The prototype CSP.
+
+        Every origin is written out in full and computed from the bound socket —
+        never a literal, and never `'self'`. A sandboxed document has an opaque
+        origin, so `'self'`-matching against it is undefined-to-failing across
+        browsers; and pmview answers on `127.0.0.1`, `localhost` and `[::1]`
+        alike, so listing one spelling blanks the prototype for whoever typed the
+        other.
+
+        `style-src` keeps `'unsafe-inline'` (prototypes and live's variant
+        injection both need it, and inline style cannot exfiltrate).
+        `script-src` deliberately does not — which is what makes the rung-2 ban
+        on inline `<script>` enforceable rather than advisory.
+        """
+        origins = " ".join(sorted(self.allowed_origins))
+        helper_src = (" " + " ".join(helper)) if helper else ""
+        connect = " ".join(helper) if helper else "'none'"
+        return "; ".join((
+            "default-src 'none'",
+            f"script-src {origins}{helper_src}",
+            f"style-src {origins} 'unsafe-inline'",
+            f"img-src {origins} data: blob:",
+            f"font-src {origins}",
+            f"connect-src {connect}",
+            "form-action 'none'",
+            "base-uri 'none'",
+            "object-src 'none'",
+            f"frame-ancestors {origins}",
+        ))
+
+    def _serve_file(self, target: Path, body: bytes | None = None,
+                    csp: str | None = None) -> None:
+        data = target.read_bytes() if body is None else body
+        self.send_response(200)
+        self.send_header("Content-Type",
+                         mimetypes.guess_type(target.name)[0] or "application/octet-stream")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        if csp:
+            self.send_header("Content-Security-Policy", csp)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _proto(self, project: str, surface: str, rest: str, query: dict) -> None:
+        """Serve one file out of a surface's design directory.
+
+        Rooted at `context/design/<surface>/`, not at `screens/`, so a prototype
+        can reach its sibling `tokens.css` and `assets/` while `resolve()` plus
+        `is_relative_to()` still bounds it. That real check matters here in a way
+        it does not for `_static`: a zipapp has no symlinks, a project directory
+        very much does.
+        """
+        view = self.views.get(project)          # dict membership, not a regex
+        if view is None or not design_mod.SLUG_RE.fullmatch(surface or ""):
+            return self.send_error(404)
+        parts = [p for p in rest.split("/") if p not in ("", ".")]
+        if not parts or any(not design_mod.SLUG_RE.fullmatch(p.replace(".", "-"))
+                            for p in parts):
+            return self.send_error(404)
+
+        root = (view.project.context / "design" / surface).resolve()
+        try:
+            target = (root / Path(*parts)).resolve()
+        except OSError:
+            return self.send_error(404)
+        if not target.is_relative_to(root) or not target.is_file():
+            return self.send_error(404)
+        if target.suffix.lower() not in design_mod.PROTO_EXTS:
+            return self.send_error(404)
+
+        body = None
+        if (query.get("pin") or [""])[0] == "1" and target.suffix.lower() in (".html", ".htm"):
+            # Additive only. There is no parameter that subtracts a header, and
+            # every other consumer gets the file's bytes verbatim — which is what
+            # keeps impeccable live's own on-disk injection byte-exact.
+            body = design_mod.splice_pin(target.read_bytes(), surface, target.stem)
+        try:
+            self._serve_file(target, body,
+                             csp=self._csp(design_mod.helper_origins(view.project.root, surface)))
+        except OSError:
+            self.send_error(404)
+
+    def _assets(self, project: str, rest: str) -> None:
+        """Serve one allowlisted project file to a prototype.
+
+        A prototype wears the project's *real* shipping stylesheet. Copying it
+        into `context/design/` would duplicate token values into git, and there
+        is no build step to generate one — so pmview serves the project's own
+        file, from an exact allowlist. Membership is a set lookup: nothing
+        derived from the request path ever reaches a join.
+        """
+        view = self.views.get(project)
+        if view is None:
+            return self.send_error(404)
+        if rest not in design_mod.stylesheet_allowlist(view.project.root):
+            return self.send_error(404)
+        base = view.project.root.resolve()
+        try:
+            target = (base / rest).resolve()
+        except OSError:
+            return self.send_error(404)
+        if not target.is_relative_to(base) or not target.is_file():
+            return self.send_error(404)
+        try:
+            self._serve_file(target, csp=self._csp([]))
+        except OSError:
+            self.send_error(404)
 
     # --- static -------------------------------------------------------------
 

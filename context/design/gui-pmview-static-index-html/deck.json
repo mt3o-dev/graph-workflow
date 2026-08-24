@@ -16,11 +16,43 @@
         "cols": 12,
         "rows": 10,
         "regions": [
-          {"label": "topbar", "x": 0, "y": 0, "w": 12, "h": 1},
-          {"label": "tabs", "x": 0, "y": 1, "w": 5, "h": 1, "accent": true},
-          {"label": "surface rail", "x": 0, "y": 2, "w": 3, "h": 8},
-          {"label": "prototype", "x": 3, "y": 2, "w": 5, "h": 8},
-          {"label": "ask stack", "x": 8, "y": 2, "w": 4, "h": 8, "accent": true}
+          {
+            "label": "topbar",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          {
+            "label": "tabs",
+            "x": 0,
+            "y": 1,
+            "w": 5,
+            "h": 1,
+            "accent": true
+          },
+          {
+            "label": "surface rail",
+            "x": 0,
+            "y": 2,
+            "w": 3,
+            "h": 8
+          },
+          {
+            "label": "prototype",
+            "x": 3,
+            "y": 2,
+            "w": 5,
+            "h": 8
+          },
+          {
+            "label": "ask stack",
+            "x": 8,
+            "y": 2,
+            "w": 4,
+            "h": 8,
+            "accent": true
+          }
         ]
       },
       "components": {
@@ -56,9 +88,28 @@
         "cols": 12,
         "rows": 10,
         "regions": [
-          {"label": "topbar", "x": 0, "y": 0, "w": 12, "h": 1},
-          {"label": "tabs", "x": 0, "y": 1, "w": 5, "h": 1, "accent": true},
-          {"label": "empty state", "x": 2, "y": 4, "w": 8, "h": 3}
+          {
+            "label": "topbar",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          {
+            "label": "tabs",
+            "x": 0,
+            "y": 1,
+            "w": 5,
+            "h": 1,
+            "accent": true
+          },
+          {
+            "label": "empty state",
+            "x": 2,
+            "y": 4,
+            "w": 8,
+            "h": 3
+          }
         ]
       },
       "components": {
@@ -77,7 +128,7 @@
         "names context/design/ literally, so the human can see whether they are in the project they think they are"
       ],
       "cites": [],
-      "prototype": null
+      "prototype": "screens/design-tab-empty.html"
     }
   ]
 }
