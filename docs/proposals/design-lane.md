@@ -1,5 +1,29 @@
 # The gw Design Lane — Final Architecture & Implementation Plan
 
+> ## Status: shipped
+>
+> All seven slices plus v1.1 are implemented on branch `design-lane`
+> (`1a08c8e..adb7e47`, 47 files, ~5,600 lines, 73 tests green). Where the build
+> found this document wrong, the **code** is right and the deviation is recorded
+> in the relevant commit message. Four notable ones:
+>
+> - **`:277` was not a hardcoded-literal bug.** It creates a real SQLite fixture;
+>   renaming it would have made the name lie. Five sites, not six.
+> - **The write guard requires JSON but allows a missing `Origin`.** Requiring
+>   JSON is what actually defeats browser CSRF (a simple request cannot set it);
+>   rejecting a missing Origin only breaks curl and scripts.
+> - **The two fingerprint readers disagreed.** `design.py` hashed `name + body`
+>   while the distiller hashed `body`, so every rule would have reported stale
+>   forever. Both now hash the body alone.
+> - **The dogfood `context/README.md` files were left alone.** The checklist said
+>   to update their enumeration, but those projects have no `context/design/` —
+>   the edit would have made three accurate files lie.
+>
+> The lane also caught three design-system violations in its own CSS (a 3px
+> coloured `border-left` on `.ask` and `.banner`, a 2px radius on `.pin i`),
+> breaking the exact Don't distilled into the graph one slice earlier. Fixed to
+> the tonal idiom `DESIGN.md` prescribes; detector now reports zero.
+
 *Verified against `build-installable-assets` @ `1a08c8e`. Every line/behaviour citation below was re-checked by reading or executing the file. Where the adversarial review misread the code, it is called out inline under **CORRECTION**.*
 
 ---
