@@ -59,3 +59,5 @@ Recorded by `/gw-review` Part 1b when a change ships a screen. The join back is
 
 | surface | screen | implements | change | on |
 |---|---|---|---|---|
+| `gui-pmview-static-index-html` | `design-tab` | `gui/pmview/static/index.html#view-design` | design-lane | 2026-08-24 |
+| `gui-pmview-static-index-html` | `design-tab-empty` | `gui/pmview/static/index.html#view-design` | design-lane | 2026-08-24 |

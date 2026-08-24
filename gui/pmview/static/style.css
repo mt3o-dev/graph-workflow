@@ -323,11 +323,14 @@ main { padding: var(--space-xl); }
   display: flex; align-items: center; gap: var(--space-2xs);
   font-size: var(--text-meta); color: var(--muted);
   padding: var(--space-3xs) var(--space-xs);
-  border-left: 2px solid transparent; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .screen:hover { color: var(--ink); background: var(--bg); }
-.screen.on { color: var(--ink); border-left-color: var(--accent); background: var(--bg); }
+.screen.on {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
 .screen i { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; background: var(--muted); }
 .screen.draft i { background: var(--warn); }
 .screen.ok i    { background: var(--ok); }
@@ -365,14 +368,23 @@ main { padding: var(--space-xl); }
 .ask-stack h4 { margin: 0; font-size: var(--text-meta); color: var(--muted); }
 .ask {
   background: var(--panel); border: 1px solid var(--line);
-  border-left: 3px solid var(--line); border-radius: var(--radius);
+  border-radius: var(--radius);
   padding: var(--space-sm) var(--space-md);
   display: grid; gap: var(--space-2xs);
 }
-.ask.warn   { border-left-color: var(--warn); }
-.ask.accent { border-left-color: var(--accent); }
-.ask.ok     { border-left-color: var(--ok); }
-.ask.muted  { border-left-color: var(--line); opacity: .72; }
+.ask.warn {
+  border-color: color-mix(in srgb, var(--warn) 42%, var(--line));
+  background: color-mix(in srgb, var(--warn) 5%, var(--panel));
+}
+.ask.accent {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
+}
+.ask.ok {
+  border-color: color-mix(in srgb, var(--ok) 42%, var(--line));
+  background: color-mix(in srgb, var(--ok) 5%, var(--panel));
+}
+.ask.muted { opacity: .72; }
 .ask h4 { margin: 0; font-size: var(--text-base); color: var(--ink); font-weight: var(--weight-strong); }
 .ask .risk { font-size: var(--text-meta); color: var(--warn); }
 .ask .kind.muted { color: var(--muted); }
@@ -406,7 +418,8 @@ main { padding: var(--space-xl); }
    human something rather than just show it. */
 .banner {
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs);
-  background: var(--panel); border: 1px solid var(--warn); border-left-width: 3px;
+  background: color-mix(in srgb, var(--warn) 6%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
   border-radius: var(--radius); padding: var(--space-sm) var(--space-md);
   margin-bottom: var(--space-xl); font-size: var(--text-sm);
 }
@@ -441,5 +454,5 @@ main { padding: var(--space-xl); }
   position: absolute;
   left: var(--px); top: var(--py); width: var(--pw); height: var(--ph);
   background: color-mix(in srgb, var(--accent) 22%, transparent);
-  border: 1px solid var(--accent); border-radius: 2px;
+  border: 1px solid var(--accent); border-radius: var(--radius-sm);
 }
