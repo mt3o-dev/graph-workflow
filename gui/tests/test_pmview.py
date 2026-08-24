@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
@@ -521,6 +522,60 @@ class PrototypeServingTests(unittest.TestCase):
                               memory_url="http://127.0.0.1:9")
         self.addCleanup(server.server_close)
         self.assertFalse(server.RequestHandlerClass.design_enabled)
+
+
+class DesignDistillationTests(unittest.TestCase):
+    """Gap 2: the design system's rules must become recallable, and the
+    fingerprint that detects drift must agree across the two readers."""
+
+    @staticmethod
+    def distil(*args):
+        script = REPO / "skills" / "gw-foundation" / "bin" / "design_distill.py"
+        done = subprocess.run([sys.executable, str(script), "--root", str(REPO), *args],
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout, done.stderr
+
+    def test_it_distils_rules_donts_and_a_visual_world(self) -> None:
+        code, out, err = self.distil("--json")
+        self.assertEqual(code, 0, err)
+        rows = json.loads(out)
+        kinds = {"rules": 0, "donts": 0, "concept": 0}
+        for row in rows:
+            if row["type"] == "concept":
+                kinds["concept"] += 1
+            elif row["section"] == "donts":
+                kinds["donts"] += 1
+            else:
+                kinds["rules"] += 1
+        self.assertEqual(kinds, {"rules": 7, "donts": 5, "concept": 1})
+
+    def test_donts_are_strings_and_survive_as_content(self) -> None:
+        """`narrative.donts` are plain strings. Reading them as objects yields a
+        list of empty rules and silently drops the whole category."""
+        rows = [r for r in json.loads(self.distil("--json")[1]) if r["section"] == "donts"]
+        self.assertTrue(rows)
+        for row in rows:
+            self.assertTrue(row["content"].strip())
+            self.assertTrue(row["content"].lower().startswith("don"))
+
+    def test_it_captures_names_never_values(self) -> None:
+        """A node holding #2f6fdb goes silently wrong the day someone repaints."""
+        for row in json.loads(self.distil("--json")[1]):
+            self.assertNotRegex(row["content"], r"#[0-9a-fA-F]{6}\b")
+
+    def test_the_fingerprint_agrees_with_pmviews_reader(self) -> None:
+        """Two readers, one recorded table. If they hash different inputs, every
+        rule reports stale forever and the drift check is worthless."""
+        live = {r["name"]: r["fp"] for r in design_mod.design_system(REPO)["rules"]}
+        for row in json.loads(self.distil("--json")[1]):
+            if row["type"] == "constraint" and row["section"] != "donts":
+                with self.subTest(rule=row["label"]):
+                    self.assertEqual(live.get(row["label"]), row["fp"])
+
+    def test_the_script_never_touches_the_graph(self) -> None:
+        source = (REPO / "skills" / "gw-foundation" / "bin" / "design_distill.py").read_text()
+        for forbidden in ("sqlite3", "capture_artifact(", "memory-graph", "urllib"):
+            self.assertNotIn(forbidden, source.replace('"capture_artifact(', '"'))
 
 
 class StoreResolutionTests(unittest.TestCase):

@@ -480,15 +480,20 @@ def design_system(root: Path) -> dict:
     for rule in narrative.get("rules") or []:
         if isinstance(rule, dict):
             name = rule.get("name") or rule.get("title") or ""
-            body = rule.get("rule") or rule.get("body") or rule.get("description") or ""
+            body = rule.get("body") or rule.get("rule") or rule.get("description") or ""
         else:
             name, body = "", str(rule)
         rules.append({
             "name": name,
             "body": body,
-            #: Names, not values: the fingerprint tracks the *rule text*, so a
-            #: repainted palette does not read as a changed rule.
-            "fp": hashlib.sha256(f"{name}\n{body}".encode()).hexdigest()[:12],
+            "section": (rule.get("section") or "") if isinstance(rule, dict) else "",
+            #: sha256 of the rule BODY alone, first 12 hex — the same input
+            #: `design_distill.py` writes into design-bindings.md. Hashing the
+            #: name too would make every fingerprint disagree with the recorded
+            #: table and report every rule stale forever. Body-only also means a
+            #: repainted palette does not read as a changed rule: the fingerprint
+            #: tracks the rule text, never the token values.
+            "fp": hashlib.sha256(body.strip().encode("utf-8")).hexdigest()[:12],
         })
     #: `narrative.donts` are bare strings, not objects — handling them as dicts
     #: silently yields a list of empty rules.

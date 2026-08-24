@@ -57,6 +57,40 @@ sweep, ranked into every relevant recall.
      project has not settled them, stop and settle them with the humans before
      distilling anything else.
 
+   - The **design system**, if the project has one. `.impeccable/design.json` is a
+     file `/gw-wireframe` merely *detects*: its rules never become recallable, so
+     a later change can contradict a settled design rule without `impact_of` ever
+     firing. Distil it:
+
+     ```sh
+     python3 <this skill's dir>/bin/design_distill.py          # → .gw-scratch/design-constraints.md
+     ```
+
+     The script **never touches the graph**. It writes a review file; you read it
+     and make the `capture_artifact` calls. Each `narrative.rules[]` entry becomes
+     one `constraint`, `facets:["ui"]`, `tier:"mid-term"`; each `narrative.donts[]`
+     entry — **a plain string, not an object** — becomes one more; `northStar` +
+     `overview` become one `concept` for the visual world.
+
+     **Capture the rule and the token NAME, never the value.** A node saying *"the
+     accent is a verb — `--accent` appears only on something interactive or
+     selected"* survives a repalette and still fires `impact_of` on a proposed
+     decorative blue. A node holding `#2f6fdb` goes silently wrong the day someone
+     repaints, and nothing notices.
+
+     The output is bounded — one node per rule, one per don't, one concept — so it
+     does not grow with the codebase. Write the reference-back table (§3) into
+     `context/foundation/design-bindings.md`, **not** into `DESIGN.md`: we can ban
+     `impeccable document` from every gate, but we cannot ban the human from
+     running it, and a footer in a file impeccable regenerates is guaranteed to be
+     destroyed eventually.
+
+     Two things to settle before the first distillation, once per project:
+     dedupe any repeated Do's/Don'ts block in `DESIGN.md` (or the duplicate ships
+     into the graph), and set `"buildPath": "code"` in `.impeccable/config.json` —
+     `KNOWN_CONFIG_KEYS` is a closed set, so add that key and **never a gw one**,
+     which would report as drift permanently.
+
    Capture discipline as everywhere: one statement per artifact, readable cold,
    facets from the controlled vocabulary, edges among the foundation nodes
    (a decision DEPENDS_ON the constraint that forced it). Do not capture what
@@ -65,6 +99,14 @@ sweep, ranked into every relevant recall.
 3. **Reference back.** Note the captured `[node:<id>]`s in the source doc (an
    HTML comment or footer table) so a future amendment session can find the nodes
    its edit invalidates.
+
+   For the design system the table lives in `context/foundation/design-bindings.md`
+   and carries a **per-rule fingerprint** — `sha256` of the rule *text*, first 12
+   hex — so a drift finding can say *"The Accent-Is-A-Verb Rule changed under
+   [node:7c1a…]"* rather than *"something in DESIGN.md moved"*. A drift check that
+   cannot name the drifted thing is ignored by the third PR. Fingerprinting the
+   text and not the values is also what keeps a repalette from reading as a
+   changed rule.
 
 4. **Hand the human the promotion list.** Everything captured here is a
    **lifetime-promotion candidate** — that is the entire point; foundation

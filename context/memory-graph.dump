@@ -35,3 +35,245 @@ trust_weight: 1.0
 archived: false
 
 Bring the impeccable design process into the graph-workflow lifecycle: a surface-keyed deck of screens, clickable prototypes served by pmview, and an append-only desk as the agent<->human channel.
+---
+[node:93ea3250-a76c-48f5-8d1b-ffe50cdc0569]
+type: slice
+tier: short-term
+path: /change/foundation
+created_at: 2026-08-24T10:20:40.456972+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> SCOPED_TO [node:31632ab4-072a-492f-a27a-6dc06bba6240] @ 2026-08-24T10:20:50.713135+00:00
+-> SCOPED_TO [node:4cb39abe-8176-4943-907d-8da7ca2eeef7] @ 2026-08-24T10:20:51.438406+00:00
+-> SCOPED_TO [node:54fb8152-8041-41d0-9821-7a2560303d26] @ 2026-08-24T10:20:52.712871+00:00
+-> SCOPED_TO [node:5c8af8b3-7d96-42fb-b89e-b54e96cdb2f3] @ 2026-08-24T10:20:51.185931+00:00
+-> SCOPED_TO [node:6f3e416c-d83d-4912-8ede-a4c1e7acc312] @ 2026-08-24T10:20:50.462012+00:00
+-> SCOPED_TO [node:7e1141c9-91f7-41f7-b82e-53f30246dc1e] @ 2026-08-24T10:20:53.210283+00:00
+-> SCOPED_TO [node:7fa594bb-991d-4969-a993-1429c0ff95c4] @ 2026-08-24T10:20:51.684406+00:00
+-> SCOPED_TO [node:8b947296-a5a2-4960-a0d2-d8c70654f1e4] @ 2026-08-24T10:20:50.201723+00:00
+-> SCOPED_TO [node:a59c22d9-b05c-42db-9bb4-fae620f871ca] @ 2026-08-24T10:20:50.945712+00:00
+-> SCOPED_TO [node:c2858894-0f46-4d9d-b735-022fcd0c9952] @ 2026-08-24T10:20:52.953993+00:00
+-> SCOPED_TO [node:d809f58f-5c78-43f5-87b0-eae00d83208f] @ 2026-08-24T10:20:40.456972+00:00
+-> SCOPED_TO [node:dab014c2-da95-4b7b-980d-5eccd0808213] @ 2026-08-24T10:20:51.926016+00:00
+-> SCOPED_TO [node:ea6b2844-d8bc-45ad-9b6c-7d5d830b0bee] @ 2026-08-24T10:20:52.453013+00:00
+-> SCOPED_TO [node:f1d48ffd-656c-430f-9051-1697f551942f] @ 2026-08-24T10:20:52.165691+00:00
+
+change scope: foundation
+---
+[event:63946f20-ca18-4522-8266-0a2258284c4c]
+node_id: 93ea3250-a76c-48f5-8d1b-ffe50cdc0569
+type: slice_activated
+weight: 0.0
+polarity: 1
+source: agent-surface
+created_at: 2026-08-24T10:20:40.461702+00:00
+
+create_change foundation
+---
+[node:d809f58f-5c78-43f5-87b0-eae00d83208f]
+type: goal
+tier: short-term
+path: /goal/foundation
+created_at: 2026-08-24T10:20:40.456972+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> DEPENDS_ON [node:31632ab4-072a-492f-a27a-6dc06bba6240] @ 2026-08-24T10:20:50.713135+00:00
+-> DEPENDS_ON [node:4cb39abe-8176-4943-907d-8da7ca2eeef7] @ 2026-08-24T10:20:51.438406+00:00
+-> DEPENDS_ON [node:54fb8152-8041-41d0-9821-7a2560303d26] @ 2026-08-24T10:20:52.712871+00:00
+-> DEPENDS_ON [node:5c8af8b3-7d96-42fb-b89e-b54e96cdb2f3] @ 2026-08-24T10:20:51.185931+00:00
+-> DEPENDS_ON [node:6f3e416c-d83d-4912-8ede-a4c1e7acc312] @ 2026-08-24T10:20:50.462012+00:00
+-> DEPENDS_ON [node:7e1141c9-91f7-41f7-b82e-53f30246dc1e] @ 2026-08-24T10:20:53.210283+00:00
+-> DEPENDS_ON [node:7fa594bb-991d-4969-a993-1429c0ff95c4] @ 2026-08-24T10:20:51.684406+00:00
+-> DEPENDS_ON [node:8b947296-a5a2-4960-a0d2-d8c70654f1e4] @ 2026-08-24T10:20:50.201723+00:00
+-> DEPENDS_ON [node:a59c22d9-b05c-42db-9bb4-fae620f871ca] @ 2026-08-24T10:20:50.945712+00:00
+-> DEPENDS_ON [node:c2858894-0f46-4d9d-b735-022fcd0c9952] @ 2026-08-24T10:20:52.953993+00:00
+-> DEPENDS_ON [node:dab014c2-da95-4b7b-980d-5eccd0808213] @ 2026-08-24T10:20:51.926016+00:00
+-> DEPENDS_ON [node:ea6b2844-d8bc-45ad-9b6c-7d5d830b0bee] @ 2026-08-24T10:20:52.453013+00:00
+-> DEPENDS_ON [node:f1d48ffd-656c-430f-9051-1697f551942f] @ 2026-08-24T10:20:52.165691+00:00
+
+Establish graph-workflow's own foundation in the graph: the design system's rules and visual world, distilled from .impeccable/design.json and promoted by a human.
+---
+[node:592add8a-cec4-42ca-bf87-9a8ded2536fc]
+type: facet_value
+tier: lifetime
+path: /facet/ui
+created_at: 2026-08-24T10:20:50.201723+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+
+ui
+---
+[node:8b947296-a5a2-4960-a0d2-d8c70654f1e4]
+type: constraint
+tier: mid-term
+path: /artifact/the-accent-is-a-verb-rule-signal-blue-o
+created_at: 2026-08-24T10:20:50.201723+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:50.201723+00:00
+
+The Accent-Is-A-Verb Rule. Signal Blue only appears on something the operator can interact with or has selected. If a blue element does nothing, it's a bug. (DESIGN.md §colors)
+---
+[node:6f3e416c-d83d-4912-8ede-a4c1e7acc312]
+type: constraint
+tier: mid-term
+path: /artifact/the-twin-world-rule-light-and-dark-diff
+created_at: 2026-08-24T10:20:50.462012+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:50.462012+00:00
+
+The Twin-World Rule. Light and dark differ only in the nine color primitives; shape, spacing, type, and motion tokens are shared. Never fork a component's geometry per theme. (DESIGN.md §colors)
+---
+[node:31632ab4-072a-492f-a27a-6dc06bba6240]
+type: constraint
+tier: mid-term
+path: /artifact/the-mono-means-data-rule-monospace-is-f
+created_at: 2026-08-24T10:20:50.713135+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:50.713135+00:00
+
+The Mono-Means-Data Rule. Monospace is for identifiers, data, and measurements — never as a costume for 'technical'. Prose is always sans. (DESIGN.md §typography)
+---
+[node:a59c22d9-b05c-42db-9bb4-fae620f871ca]
+type: constraint
+tier: mid-term
+path: /artifact/the-flat-until-touched-rule-a-surface-i
+created_at: 2026-08-24T10:20:50.945712+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:50.945712+00:00
+
+The Flat-Until-Touched Rule. A surface is flat at rest. Shadow appears as a response to hover, focus, or the toast — never as static decoration. (DESIGN.md §elevation)
+---
+[node:5c8af8b3-7d96-42fb-b89e-b54e96cdb2f3]
+type: constraint
+tier: mid-term
+path: /artifact/the-name-first-rule-in-any-id-type
+created_at: 2026-08-24T10:20:51.185931+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:51.185931+00:00
+
+The Name-First Rule. In any id · type · name line, the human-meaningful name is the darkest, largest-weight token; ids and types recede to muted mono. (DESIGN.md §components)
+---
+[node:4cb39abe-8176-4943-907d-8da7ca2eeef7]
+type: constraint
+tier: mid-term
+path: /artifact/the-persisted-chrome-rule-drawer-width
+created_at: 2026-08-24T10:20:51.438406+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:51.438406+00:00
+
+The Persisted-Chrome Rule. Drawer width and dock side are user state, not layout defaults — remember them across opens, never reset them on navigation. (DESIGN.md §components)
+---
+[node:7fa594bb-991d-4969-a993-1429c0ff95c4]
+type: constraint
+tier: mid-term
+path: /artifact/the-one-hue-per-category-rule-map-edge
+created_at: 2026-08-24T10:20:51.684406+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:51.684406+00:00
+
+The One-Hue-Per-Category Rule. Map edge types and status onto the existing semantic tokens (accent/ok/warn/danger) and differentiate with drawn icons; never invent a new hue for a category. (DESIGN.md §colors)
+---
+[node:dab014c2-da95-4b7b-980d-5eccd0808213]
+type: constraint
+tier: mid-term
+path: /artifact/don-t-introduce-a-build-step-framework
+created_at: 2026-08-24T10:20:51.926016+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:51.926016+00:00
+
+Don't introduce a build step, framework, CSS-in-JS, or npm dependency — the styling contract is plain CSS + class names shared with app.js.
+---
+[node:f1d48ffd-656c-430f-9051-1697f551942f]
+type: constraint
+tier: mid-term
+path: /artifact/don-t-add-a-colored-border-left-border-r
+created_at: 2026-08-24T10:20:52.165691+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:52.165691+00:00
+
+Don't add a colored border-left/border-right above 1px, gradient text, or zero-blur block shadows.
+---
+[node:ea6b2844-d8bc-45ad-9b6c-7d5d830b0bee]
+type: constraint
+tier: mid-term
+path: /artifact/don-t-use-monospace-as-decoration-reser
+created_at: 2026-08-24T10:20:52.453013+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:52.453013+00:00
+
+Don't use monospace as decoration; reserve it for identifiers and data.
+---
+[node:54fb8152-8041-41d0-9821-7a2560303d26]
+type: constraint
+tier: mid-term
+path: /artifact/don-t-rename-or-drop-the-component-class
+created_at: 2026-08-24T10:20:52.712871+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:52.712871+00:00
+
+Don't rename or drop the component class names — they are the API between style.css and app.js.
+---
+[node:c2858894-0f46-4d9d-b735-022fcd0c9952]
+type: constraint
+tier: mid-term
+path: /artifact/don-t-ship-a-hover-focus-state-without-a
+created_at: 2026-08-24T10:20:52.953993+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:52.953993+00:00
+
+Don't ship a hover/focus state without a resting counterpart, or motion without honoring prefers-reduced-motion.
+---
+[node:7e1141c9-91f7-41f7-b82e-53f30246dc1e]
+type: concept
+tier: mid-term
+path: /artifact/the-visual-world-is-the-control-room
+created_at: 2026-08-24T10:20:53.210283+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:53.210283+00:00
+
+The visual world is “The Control Room”. pmview is the surface a human watches while autonomous agents work. Its job is to let a supervisor scan the whole state of a change-and-memory workflow and act on the one thing that needs them — so the interface stays calm, legible, and out of the way. Hierarchy is carried by weight, tonal panels, and hairline rules rather than color or ornament. The world is light-and-dark twins that share one set of shape, spacing, and motion tokens and swap only their color primitives. Surfaces are flat at rest and depth is a response to intent: cards and list items lift a single pixel with a soft shadow the moment the operator hovers a target.
