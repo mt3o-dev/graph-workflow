@@ -22,7 +22,7 @@ PYTHONPATH=gui python3 -m pmview dogfood            # all three dogfooded projec
 Python 3.11+, standard library only — no install step, no build step, no
 dependencies. Serves <http://127.0.0.1:8766>.
 
-## The three views
+## The four views
 
 **Board** — one column per lifecycle stage (`unopened`, `new`, `planned`,
 `in-progress`, `review`, `archived`), one card per change. Each card carries its
@@ -65,6 +65,14 @@ extend this:
 > that bypassed the memory server would break exactly the invariant the workflow
 > is built on.
 
+**One carve-out, added with the design lane.** `POST /api/design/answers` appends
+to `context/design/<surface>/asks.jsonl` — a file, on disk, in git. It is not a
+second write path to the store: `design.py` imports neither `memory`, `graph` nor
+`board`, the extension allowlist excludes `.db` and `.dump`, and a test asserts
+the store is **byte-identical** after a desk exercise. A desk line is a request or
+a ruling, never a capture; the ruling still reaches the graph the ordinary way,
+with a `goal_ref`, through the proxy above. See [`docs/DESK.md`](../docs/DESK.md).
+
 So body edits, edge creation, artifact capture, guided review resolution and tier
 changes are all proxied, and each one is journaled by the memory server with its
 own source (`gui`, `gui-guided`). Lifetime promotion still requires the explicit
@@ -85,7 +93,24 @@ never silently does something weaker.
 | GET | `/api/memory/status` | is the write path live |
 | POST | `/api/nodes/{id}/body`, `/tier`, `/api/review/{id}/resolve`, `/api/edges`, `/api/nodes` | proxied writes |
 
-All read endpoints take `?project=<name>`, defaulting to the first discovered.
+| GET | `/api/design` | every surface under `context/design/`, folded, plus the design system |
+| GET | `/api/design/deck` | one surface's `deck.json`, parsed forgivingly |
+| GET | `/api/design/asks` | the desk, folded into threads — state is derived, never stored |
+| GET | `/api/design/pulse` | a bounded 64 KB tail read; stamps presence when `visible=1` and the token matches |
+| POST | `/api/design/answers` | append a batch of human lines to one surface's desk |
+| GET | `/proto/<project>/<surface>/<path…>` | a prototype's own files, with a templated CSP |
+| GET | `/assets/<project>/<path…>` | an allowlisted project file (the real stylesheet a prototype wears) |
+
+Read endpoints under `/api/` take `?project=<name>`, defaulting to the first
+discovered. `/proto/` and `/assets/` take the project as a **path segment**
+instead, because the browser resolves relative URLs inside a prototype against
+its own path.
+
+The design routes are enabled **only on a loopback bind**, sit outside `_proxy`
+(answering a design question has to work when `:8765` is down), and never call
+`view.invalidate()` — a poll running twelve times a minute must not drop every
+project's read model. `/proto/` and `/assets/` take the project as a **path segment** instead,
+because the browser resolves relative URLs inside a prototype against its own path.
 
 ## Conventions it relies on
 

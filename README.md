@@ -13,6 +13,10 @@ the 10x change lifecycle, never a parallel bookkeeping chore:
 /gw-new     → change folder + create_change (change anchor + Goal node) + first recall
 worktree    → checkout = change activation = liveness root ON
 /gw-research→ recall BEFORE exploring; codebase research grounded in settled memory
+/gw-prototype
+            → the agreed screens become clickable HTML wearing the project's own
+              tokens, served by pmview; questions and pinned instructions run
+              through the desk (an append-only log per surface)
 /gw-plan    → recall + trace-impact of anything the plan supersedes; capture decisions
 /gw-plan-review
             → independent plan gate: fresh session recalls the goal's settled
@@ -26,18 +30,20 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 
 Around that spine sit the skills that are not change-shaped: `/gw-domain` establishes the
 project's ubiquitous language as graph entities, `/gw-wireframe` designs UI surfaces with
-the user before a plan exists, `/gw-ideate` mines the graph for what to build next, and
+the user before a plan exists and `/gw-prototype` makes those screens clickable before
+any of them is built, `/gw-ideate` mines the graph for what to build next, and
 `/gw-consolidate` distils recurring knowledge before the sweep sends it dormant.
 
 `/gw-track` runs *along* the spine rather than beside it: where a project uses an issue
 tracker, it binds each change to one item and syncs at the same gates the memory
-operations fire at. Three surfaces, three jobs — files carry lifecycle state, the graph
-carries knowledge, the tracker carries work state for people outside the session.
+operations fire at. Four surfaces, four jobs — files carry lifecycle state, the graph
+carries knowledge, the tracker carries work state for people outside the session, and
+`context/design/` carries what a screen is supposed to look like.
 
 **User guide** (worked example, diagrams, edge cases, assumptions):
 [docs/USAGE.en.md](docs/USAGE.en.md) · po polsku: [docs/USAGE.pl.md](docs/USAGE.pl.md)
 
-**Pre-project intake checklist** (12 areas to settle before `/gw-init`):
+**Pre-project intake checklist** (13 areas to settle before `/gw-init`):
 [docs/INTAKE.en.md](docs/INTAKE.en.md) · po polsku: [docs/INTAKE.pl.md](docs/INTAKE.pl.md)
 
 ## Core commitments (inherited, non-negotiable)
@@ -58,7 +64,10 @@ carries knowledge, the tracker carries work state for people outside the session
   so an entity pulls in what the project knows about it, across change boundaries.
 - **Graph replaces folders.** Per-change knowledge lives in one shared store; the
   change-id is a **facet** on nodes, not a directory. `context/changes/<id>/` keeps
-  only the thin lifecycle files (change.md, plan.md).
+  only the thin lifecycle files: `change.md` and `plan.md`, plus the ephemeral
+  `research.md` and `wireframes.md` that die with the change. What a screen is
+  supposed to *look* like lives in `context/design/<surface>/` instead — keyed by
+  surface, so it outlives the changes that touch it.
 - **Foundation lives twice, deliberately.** Foundation docs (PRD, tech-stack,
   ADRs) stay the human-readable source of truth; their normative content is
   distilled into the graph (`/gw-foundation`) and human-promoted to
@@ -88,6 +97,8 @@ carries knowledge, the tracker carries work state for people outside the session
 | `gw-new` | `10x-new` | `create_change`, goal-id recording, seed `recall_context` |
 | `gw-research` | `10x-research` | recall-first research, contradiction surfacing, feedback |
 | `gw-wireframe` | — (new) | recall UX constraints + `domain_model` before designing; screen inventory then one screen per turn with the user; design-system gaps surfaced as decisions and captured |
+| `gw-prototype` | — (new) | recall + the agreed deck → clickable prototypes in the project's real tokens; refuses any screen with an unruled component gap; asks and pinned instructions via the desk; rulings captured with `per desk` provenance |
+| `gw-desk` (no `SKILL.md`) | — (new) | none — plumbing every phase calls. One append-only `asks.jsonl` per surface is the whole agent↔human channel; an answer is a *request*, never a capture |
 | `gw-plan` | `10x-plan` | recall, `impact_of` pre-checks, plan-boundary capture |
 | `gw-plan-review` | `10x-plan-review` | fresh-session independent recall, plan vs settled constraints, dispute-side check |
 | `gw-implement` | `10x-implement` | per-phase recall, phase-boundary capture, batched feedback, `link` CONTRADICTS |
@@ -217,6 +228,7 @@ wired. If the command is not found, Step 1 did not finish. If it errors, re-run
 | Path | Committed? | Why |
 |---|---|---|
 | `context/changes/`, `context/foundation/` | yes | thin lifecycle files — the change's goal, plan, status |
+| `context/design/` | **yes** | decks, prototypes and the ask log — the design record belongs in the PR diff, beside the code it explains |
 | `context/memory-graph.dump` | **yes** | the memory graph, as plain text. Diffs and merges like code |
 | `context/memory-graph.db` | no | the working database — rebuilt automatically from the dump |
 | `.claude/skills/gw-*` | yes, if project-scoped | so teammates get the same workflow |
@@ -277,6 +289,12 @@ you do not control, so the store has to be pinned rather than guessed.
 
 ### Good to know
 
+- **pmview cannot start or wake a process.** What resumes an agent waiting on a
+  design question is a watcher *the agent itself launched* before ending its turn,
+  and it only runs when you were at the tab when the question was posted. When you
+  were not, the terminal is where you pick the thread back up — one command, with a
+  copy button waiting for you in the Design tab.
+
 - **One store per project**, at `context/memory-graph.db` inside it. The commands above
   work on whichever project you are standing in — that is why they take no path.
   Pointing one store at two projects mixes their knowledge and spoils both.
@@ -293,6 +311,7 @@ you do not control, so the store has to be pinned rather than guessed.
 | Change shape | Mode | Validity path |
 |---|---|---|
 | Multi-phase, needs judgment or manual gates | `/gw-implement` (interactive) | human checkpoints |
+| A UI surface that has to be seen before it is built | `/gw-prototype` (interactive, **never headless**) | the human answers in pmview or the terminal |
 | A defect or a behaviour-preserving refactor | `/gw-fix` (TDD) | a test that fails before the fix and passes after; full suite between steps |
 | Clear, bounded, plan already exists | `/gw-goal` or `claude -p` (headless) | deterministic rules + evaluator agent; humans only at PR/merge |
 
@@ -329,6 +348,11 @@ make dist          # or: python3 scripts/build.py all
 Both are **standalone** — grab only the one you need. The board tool has no
 dependency on the skills, and the skills bundle carries its own installer; neither
 pulls in the rest of the repo.
+
+**The design lane is the one exception, and it needs both.** `pmview.pyz` serves
+decks and prototypes but ships no `desk.py`; the skills tarball carries `desk.py`
+but prints deep links into a server it does not ship. Install one and you get a
+board or a workflow; install both and you get the loop.
 
 ### Releasing
 

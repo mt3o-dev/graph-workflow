@@ -18,10 +18,15 @@ lifecycle files, and a live memory store for everything else.
      changes/     # active changes: <change-id>/{change.md, plan.md}
      archive/     # immutable, append-only — no skill ever writes here
      foundation/  # PRD, roadmap, tech-stack — long-lived documents
+     design/      # per-SURFACE design record: deck.json, screens/, asks.jsonl
    ```
 
+   `design/` is keyed by **surface**, not by change, and that is why it is not an
+   exception to the rule below: a screen's design outlives the changes that touch
+   it, so `/gw-archive` reports it and never moves it.
+
    Add a `context/README.md` stating the split: *files = lifecycle artifacts,
-   graph = knowledge*. Do not create per-change notes/, research/, decisions/
+   graph = knowledge, `design/` = what a screen is supposed to look like*. Do not create per-change notes/, research/, decisions/
    subfolders — that is what the graph replaces. Add `.gw-scratch/` to
    `.gitignore` — the throwaway path for agent proof/probe artifacts (agents
    cannot `rm`, so scratch never belongs in `src/`).

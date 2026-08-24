@@ -29,6 +29,8 @@ step because the MCP tools are absent.
 | Starting any unit of work | `/gw-new` (folder + Goal node + seed recall — always first) |
 | Territory unknown | `/gw-research` (recall first, explore the gap, capture findings) |
 | A UI surface to build or redesign | `/gw-wireframe` (screen inventory → one screen per turn with the user → build decisions; obeys the design system) |
+| A screen that has to be *seen* before it is built | `/gw-prototype` (the agreed deck → clickable HTML in the project's real tokens, served by pmview; refuses any screen with an unruled component gap) |
+| Someone asks for `impeccable shape` on a gw project | `/gw-wireframe` instead — same job, but grounded in the domain model and the graph. Use impeccable for the *visual* pass, after the structure is agreed |
 | Ready to design the work | `/gw-plan` (recall + impact_of + plan.md + plan-boundary capture) |
 | Plan written, before implementation | `/gw-plan-review` (fresh session, independent recall, plan vs settled constraints) |
 | Multi-phase / needs judgment | `/gw-implement` (interactive, per-phase memory loop, human gates) |
@@ -68,7 +70,9 @@ step because the MCP tools are absent.
   (USED/CONFIRMED/CONTRADICTED/REVIEWED/NOTED) before ending. Honest events only.
 - **Contradictions are recorded, never resolved** — CONTRADICTS edges and
   CONTRADICTED events flag for human review; that is the system working.
-- **Three surfaces, three jobs.** `context/changes/` holds lifecycle state, the
+- **Four surfaces, four jobs.** `context/design/` holds what a screen is supposed
+  to look like (the deck, the prototypes, the ask log — surface-keyed, so it
+  outlives the changes that touch it). `context/changes/` holds lifecycle state, the
   graph holds knowledge, the tracker holds work state. A decision recorded only in
   an issue comment is a decision no future recall will serve — knowledge goes in the
   graph, always, and the issue gets a pointer at most.
@@ -91,6 +95,13 @@ step because the MCP tools are absent.
 
 - `context/changes/<change-id>/` — active change: change.md (incl. `memory_goal`),
   plan.md, research.md. Thin lifecycle files only; knowledge lives in the graph.
+  `change.md` also carries `design_surface: <slug>` (repeatable) when the change
+  touches a UI surface — that is what makes `/gw-review` Part 1b fire.
+- `context/design/<surface>/` — keyed by **surface**, not by change, so a screen's
+  design outlives the changes that touch it. `deck.json` (the agreed screen
+  inventory and wireframe geometry), `screens/*.html` (clickable prototypes in the
+  project's real tokens), `asks.jsonl` (the append-only agent↔human desk). All
+  committed. **Not** a per-change folder, and never moved by `/gw-archive`.
 - `context/archive/<change-id>/` — immutable, append-only.
 - `context/foundation/` — PRD, roadmap, tech-stack: human source of truth, whose
   normative content is mirrored into the graph at lifetime tier via

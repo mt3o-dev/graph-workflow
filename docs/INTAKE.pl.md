@@ -180,7 +180,7 @@ realna tylko wtedy, gdy warunki wstępne headless da się faktycznie spełnić �
 zwykle oznacza pracę nad infrastrukturą testową przed pierwszym przebiegiem
 `/gw-goal`.
 
-0. Które skille w ogóle jesteś gotów uruchamiać bez nadzoru? Trzy z założenia nigdy nie są headless — `/gw-domain` i `/gw-wireframe` są zdefiniowane przez użytkownika w pętli, a `/gw-fix` wymaga osądu na kroku reprodukcji, chyba że ktoś już napisał test, który failuje.
+0. Które skille w ogóle jesteś gotów uruchamiać bez nadzoru? Cztery z założenia nigdy nie są headless — `/gw-domain`, `/gw-wireframe` i `/gw-prototype` są zdefiniowane przez użytkownika w pętli, a `/gw-fix` wymaga osądu na kroku reprodukcji, chyba że ktoś już napisał test, który failuje.
    *Przykład: „Headless: /gw-goal na zmianach z planem oraz /gw-fix tylko wtedy, gdy QA dostarczy test reprodukujący. Nigdy headless: modelowanie domeny, wireframing, zatwierdzanie konsolidacji." Bezobsługowy przebieg greenfield wymyśli domenę, a bezobsługowa poprawka bez reprodukcji naprawi coś obok i zgłosi sukces.*
 
 1. Jaki odsetek twoich typowych zmian jest ograniczony i weryfikowalny komendą — twardy warunek wstępny trybu headless?
@@ -335,3 +335,29 @@ była dowodem, a nie kosztem utopionym.
 
 5. Jaki jest minimalny sensowny odwrót, krótszy niż pełne porzucenie?
    *Przykład: zejdź do czystego 10x (same pliki), ale zachowaj `/gw-foundation`, `/gw-domain` i konsolidację przy bramce review — trzy najcenniejsze punkty capture — zamiast wyjścia wszystko-albo-nic. Model domeny jest z nich najtańszy w utrzymaniu i najwolniej gnije, bo encje zmieniają się znacznie rzadziej niż decyzje.*
+
+## 13. Wiązanie designu i lane projektowy
+
+Pomiń cały ten obszar, jeśli projekt nie ma UI. Jeśli ma — to są ustawienia, które
+`/gw-wireframe` i `/gw-prototype` czytają przy każdym uruchomieniu.
+
+1. Czy projekt ma design system? Plik tokenów, bibliotekę komponentów, czy nic?
+   Ta odpowiedź wybiera wiązanie — **system-bound**, **library-bound** albo
+   **unstyled** — a lane mówi wprost, które wybrał, zanim cokolwiek zaprojektuje.
+   Bez design systemu lane zatrzymuje się na wireframe'ach: nie ma *w czym*
+   wyrenderować prototypu, a wymyślanie wyglądu nie jest decyzją agenta.
+2. Który arkusz stylów może załadować prototyp? Prototypy noszą **prawdziwy**
+   produkcyjny CSS projektu, serwowany z dokładnej listy dozwolonych w
+   `context/foundation/design-bindings.md`. Nic spoza tej listy nie ma transportu,
+   więc prototyp, który to nazwie, wyrenderuje się bez stylów.
+3. Kto odpowiada na pytania projektowe i gdzie? Zakładka Design w pmview, jeśli
+   ktoś jest przy maszynie; w przeciwnym razie terminal. Oba działają; log to ten
+   sam plik.
+4. Co się dzieje, gdy ekran potrzebuje komponentu, którego design system nie ma?
+   Lane **odmawia zaprototypowania** i prosi cię o rozstrzygnięcie: rozszerz
+   komponent, zaakceptuj jednorazowy wyjątek albo zmień interakcję. Zdecyduj teraz,
+   czy chcesz tego rygoru — alternatywą jest cichy wyjątek w każdym ekranie.
+5. Czy reguły designu są destylowane do grafu? `/gw-foundation` potrafi zamienić
+   `.impeccable/design.json` w constrainty, które da się recallować — i to sprawia,
+   że `impact_of` odpala, gdy późniejsza zmiana któremuś przeczy. Ograniczone —
+   jeden węzeł na regułę — a każda promocja należy do ciebie.

@@ -517,6 +517,37 @@ class PrototypeServingTests(unittest.TestCase):
         self.assertIn("unsafe-inline", directives["style-src"])
         self.assertEqual(directives["connect-src"], "connect-src 'none'")
 
+    def test_the_desk_never_touches_the_store(self) -> None:
+        """The one file-write route in pmview. It must not be a second write path
+        to the graph — `gui/README.md` says the store is byte-identical after a
+        desk exercise, so prove it rather than assert it."""
+        surface = "gui-pmview-static-index-html"
+        log = REPO / "context" / "design" / surface / "asks.jsonl"
+        store = store_path(REPO)
+        before_store = store.read_bytes()
+        before_log = log.read_bytes() if log.is_file() else b""
+        self.addCleanup(lambda: log.write_bytes(before_log))
+
+        token = self.server.RequestHandlerClass.session_token
+        request = urllib.request.Request(
+            self.base + "/api/design/answers", method="POST",
+            data=json.dumps({"project": "graph-workflow", "surface": surface,
+                             "batch": [{"kind": "instruction", "screen": "design-tab",
+                                        "region": "ask stack", "text": "a test line"}]}).encode(),
+            headers={"Content-Type": "application/json", "X-GW-Token": token})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            self.assertEqual(json.loads(response.read())["appended"], 1)
+
+        self.assertGreater(len(log.read_bytes()), len(before_log), "the desk did not grow")
+        self.assertEqual(store.read_bytes(), before_store,
+                         "the desk must never write to the memory store")
+
+    def test_design_py_imports_nothing_that_can_reach_the_graph(self) -> None:
+        source = (REPO / "gui" / "pmview" / "design.py").read_text()
+        for forbidden in ("from .memory", "from .graph", "from .board",
+                          "import memory", "import graph", "import board", "sqlite3"):
+            self.assertNotIn(forbidden, source)
+
     def test_design_routes_are_off_when_the_bind_is_not_loopback(self) -> None:
         server = build_server([Project("graph-workflow", REPO)], "0.0.0.0", 0,
                               memory_url="http://127.0.0.1:9")

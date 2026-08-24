@@ -11,6 +11,7 @@ retrieval_weight: 1.0
 trust_weight: 1.0
 archived: false
 -> SCOPED_TO [node:9a1c8e60-6321-4364-8a3f-d723140064c3] @ 2026-08-24T10:02:07.531463+00:00
+-> SCOPED_TO [node:e9b1abc1-8d35-4d71-931f-43a44aed80f3] @ 2026-08-24T10:35:14.751636+00:00
 
 change scope: design-lane
 ---
@@ -33,6 +34,7 @@ needs_review: false
 retrieval_weight: 1.0
 trust_weight: 1.0
 archived: false
+-> DEPENDS_ON [node:e9b1abc1-8d35-4d71-931f-43a44aed80f3] @ 2026-08-24T10:35:14.751636+00:00
 
 Bring the impeccable design process into the graph-workflow lifecycle: a surface-keyed deck of screens, clickable prototypes served by pmview, and an append-only desk as the agent<->human channel.
 ---
@@ -277,3 +279,16 @@ archived: false
 -> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:20:53.210283+00:00
 
 The visual world is “The Control Room”. pmview is the surface a human watches while autonomous agents work. Its job is to let a supervisor scan the whole state of a change-and-memory workflow and act on the one thing that needs them — so the interface stays calm, legible, and out of the way. Hierarchy is carried by weight, tonal panels, and hairline rules rather than color or ornament. The world is light-and-dark twins that share one set of shape, spacing, and motion tokens and swap only their color primitives. Surfaces are flat at rest and depth is a response to intent: cards and list items lift a single pixel with a soft shadow the moment the operator hovers a target.
+---
+[node:e9b1abc1-8d35-4d71-931f-43a44aed80f3]
+type: decision
+tier: mid-term
+path: /artifact/design-system-gap-ruled-a-the-design
+created_at: 2026-08-24T10:35:14.751636+00:00
+needs_review: false
+retrieval_weight: 1.0
+trust_weight: 1.0
+archived: false
+-> HAS_FACET [node:592add8a-cec4-42ca-bf87-9a8ded2536fc] @ 2026-08-24T10:35:14.751636+00:00
+
+Design-system gap ruled (a): the Design lane's three new components — Layout Schematic, Prototype Frame and Ask Card — are added to DESIGN.md rather than composed one-off per screen. Ask state maps onto the four existing hues plus a drawn icon, never a fifth hue, so The One-Hue-Per-Category Rule holds. The Ask Card carries a uniform 1px border and a tonal color-mix wash, not a side bar, so the no-coloured-border-above-1px rule holds. per desk gui-pmview-static-index-html#4a1f0fed

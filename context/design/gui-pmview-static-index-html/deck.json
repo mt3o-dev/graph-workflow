@@ -59,8 +59,8 @@
         "topbar": "existing:.topbar",
         "tabs": "existing:.tabs button",
         "surface rail": "existing:.item/.list",
-        "prototype": "GAP:unruled — Prototype Frame is not in DESIGN.md §Components",
-        "ask stack": "GAP:unruled — Ask Card is not in DESIGN.md §Components"
+        "prototype": "GAP:ruled:e9b1abc1-8d35-4d71-931f-43a44aed80f3 — Prototype Frame added to DESIGN.md §Components",
+        "ask stack": "GAP:ruled:e9b1abc1-8d35-4d71-931f-43a44aed80f3 — Ask Card added to DESIGN.md §Components"
       },
       "states": {
         "empty": "no surfaces: one line naming the path we looked in (context/design/)",
@@ -74,7 +74,9 @@
         "a cites chip → openNode(id), the existing modal drawer, unchanged",
         "no agent listening and asks open → banner with the resume command and a copy button"
       ],
-      "cites": [],
+      "cites": [
+        "node:e9b1abc1-8d35-4d71-931f-43a44aed80f3"
+      ],
       "prototype": null
     },
     {

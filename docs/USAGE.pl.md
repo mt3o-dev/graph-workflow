@@ -30,7 +30,9 @@ flowchart TD
     KIND -- "funkcjonalność" --> Q{Teren<br/>znany?}
     Q -- "nie" --> RES["/gw-research<br/>najpierw recall, eksploracja tylko luk,<br/>capture ustaleń"]
     Q -- "tak" --> PLAN
-    WIRE --> PLAN
+    WIRE --> PROTO["/gw-prototype<br/>klikalny HTML w prawdziwych tokenach projektu,<br/>serwowany przez pmview; pytania przez desk"]
+  PROTO --> PLAN
+  WIRE -- "sama struktura wystarczy" --> PLAN
     RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>plan.md, capture decyzji"]
     PLAN --> PLANREV["/gw-plan-review<br/>świeża sesja, niezależny recall,<br/>plan vs ustalone constrainty"]
     PLANREV -- "request changes" --> PLAN
@@ -88,6 +90,7 @@ context/
   changes/     # aktywne zmiany: <change-id>/{change.md, plan.md, research.md}
   archive/     # niemutowalne — nic tu nigdy nie pisze
   foundation/  # PRD, roadmapa, tech-stack (ludzkie źródło prawdy)
+  design/      # zapis projektowy per POWIERZCHNIA: deck, prototypy, log pytań
 context/memory-graph.dump # store jako śledzony tekst (.db to artefakt lokalny, w .gitignore)
 ```
 
@@ -439,7 +442,51 @@ jeszcze nie podjął, a powiedzenie tego bije zgadywanie.
 Stany pusty i błędu są wireframe'owane wprost albo wprost wyłączone z zakresu. To tam
 kumulują się poprawki UI.
 
-## 4c. Szukanie, co budować dalej — `/gw-ideate`
+## 4c. Uczynić to klikalnym — `/gw-prototype`
+
+`/gw-wireframe` z zasady zatrzymuje się na strukturze: żadnych hexów, krojów ani
+wartości odstępów. Ta zasada jest słuszna i zostawia lukę — ramki ASCII nie da się
+obejrzeć ani kliknąć, więc pierwszy raz ktoś *widzi* ekran dopiero po zbudowaniu.
+
+`/gw-prototype` zasypuje tę lukę. Renderuje uzgodniony deck do samodzielnego HTML-a
+noszącego **własny** arkusz stylów projektu, serwowanego po HTTP przez pmview:
+
+```
+drain desku              →  odpowiedzi i instrukcje zostawione, gdy cię nie było
+czytaj deck              →  context/design/<surface>/deck.json — kanoniczny, nigdy nie wyprowadzany na nowo
+odmów nierozstrzygniętym →  ekran z komponentem GAP:unruled nie jest prototypowany
+zapisz                   →  context/design/<surface>/screens/<id>.html, commitowane
+pokaż i zapytaj          →  deep link + najwyżej trzy blokujące pytania na ekran
+capture                  →  rozstrzygnięcia, z proweniencją `per desk <surface>#<id>`
+```
+
+**Niczego nie wymyśla.** Prototyp wprowadzający kolor, krój albo wartość odstępu,
+której projekt nie wybrał, to błąd, nie szkic — trafiłby do gita, byłby pokazany
+jako uzgodniony i utwardzony w kontrakt przez `/gw-review`. Dlatego ekran z
+nierozstrzygniętą luką komponentu jest **odrzucany**, a nie renderowany: zasypanie
+luki oznacza wymyślenie komponentu, a tak umiera design system.
+
+### Desk
+
+Jeden plik na powierzchnię, `context/design/<surface>/asks.jsonl`, append-only i
+śledzony przez gita. Agent zadaje pytanie i **kończy turę**; ty odpowiadasz w
+zakładce Design w pmview albo klikasz region prototypu i piszesz instrukcję do
+niego; watcher uruchomiony przez agenta go budzi.
+
+Nic nie żyje w procesie, więc nic nie ginie, gdy sesja umrze — a ponieważ log jest
+w gicie, każde rozstrzygnięcie widać w diffie PR-a obok kodu, który tłumaczy.
+
+**pmview nie potrafi uruchomić ani obudzić procesu.** Zapisuje plik i nic więcej.
+Agenta wznawia watcher, którego *on sam* uruchomił w swojej turze, a ten działa
+tylko wtedy, gdy byłeś przy zakładce w momencie zadania pytania. Jeśli nie byłeś —
+wątek podejmujesz w terminalu; zakładka Design pokazuje komendę wraz z przyciskiem
+kopiowania.
+
+Przy zamkniętym pmview pętla nadal działa: terminal wypisuje deep link i tytuły
+pytań, odpowiadasz na czacie, a skill dopisuje linię odpowiedzi, żeby log nie miał
+dziury.
+
+## 4d. Szukanie, co budować dalej — `/gw-ideate`
 
 Ogólne generowanie pomysłów produkuje to, co zespół napisałby sam. To produkuje
 pomysły, **na które projekt już zapracował i ich nie zauważył** — bo projekt na tym
@@ -463,7 +510,7 @@ powodami — lista, z której nic nie odpadło, to lista, której nikt nie przes
 Pomysły idą do `context/foundation/roadmap.md`; do grafu trafiają tylko *ustalenia*
 (nowe luki, ślepe plamy, wygasłe odroczenia).
 
-## 4d. Konsolidacja — `/gw-consolidate`
+## 4e. Konsolidacja — `/gw-consolidate`
 
 Gdy trzy zmiany niezależnie odkryją to samo, uśpienie traci realny wzorzec.
 Konsolidacja to sposób, w jaki wzorzec przeżywa swoje epizody.
@@ -703,7 +750,14 @@ powierzchnią merge'a pozostaje dump, tylko bez filtra do rejestrowania.
    przez detektor kolizji — nie wolna chmura tagów.
 9. **plan.md to sekwencjonowanie, nie wiedza.** Może umrzeć razem ze zmianą;
    decyzje, które ucieleśniał, zostały scapture'owane na granicy planu i żyją
-   dalej. To samo dotyczy `research.md` i `wireframes.md`.
+   dalej. To samo dotyczy `research.md`.
+
+   **`context/design/` to świadomy wyjątek i nie jest kluczowane zmianą.** Deck,
+   jego prototypy i log pytań są kluczowane *powierzchnią*, bo ekran przeżywa
+   zmiany, które go dotykają: następna zmiana tego ekranu musi wiedzieć, co już
+   uzgodniono i dlaczego. To wciąż nie jest wiedza — rozstrzygnięcia trafiają do
+   grafu jak wszystko inne — ale nie jest też sekwencjonowaniem, więc
+   `/gw-archive` je raportuje i nigdy nie przenosi.
 10. **Modelowanie domeny wymaga człowieka w pętli, w obu trybach.** Greenfield to
     wywiad, brownfield to recenzja. Żaden nie działa bez nadzoru — bezobsługowy
     przebieg greenfield wymyśli domenę, a bezobsługowy brownfield ratyfikuje
