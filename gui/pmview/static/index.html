@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Graph Workflow — Project Board</title>
+<!-- Substituted by the server on this file only. It does not authenticate the
+     human — nothing local can, against an agent on the same machine — it stops a
+     page the operator merely visited from appending to a desk. -->
+<meta name="gw-token" content="__GW_TOKEN__">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -14,6 +18,7 @@
     <button data-view="board" class="active">Board</button>
     <button data-view="issues">Issues</button>
     <button data-view="search">Search</button>
+    <button data-view="design">Design</button>
   </nav>
   <select id="project" aria-label="Project"></select>
   <span id="memory-status" class="pill" title="the write path"></span>
@@ -32,6 +37,7 @@
 <main>
   <section id="view-board" class="view"></section>
   <section id="view-issues" class="view hidden"></section>
+  <section id="view-design" class="view hidden"></section>
   <section id="view-search" class="view hidden">
     <div class="searchbar">
       <input id="q" type="search" placeholder="Search node bodies, paths and ids…" autocomplete="off">

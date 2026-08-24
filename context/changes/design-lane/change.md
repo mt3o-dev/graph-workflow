@@ -2,6 +2,7 @@
 
 status: in-progress
 created: 2026-08-24
+design_surface: gui-pmview-static-index-html
 
 ## Goal
 Bring the impeccable design process into the graph-workflow lifecycle: a
@@ -11,8 +12,6 @@ agent↔human channel — so a human can see a design, answer the agent's questi
 and point at a region before any production code exists.
 
 memory_goal: 9a1c8e60-6321-4364-8a3f-d723140064c3
-
-design_surface: gui-pmview-static-index-html
 
 ## Why now
 The workflow had a structural design step (`/gw-wireframe`, ASCII only, refuses

@@ -72,8 +72,13 @@ def build_skills(version: str) -> Path:
         for skill in skills:
             tar.add(skill, arcname=f"{top}/skills/{skill.name}",
                     filter=lambda ti: None if "__pycache__" in ti.name else ti)
+    # Count only what a runtime would route to. `gw-desk/` ships in the same
+    # tarball but carries no SKILL.md: it is plumbing every phase calls, not a
+    # phase, and reporting it as a skill would overstate the routing surface.
+    routable = sum(1 for s in skills if (s / "SKILL.md").is_file())
+    shipped = "" if routable == len(skills) else f" + {len(skills) - routable} shared"
     print(f"  {top}.tar.gz  {target.stat().st_size / 1024:6.1f} KB  "
-          f"({len(skills)} skills, {target})")
+          f"({routable} skills{shipped}, {target})")
     return target
 
 

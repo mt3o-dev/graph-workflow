@@ -1,0 +1,83 @@
+{
+  "v": 1,
+  "surface": "gui-pmview-static-index-html",
+  "target": "gui/pmview/static/index.html",
+  "binding": "system-bound",
+  "stylesheet": "gui/pmview/static/style.css",
+  "screens": [
+    {
+      "id": "design-tab",
+      "title": "Design tab — a surface with open asks",
+      "status": "draft",
+      "agreed_by": [],
+      "depends_on": [],
+      "implements": "gui/pmview/static/index.html#view-design",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "topbar", "x": 0, "y": 0, "w": 12, "h": 1},
+          {"label": "tabs", "x": 0, "y": 1, "w": 5, "h": 1, "accent": true},
+          {"label": "surface rail", "x": 0, "y": 2, "w": 3, "h": 8},
+          {"label": "prototype", "x": 3, "y": 2, "w": 5, "h": 8},
+          {"label": "ask stack", "x": 8, "y": 2, "w": 4, "h": 8, "accent": true}
+        ]
+      },
+      "components": {
+        "topbar": "existing:.topbar",
+        "tabs": "existing:.tabs button",
+        "surface rail": "existing:.item/.list",
+        "prototype": "GAP:unruled — Prototype Frame is not in DESIGN.md §Components",
+        "ask stack": "GAP:unruled — Ask Card is not in DESIGN.md §Components"
+      },
+      "states": {
+        "empty": "no surfaces: one line naming the path we looked in (context/design/)",
+        "loading": "rail skeleton, centre pane holds its last frame",
+        "error": "deck failed to parse: warning row naming the file and the line",
+        "partial": "deck present, no prototype: schematic only, toggle disabled",
+        "permission-denied": "n/a — local single-user"
+      },
+      "behavior": [
+        "Send N → POST /api/design/answers, one batch id, toast names the count",
+        "a cites chip → openNode(id), the existing modal drawer, unchanged",
+        "no agent listening and asks open → banner with the resume command and a copy button"
+      ],
+      "cites": [],
+      "prototype": null
+    },
+    {
+      "id": "design-tab-empty",
+      "title": "Design tab — no surfaces yet",
+      "status": "draft",
+      "agreed_by": [],
+      "depends_on": [],
+      "implements": "gui/pmview/static/index.html#view-design",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "topbar", "x": 0, "y": 0, "w": 12, "h": 1},
+          {"label": "tabs", "x": 0, "y": 1, "w": 5, "h": 1, "accent": true},
+          {"label": "empty state", "x": 2, "y": 4, "w": 8, "h": 3}
+        ]
+      },
+      "components": {
+        "topbar": "existing:.topbar",
+        "tabs": "existing:.tabs button",
+        "empty state": "existing:.empty"
+      },
+      "states": {
+        "empty": "this screen is the empty state: the path looked in, and the command that creates one",
+        "loading": "nothing — the rail is the only thing that could load",
+        "error": "context/design/ unreadable: one warning row",
+        "partial": "n/a",
+        "permission-denied": "n/a — local single-user"
+      },
+      "behavior": [
+        "names context/design/ literally, so the human can see whether they are in the project they think they are"
+      ],
+      "cites": [],
+      "prototype": null
+    }
+  ]
+}

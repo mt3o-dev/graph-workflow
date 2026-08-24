@@ -294,3 +294,129 @@ main { padding: var(--space-xl); }
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
   .card:hover, .item:hover, .btn:hover, .btn:active { transform: none; }
 }
+
+/* --- the design lane -------------------------------------------------------
+   Three panes over one surface: what screens exist, what one looks like, and
+   what the agent is waiting on. Every value below comes from the tokens above —
+   the lane that exists to enforce the design system cannot be the one that
+   introduces a hue, a radius or a spacing step the system does not have. */
+
+.design-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 2.2fr) minmax(260px, 1.2fr);
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.surface-rail { display: grid; gap: var(--space-xs); align-content: start; }
+.surface-rail .item.on { border-color: var(--accent); }
+.surface-rail .warnrow {
+  font-size: var(--text-meta);
+  color: var(--warn);
+  padding: var(--space-3xs) var(--space-xs);
+}
+
+/* A screen list nested under its surface. The status dot is the only signal
+   here, so it carries the whole hue budget for this row. */
+.screens { display: grid; gap: 2px; margin: var(--space-3xs) 0 var(--space-xs) var(--space-md); }
+.screen {
+  display: flex; align-items: center; gap: var(--space-2xs);
+  font-size: var(--text-meta); color: var(--muted);
+  padding: var(--space-3xs) var(--space-xs);
+  border-left: 2px solid transparent; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  cursor: pointer;
+}
+.screen:hover { color: var(--ink); background: var(--bg); }
+.screen.on { color: var(--ink); border-left-color: var(--accent); background: var(--bg); }
+.screen i { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; background: var(--muted); }
+.screen.draft i { background: var(--warn); }
+.screen.ok i    { background: var(--ok); }
+.screen.gone    { text-decoration: line-through; opacity: .6; }
+
+.design-main { display: grid; gap: var(--space-md); align-content: start; }
+.design-main h4 { margin: var(--space-xs) 0 0; font-size: var(--text-meta); color: var(--muted); }
+.design-main .beh { margin: 0; padding-left: var(--space-xl); font-size: var(--text-sm); }
+.design-main .beh li { margin: var(--space-3xs) 0; }
+.list.compact { gap: 2px; }
+.list.compact .edge.warn span:last-child { color: var(--warn); }
+
+/* The schematic. Percentage geometry over a ratio-locked field, so it reads the
+   same at any pane width — structure, never pixels. */
+.wire {
+  position: relative; width: 100%;
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.wire-region {
+  position: absolute;
+  border: 1px dashed var(--line); border-radius: var(--radius-sm);
+  background: var(--panel);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--text-micro); color: var(--muted);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.wire-region:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
+.wire-region.accent { border-color: var(--accent); color: var(--accent); }
+.wire-region span { padding: 0 var(--space-3xs); text-align: center; }
+
+/* The ask stack. State is carried by the left rule plus the drawn icon in
+   .kind — four hues, the four this system already has, and no fifth. */
+.ask-stack { display: grid; gap: var(--space-sm); align-content: start; }
+.ask-stack h4 { margin: 0; font-size: var(--text-meta); color: var(--muted); }
+.ask {
+  background: var(--panel); border: 1px solid var(--line);
+  border-left: 3px solid var(--line); border-radius: var(--radius);
+  padding: var(--space-sm) var(--space-md);
+  display: grid; gap: var(--space-2xs);
+}
+.ask.warn   { border-left-color: var(--warn); }
+.ask.accent { border-left-color: var(--accent); }
+.ask.ok     { border-left-color: var(--ok); }
+.ask.muted  { border-left-color: var(--line); opacity: .72; }
+.ask h4 { margin: 0; font-size: var(--text-base); color: var(--ink); font-weight: var(--weight-strong); }
+.ask .risk { font-size: var(--text-meta); color: var(--warn); }
+.ask .kind.muted { color: var(--muted); }
+.ask.staged-decline { opacity: .6; }
+
+.ask-options { display: grid; gap: var(--space-3xs); }
+.opt {
+  text-align: left; background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--space-2xs) var(--space-sm);
+  cursor: pointer; display: grid; gap: 2px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.opt:hover { border-color: var(--accent); }
+.opt.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+.opt b { font-size: var(--text-sm); font-weight: var(--weight-strong); }
+.opt span { font-size: var(--text-micro); color: var(--muted); }
+
+.ask .free {
+  width: 100%; background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-sm); resize: vertical;
+}
+.ask .free:focus-visible {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.composer { position: sticky; bottom: var(--space-md); display: flex; justify-content: flex-end; }
+
+/* Open asks and nobody listening. The one state where the board has to tell the
+   human something rather than just show it. */
+.banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs);
+  background: var(--panel); border: 1px solid var(--warn); border-left-width: 3px;
+  border-radius: var(--radius); padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-xl); font-size: var(--text-sm);
+}
+.banner code {
+  font-family: var(--font-mono); font-size: var(--text-meta);
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 2px var(--space-2xs);
+}
+
+@media (max-width: 1100px) {
+  .design-split { grid-template-columns: 1fr; }
+  .composer { position: static; }
+}

@@ -1,0 +1,5 @@
+# The desk is append-only and two people can append on two machines. `merge=union`
+# keeps both sides — which for a log of questions and rulings is always the right
+# answer, and unlike a clean/smudge filter it is a built-in driver that needs no
+# local registration, so a fresh clone gets it for free.
+context/design/**/asks.jsonl merge=union

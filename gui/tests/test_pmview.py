@@ -19,6 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pmview import design as design_mod  # noqa: E402
 from pmview import graph as graph_mod  # noqa: E402
 from pmview import lifecycle  # noqa: E402
 from pmview import server as server_mod  # noqa: E402
@@ -319,6 +320,98 @@ class SqliteStoreTests(unittest.TestCase):
         self.assertIs(view.board(), first, "unchanged files reuse the cached board")
         view.invalidate()
         self.assertIsNot(view.board(), first)
+
+
+class DesignLaneTests(unittest.TestCase):
+    """The desk: a file, folded into state that is never stored."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.dir = self.root / "context" / "design" / "s1"
+        self.dir.mkdir(parents=True)
+        self.log = self.dir / "asks.jsonl"
+
+    def test_the_surface_slug_cannot_collide(self) -> None:
+        """impeccable's own slug keeps the *tail* at 50 chars, so two different
+        deep paths collapse to one key — merging two surfaces' decks and, fatally,
+        their append-only desks."""
+        a = "web/src/components/dashboard/widgets/revenue/chart/index.html"
+        b = "mobile/src/components/dashboard/widgets/revenue/chart/index.html"
+        self.assertNotEqual(design_mod.gw_slug(a), design_mod.gw_slug(b))
+        # …while still agreeing with impeccable on the short paths that matter.
+        self.assertEqual(design_mod.gw_slug("gui/pmview/static/index.html"),
+                         "gui-pmview-static-index-html")
+
+    def test_ask_state_is_folded_not_stored(self) -> None:
+        design_mod.append(self.log, [
+            {"kind": "ask", "id": "a1", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a2", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a3", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a4", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a5", "session": "s", "by": "agent"},
+            {"kind": "answer", "id": "h1", "ask": "a2", "by": "human"},
+            {"kind": "ack", "id": "k1", "session": "s", "refs": ["a3"], "by": "agent"},
+            {"kind": "decline", "id": "h2", "ask": "a4", "by": "human"},
+            {"kind": "retire", "id": "r1", "refs": ["a5"], "by": "agent"},
+        ])
+        states = {t["id"]: t["state"] for t in design_mod.read_asks(self.log)["threads"]}
+        self.assertEqual(states, {"a1": "open", "a2": "answered", "a3": "landed",
+                                  "a4": "declined", "a5": "retired"})
+
+    def test_the_delivery_cursor_is_per_session(self) -> None:
+        """A global cursor means agent B acking an answer to agent A's ask makes
+        that answer invisible to A — so A times out having never seen the reply."""
+        design_mod.append(self.log, [
+            {"kind": "ask", "id": "a1", "session": "A", "by": "agent"},
+            {"kind": "answer", "id": "h1", "ask": "a1", "by": "human"},
+            {"kind": "ack", "id": "k1", "session": "B", "refs": ["h1"], "by": "agent"},
+        ])
+        to_a = [l["id"] for l in design_mod.read_asks(self.log, session="A")["undelivered"]]
+        to_b = [l["id"] for l in design_mod.read_asks(self.log, session="B")["undelivered"]]
+        self.assertEqual(to_a, ["h1"], "A must still be delivered its own answer")
+        self.assertEqual(to_b, [], "B acked it")
+
+    def test_one_malformed_line_never_takes_down_the_desk(self) -> None:
+        self.log.write_text(
+            '{"kind":"ask","id":"a1","session":"s"}\n'
+            'not json at all\n'
+            '{"kind":"answer","id":"h1","ask":"a1"}\n', encoding="utf-8")
+        desk = design_mod.read_asks(self.log)
+        self.assertEqual(desk["lines"], 2)
+        self.assertEqual(len(desk["warnings"]), 1)
+        self.assertEqual(desk["threads"][0]["state"], "answered")
+
+    def test_a_broken_deck_degrades_to_a_warning(self) -> None:
+        (self.dir / "deck.json").write_text("{ not json", encoding="utf-8")
+        deck, warnings = design_mod.read_deck(self.dir / "deck.json")
+        self.assertEqual(deck, {})
+        self.assertTrue(warnings and "not valid JSON" in warnings[0])
+        self.assertEqual(design_mod.surfaces(self.root)[0]["surface"], "s1")
+
+    def test_a_deck_whose_target_keys_elsewhere_is_flagged(self) -> None:
+        (self.dir / "deck.json").write_text(
+            json.dumps({"target": "some/other/path.html", "screens": []}), encoding="utf-8")
+        warnings = design_mod.surfaces(self.root)[0]["warnings"]
+        self.assertTrue(any("sharing one desk" in w for w in warnings), warnings)
+
+    def test_pmview_cannot_construct_an_agent_line(self) -> None:
+        for kind in sorted(design_mod.AGENT_KINDS):
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                design_mod.construct(kind, "s1", "b1", {"text": "x"})
+
+    def test_a_constructed_line_is_stamped_by_the_server(self) -> None:
+        line = design_mod.construct("answer", "s1", "b1",
+                                    {"ask": "a1", "choice": "A", "text": "x" * 9000,
+                                     "by": "agent", "id": "forged", "src": "cli"})
+        self.assertEqual((line["by"], line["src"], line["batch"]), ("human", "pmview", "b1"))
+        self.assertNotEqual(line["id"], "forged")
+        self.assertEqual(len(line["text"]), design_mod.MAX_TEXT)
+
+    def test_a_surface_name_that_is_not_a_slug_resolves_to_nothing(self) -> None:
+        for name in ("../../etc", "a/b", "", "x" * 200, "has space"):
+            with self.subTest(name=name):
+                self.assertIsNone(design_mod.surface_dir(self.root, name))
 
 
 class StoreResolutionTests(unittest.TestCase):
