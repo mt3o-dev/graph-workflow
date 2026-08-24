@@ -578,6 +578,45 @@ class DesignDistillationTests(unittest.TestCase):
             self.assertNotIn(forbidden, source.replace('"capture_artifact(', '"'))
 
 
+class LivePinTests(unittest.TestCase):
+    """Pinning impeccable live to one prototype. Getting this wrong does not fail
+    loudly — it edits the real application."""
+
+    @staticmethod
+    def run_setup(*args):
+        script = REPO / "skills" / "gw-prototype" / "bin" / "live_setup.py"
+        done = subprocess.run([sys.executable, str(script), *args, "--root", str(REPO)],
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, json.loads(done.stdout or "{}")
+
+    def test_arm_then_teardown_leaves_nothing_behind(self) -> None:
+        surface = "gui-pmview-static-index-html"
+        config = (REPO / "context" / "design" / surface / ".impeccable" / "live" / "config.json")
+        self.addCleanup(lambda: self.run_setup("teardown", "--surface", surface))
+
+        code, armed = self.run_setup("arm", "--surface", surface, "--screen", "design-tab-empty")
+        self.assertEqual(code, 0, armed)
+        self.assertTrue(config.is_file())
+        # One screen, not a glob: a repo-wide glob dirties every prototype in the
+        # repo with a session token on every session start.
+        self.assertEqual(json.loads(config.read_text())["files"],
+                         ["screens/design-tab-empty.html"])
+        # The app root must become the surface directory — that confinement is
+        # the only thing keeping live-wrap's first-match walk out of the real app.
+        self.assertEqual(config.parent.parent.parent.name, surface)
+
+        code, torn = self.run_setup("teardown", "--surface", surface)
+        self.assertEqual(code, 0, torn)
+        self.assertFalse(config.exists())
+        self.assertEqual(torn["residue"], [], "a tracked prototype kept session residue")
+
+    def test_preflight_rejects_a_prototype_live_cannot_write_into(self) -> None:
+        surface = "gui-pmview-static-index-html"
+        code, result = self.run_setup("preflight", "--surface", surface, "--screen", "nope")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("no prototype" in p for p in result["problems"]))
+
+
 class StoreResolutionTests(unittest.TestCase):
     """A fresh clone has the committed dump and no `.db` — the board must work
     from what git actually carries."""

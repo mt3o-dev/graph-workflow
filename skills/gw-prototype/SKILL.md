@@ -182,13 +182,22 @@ skipped the plan gate.
 
 ## Optional — impeccable `live` on a prototype
 
-Only when impeccable is vendored, and only with a **per-surface** config:
+Only when impeccable is vendored, and only with a **per-surface** config. Do not
+hand-write it — getting this wrong does not fail loudly, it **edits the real
+application**:
 
+```sh
+python3 <this skill's dir>/bin/live_setup.py preflight --surface S --screen X
+python3 <this skill's dir>/bin/live_setup.py arm       --surface S --screen X
+#   … the live session …
+python3 <this skill's dir>/bin/live_setup.py teardown  --surface S
 ```
-context/design/<surface>/.impeccable/live/config.json
-  {"files": ["screens/<screen>.html"], "insertBefore": "</body>",
-   "commentSyntax": "html", "cspChecked": true}
-```
+
+`arm` writes `context/design/<surface>/.impeccable/live/config.json`; `teardown`
+removes it, scans every prototype for session residue, and reports
+`git status --porcelain context/design/`. **A non-empty residue list is a
+teardown failure, not a warning** — prototypes are git-tracked, so a crashed
+session leaves a session token in a file that ships.
 
 This is load-bearing, not tidiness. `isAppRoot()` returns true for any directory
 carrying `.impeccable/live/config.json`, and `walkUp` stops at the first hit — so
