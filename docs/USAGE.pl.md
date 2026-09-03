@@ -23,7 +23,10 @@ obecnej).
 flowchart TD
     INIT["/gw-init<br/>(raz na projekt)"] --> FOUND["/gw-foundation<br/>destylacja PRD / ADR / tech-stack<br/>do kandydatów lifetime"]
     FOUND --> DOM["/gw-domain<br/>rzeczowniki projektu jako encje<br/>greenfield: nazywa użytkownik<br/>brownfield: ty ekstrahujesz, on recenzuje"]
-    DOM --> NEW["/gw-new<br/>folder zmiany + węzeł Goal + recall startowy"]
+    DOM --> SIZE{Zmiana<br/>czy epik?}
+  SIZE -- "epik" --> SLICE["/gw-slice<br/>uporządkowane tracer bullets;<br/>człowiek rozstrzyga granulację"]
+  SLICE --> NEW
+  SIZE -- "zmiana" --> NEW["/gw-new<br/>folder zmiany + węzeł Goal + recall startowy"]
     NEW --> KIND{Jaki rodzaj<br/>pracy?}
     KIND -- "błąd / refaktor" --> FIX["/gw-fix<br/>TDD: red → green → refactor<br/>(żadnej zmiany kodu przed czerwonym testem)"]
     KIND -- "powierzchnia UI" --> WIRE["/gw-wireframe<br/>inwentarz ekranów, potem<br/>jeden ekran na turę z użytkownikiem"]
@@ -408,6 +411,16 @@ Headless (`/gw-goal`) tylko wtedy, gdy ktoś już napisał test reprodukujący:
 reprodukcja to osąd, a agent bez nadzoru, który nie umie zreprodukować, naprawi coś
 obok i zgłosi sukces.
 
+`/gw-foundation` **pisze** też PRD, gdy projekt go nie ma, a rozmowa już go
+zawiera. Syntetyzuje — nie przeprowadza wywiadu. Projekt, który ustalił, co
+budować, w rozmowie, bez niczego na dysku, to najczęstszy sposób, w jaki
+fundament nigdy nie trafia do grafu.
+
+Jedyne miejsce, w którym się zatrzymuje i pyta, to **szwy testowe**: na jakich
+granicach ta funkcja będzie testowana, z preferencją dla szwów istniejących i
+możliwie najwyższego. PRD zbudowane na złych szwach daje plan, który testuje złe
+rzeczy — a to drogo się odkrywa później.
+
 ## 4b. Projektowanie UI — `/gw-wireframe`
 
 Praca nad UI zawodzi w typowy sposób: agent generuje wiarygodne ekrany za jednym
@@ -534,6 +547,42 @@ capture już zapisał.
 
 Nie konsoliduj encji domenowych. Encja to desygnat, a nie abstrakcja nad epizodami;
 kilka encji wyglądających na jedną to *scalenie*, a to `/gw-domain`.
+
+## 4f. Krojenie epika — `/gw-slice`
+
+Niektóre cele są za duże na jedną zmianę: obejmują wiele podsystemów, implikują
+więcej niż jakieś pięć faz albo brzmią jak produkt. Kontrola rozmiaru w
+`/gw-new` je wyłapuje i kieruje tutaj.
+
+```
+recall                   →  constrainty sekwencjonujące, które zmieniają kolejność
+szkic                    →  tracer bullets: cienkie pionowe ścieżki, każda weryfikowalna sama
+klasyfikacja             →  headless | interaktywny | TDD, per slice
+odpytanie                →  człowiek rozstrzyga o granulacji, kolejności i trybie
+rejestr                  →  wpis epika ląduje w context/foundation/roadmap.md
+capture                  →  DLACZEGO kolejność jest taka — nigdy sama lista slice'ów
+```
+
+**Tracer bullets, nie warstwy.** Każdy slice tnie wąską ścieżkę przez wszystkie
+warstwy — schema, API, UI, testy — i da się go pokazać samodzielnie. „Zrób całą
+schemę, potem całe API" wygląda wydajnie i nie daje niczego testowalnego aż do
+końca.
+
+**Slice wymagający skilla, który nigdy nie jest headless, jest interaktywny —
+mechanicznie.** `/gw-domain`, `/gw-wireframe` i `/gw-prototype` nigdy nie są
+headless, więc slice dotykający powierzchni UI nie może być oznaczony jako
+headless. To sprawdzenie, nie osąd — o to właśnie chodzi, bo dokładnie to
+przepuszcza się machnięciem ręki późnym popołudniem.
+
+**Otwiera tylko pierwszy slice.** Nie dlatego, że osiem folderów zmian byłoby
+nieporządkiem, ale dlatego, że `create_change` tworzy osiem węzłów Goal i osiem
+korzeni liveness, których sweep nigdy nie wycofa — oraz dlatego, że `/gw-new`
+podpina `parent_refs` każdego slice'a do jego **zarchiwizowanego** rodzeństwa,
+które jeszcze nie istnieje.
+
+To, co przeżywa epik, to uzasadnienie: *„najpierw import, bo kryteria akceptacji
+klasyfikacji zakładają ustalony rekord Transaction"*. Sama lista slice'ów to
+sekwencjonowanie, jak `plan.md`, a `/gw-archive` odhacza ją na bieżąco.
 
 ## 5. Jak wiedza żyje i umiera
 

@@ -20,11 +20,20 @@ event.
    **Size check — is this a change or an epic?** A change is what one agent can
    implement against one plan.md and one human can review in one sitting. If the
    goal spans multiple subsystems, implies more than ~5 phases, or reads like a
-   product ("build the app", "rebuild reporting"), it is an **epic**: register it
-   in `context/foundation/roadmap.md` (epic id, outcome sentence, ordered slice
-   list — each slice a future change-id delivering something end-to-end
-   verifiable), then open the FIRST slice as this change. Slices are grouped by
-   the `epic:` line below, not by folders.
+   product ("build the app", "rebuild reporting"), it is an **epic**: stop and run
+   **`/gw-slice`**, which drafts the tracer-bullet breakdown, gets the human to
+   rule on granularity and order, writes the registry entry in
+   `context/foundation/roadmap.md`, and captures why the order is what it is. Then
+   come back here and open the FIRST slice as this change.
+
+   Do not slice it inline. The breakdown has a human gate and its own capture, and
+   a slice boundary chosen in passing is the one that costs a re-plan three slices
+   later. If `/gw-slice` is not installed, do it by hand to the same shape — epic
+   id, outcome sentence, ordered slice list, each a future change-id delivering
+   something **end-to-end verifiable** rather than one layer of many — and say
+   that you did.
+
+   Slices are grouped by the `epic:` line below, not by folders.
 
 2. **Create the folder** `context/changes/<change-id>/change.md`:
 

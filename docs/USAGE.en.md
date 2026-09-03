@@ -21,7 +21,10 @@ in order to not repeat or contradict this one).
 flowchart TD
     INIT["/gw-init<br/>(once per project)"] --> FOUND["/gw-foundation<br/>distill PRD / ADRs / tech-stack<br/>into lifetime candidates"]
     FOUND --> DOM["/gw-domain<br/>the project's nouns as entities<br/>greenfield: user names them<br/>brownfield: you extract, user reviews"]
-    DOM --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
+    DOM --> SIZE{Change<br/>or epic?}
+  SIZE -- "epic" --> SLICE["/gw-slice<br/>tracer-bullet slices, ordered;<br/>the human rules on granularity"]
+  SLICE --> NEW
+  SIZE -- "change" --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
     NEW --> KIND{What kind<br/>of work?}
     KIND -- "defect / refactor" --> FIX["/gw-fix<br/>TDD: red → green → refactor<br/>(no source edit before a red test)"]
     KIND -- "UI surface" --> WIRE["/gw-wireframe<br/>screen inventory, then<br/>one screen per turn with the user"]
@@ -398,6 +401,16 @@ Headless (`/gw-goal`) only when someone else already wrote the failing test:
 reproduction is judgment, and an unattended agent that cannot reproduce will fix
 something adjacent and report success.
 
+`/gw-foundation` also **writes** the PRD when the project has none and the
+conversation already contains one. It synthesises — it does not interview. A
+project that has converged on what to build, in a conversation, with nothing on
+disk, is the commonest way a foundation never gets loaded at all.
+
+The one place it stops and asks is the **test seams**: which boundaries this
+feature will be tested at, preferring existing seams and the highest one
+available. A PRD built on the wrong seams produces a plan that tests the wrong
+things, and that is expensive to discover later.
+
 ## 4b. Designing a UI — `/gw-wireframe`
 
 UI work fails the usual way: an agent generates plausible screens in one shot, the
@@ -524,6 +537,40 @@ is a different finding — it means recall is not serving what capture already w
 
 Do not consolidate domain entities. An entity is a referent, not an abstraction over
 episodes; several entities that look like one is a *merge*, and that is `/gw-domain`.
+
+## 4f. Slicing an epic — `/gw-slice`
+
+Some goals are too big for one change: they span subsystems, imply more than
+about five phases, or read like a product. `/gw-new`'s size check catches them
+and sends them here.
+
+```
+recall                   →  sequencing constraints that reorder the list
+draft                    →  tracer bullets: thin vertical paths, each verifiable alone
+classify                 →  headless | interactive | TDD, per slice
+quiz                     →  the human rules on granularity, order and mode
+registry                 →  the epic entry lands in context/foundation/roadmap.md
+capture                  →  WHY the order is what it is — never the slice list
+```
+
+**Tracer bullets, not layers.** Each slice cuts a narrow path through every layer
+— schema, API, UI, tests — and is demoable on its own. "Do all the schema, then
+all the API" looks efficient and produces nothing testable until the end.
+
+**A slice needing a never-headless skill is interactive, mechanically.**
+`/gw-domain`, `/gw-wireframe` and `/gw-prototype` are never headless, so a slice
+that touches a UI surface cannot be marked headless. That is a check, not a
+judgment call — which is the point, because it is exactly what gets waved through
+late in the day.
+
+**It opens only the first slice.** Not because eight change folders would be
+untidy, but because `create_change` mints eight Goal nodes and eight liveness
+roots the sweep can never retire, and because `/gw-new` wires each slice's
+`parent_refs` from its *archived* siblings — which do not exist yet.
+
+What survives the epic is the reasoning: *"import first, because classification's
+acceptance criteria assume a settled Transaction record."* The slice list itself
+is sequencing, like `plan.md`, and `/gw-archive` marks it off as it goes.
 
 ## 5. How knowledge lives and dies
 

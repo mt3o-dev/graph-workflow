@@ -28,6 +28,8 @@ step because the MCP tools are absent.
 | "What should we build next" / roadmap time / an epic just closed | `/gw-ideate` (mine the graph's issues, gaps and blind spots for evidence-backed opportunities) |
 | Starting any unit of work | `/gw-new` (folder + Goal node + seed recall — always first) |
 | Territory unknown | `/gw-research` (recall first, explore the gap, capture findings) |
+| A goal too big for one change — spans subsystems, >5 phases, reads like a product | `/gw-slice` (tracer-bullet breakdown → the human rules on granularity and order → the epic registry in `roadmap.md`; opens only the first slice) |
+| Notes or a conversation that should become a PRD | `/gw-foundation` — writes `context/foundation/prd.md` when there is none (synthesising, never interviewing), then distils it into the graph. Wanting to be *interrogated* about it instead is `/gw-grill` |
 | A UI surface to build or redesign | `/gw-wireframe` (screen inventory → one screen per turn with the user → build decisions; obeys the design system) |
 | A screen that has to be *seen* before it is built | `/gw-prototype` (the agreed deck → clickable HTML in the project's real tokens, served by pmview; refuses any screen with an unruled component gap) |
 | Someone asks for `impeccable shape` on a gw project | `/gw-wireframe` instead — same job, but grounded in the domain model and the graph. Use impeccable for the *visual* pass, after the structure is agreed |

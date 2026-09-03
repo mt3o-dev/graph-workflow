@@ -58,16 +58,19 @@ recall → attempt → verify → (fail: diagnose, retry ≤ N) → capture+jour
 
 ## Which skills may run headless
 
-`/gw-implement`'s per-phase work compresses into this loop cleanly. Three of the newer
+`/gw-implement`'s per-phase work compresses into this loop cleanly. Four of the newer
 skills do not, and one does conditionally:
 
 - **`/gw-fix`** — headless **only when the reproduction is already a failing test**
   someone else wrote. Reproduction is judgment: an unattended agent that cannot
   reproduce will fix something adjacent and report success. With a red test in hand
   the loop is fully command-verifiable.
-- **`/gw-domain`**, **`/gw-wireframe`** and **`/gw-prototype`** — never. All three are defined by a user in the
-  loop (elicitation, per-screen review); running them unattended produces exactly the
-  invented domain and one-shot UI they exist to prevent.
+- **`/gw-domain`**, **`/gw-wireframe`**, **`/gw-prototype`** and **`/gw-slice`** — never.
+  The first three are defined by a user in the loop (elicitation, per-screen review);
+  running them unattended produces exactly the invented domain and one-shot UI they
+  exist to prevent. `/gw-slice` ends at a human ruling on the breakdown, and an
+  unattended slicing produces a plausible list nobody agreed to — which then shapes
+  every change that follows it.
 - **`/gw-consolidate`** and **`/gw-ideate`** — the read halves are safe to run
   headless and report; the commits (consolidating, opening changes) are not.
 

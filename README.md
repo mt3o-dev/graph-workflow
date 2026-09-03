@@ -10,6 +10,8 @@ There is **one lifecycle, not two workflows**. Memory operations are steps *insi
 the 10x change lifecycle, never a parallel bookkeeping chore:
 
 ```
+/gw-slice   → epic-sized work only: tracer-bullet slices, the human rules on
+              granularity and order, the registry entry lands in roadmap.md
 /gw-new     → change folder + create_change (change anchor + Goal node) + first recall
 worktree    → checkout = change activation = liveness root ON
 /gw-research→ recall BEFORE exploring; codebase research grounded in settled memory
@@ -31,7 +33,8 @@ merge       → /gw-archive: final capture, deactivate + sweep, folder → conte
 Around that spine sit the skills that are not change-shaped: `/gw-domain` establishes the
 project's ubiquitous language as graph entities, `/gw-wireframe` designs UI surfaces with
 the user before a plan exists and `/gw-prototype` makes those screens clickable before
-any of them is built, `/gw-ideate` mines the graph for what to build next, and
+any of them is built, `/gw-ideate` mines the graph for what to build next, `/gw-slice` turns something
+epic-sized into an ordered list of slices that are each verifiable on their own, and
 `/gw-consolidate` distils recurring knowledge before the sweep sends it dormant.
 
 `/gw-track` runs *along* the spine rather than beside it: where a project uses an issue
@@ -94,6 +97,7 @@ carries knowledge, the tracker carries work state for people outside the session
 | `gw-foundation` | `10x-prd` / ADRs (downstream of) | distill foundation docs into lifetime-tier candidates in the root set |
 | `gw-domain` | — (new) | `domain_model` + `capture_entity`: the ubiquitous language as graph entities — greenfield elicitation or brownfield extraction, `ABOUT` wiring, `impact_of` before amendments, human ratification gate |
 | `gw-ideate` | — (new) | multi-seam recall over `issue`s, accepted gaps, under-used capability and domain blind spots → evidence-backed opportunities; findings captured, ideas routed to the roadmap |
+| `gw-slice` | — (new) | recall sequencing constraints, then the epic registry: tracer-bullet slices ordered with blockers and execution modes, the human ruling on granularity; the *reasoning* captured, never the slice list |
 | `gw-new` | `10x-new` | `create_change`, goal-id recording, seed `recall_context` |
 | `gw-research` | `10x-research` | recall-first research, contradiction surfacing, feedback |
 | `gw-wireframe` | — (new) | recall UX constraints + `domain_model` before designing; screen inventory then one screen per turn with the user; design-system gaps surfaced as decisions and captured |
@@ -312,6 +316,7 @@ you do not control, so the store has to be pinned rather than guessed.
 |---|---|---|
 | Multi-phase, needs judgment or manual gates | `/gw-implement` (interactive) | human checkpoints |
 | A UI surface that has to be seen before it is built | `/gw-prototype` (interactive, **never headless**) | the human answers in pmview or the terminal |
+| Too big for one change | `/gw-slice` first (interactive) — then each slice routes on its own row | the human rules on the breakdown |
 | A defect or a behaviour-preserving refactor | `/gw-fix` (TDD) | a test that fails before the fix and passes after; full suite between steps |
 | Clear, bounded, plan already exists | `/gw-goal` or `claude -p` (headless) | deterministic rules + evaluator agent; humans only at PR/merge |
 

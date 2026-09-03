@@ -176,7 +176,7 @@ verification, humans only at PR). The routing decision is only real if the
 headless preconditions can actually be met — which usually means test
 infrastructure work before the first `/gw-goal` run.
 
-0. Which skills are you willing to run unattended at all? Four are never headless by design — `/gw-domain`, `/gw-wireframe` and `/gw-prototype` are defined by a user in the loop, and `/gw-fix` needs judgment for the reproduction step unless someone else already wrote the failing test.
+0. Which skills are you willing to run unattended at all? Five are never headless by design — `/gw-domain`, `/gw-wireframe` and `/gw-prototype` are defined by a user in the loop, `/gw-slice` ends at a human ruling on the breakdown, and `/gw-fix` needs judgment for the reproduction step unless someone else already wrote the failing test.
    *Example: "Headless: /gw-goal on plan-backed changes, and /gw-fix only when QA files a reproducing test. Never headless: domain modelling, wireframing, consolidation commits." An unattended greenfield domain pass invents the domain, and an unattended fix without a reproduction fixes something adjacent and reports success.*
 
 1. What share of your typical changes is bounded and verifiable by a command — the hard precondition for headless mode?

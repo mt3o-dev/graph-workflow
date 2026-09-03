@@ -1,6 +1,6 @@
 ---
 name: gw-foundation
-description: Distill the project's foundation documents (PRD, roadmap, tech-stack, architecture decisions) into the memory graph as lifetime-tier candidates, so every future change's recall surfaces them without anyone re-reading the docs. Use after foundation docs are written or amended, and once at adoption time on a project with existing foundation docs. Trigger phrases: "load the foundation into memory", "foundation to graph", "/gw-foundation".
+description: Distill the project's foundation documents (PRD, roadmap, tech-stack, architecture decisions) into the memory graph as lifetime-tier candidates, so every future change's recall surfaces them without anyone re-reading the docs. Also WRITES the PRD when the project has none and the conversation already contains one — synthesising it, never interviewing. Use after foundation docs are written or amended, once at adoption time on a project with existing foundation docs, and whenever a conversation has converged on what to build but nothing is written down. Trigger phrases: "write the PRD", "turn this into a spec", "load the foundation into memory", "foundation to graph", "/gw-foundation".
 ---
 
 # gw-foundation
@@ -15,7 +15,55 @@ The target state: PRD constraints, domain concepts, and tech-stack decisions sit
 in the **lifetime/long-term root set** — always live, surviving every change
 sweep, ranked into every relevant recall.
 
+**Foundation lives twice, deliberately** — and this skill owns both halves. Step 0
+writes the document when the project has none and the conversation already
+contains one; steps 1–6 distil whatever document exists. A project that has
+converged on what to build, in a conversation, with nothing on disk, is the
+commonest way a foundation never gets loaded at all.
+
 ## Steps
+
+0. **Write the document first — only when there is none.** If
+   `context/foundation/prd.md` exists, skip straight to step 1; amending an
+   existing PRD is the human's call, not this skill's.
+
+   **Do not interview.** Synthesise from the conversation and the codebase, using
+   what you already know. Interrogation is `/gw-grill`'s job, and keeping that
+   seam is what keeps both skills sharp — if the conversation is too thin to
+   synthesise from, say so and route there rather than starting to ask questions
+   here.
+
+   a. **Sketch the test seams before writing.** Recall first, because a settled
+      constraint about testing outranks a fresh opinion:
+
+      ```
+      recall_context(query="test seams boundaries integration coverage",
+                     goal_ref=<foundation goal, from step 1 if the scope exists>)
+      ```
+
+      Prefer existing seams to new ones, and use the **highest** seam available;
+      propose a new one only at the highest point you can. **Check the seams with
+      the user before writing** — this is the one place step 0 blocks, because a
+      PRD built on the wrong seams produces a plan that tests the wrong things.
+
+   b. **Write `context/foundation/prd.md`:** problem statement and solution, both
+      from the user's perspective; a long numbered list of user stories (`As an
+      <actor>, I want <feature>, so that <benefit>`); implementation decisions
+      (modules, interfaces, schema and API contracts); testing decisions (what
+      makes a good test here, which modules, prior art in this codebase); out of
+      scope; further notes.
+
+   c. **No file paths and no code snippets** — in the document or in anything
+      captured from it. They go stale faster than the prose around them, and this
+      workflow's capture rule is already *one statement per artifact, readable
+      cold*. The single exception both this and `/gw-prototype` allow: a prototype
+      produced a snippet that encodes a decision more precisely than prose can — a
+      state machine, a schema, a type shape. Inline the decision-rich part, say it
+      came from a prototype, and trim the rest.
+
+   Then continue into step 1. The document you just wrote is the input to the
+   distillation, which is the whole point: the seam decisions and the
+   non-negotiables become recallable in the same session that settled them.
 
 1. **Open the foundation scope** (once per project):
 
