@@ -227,6 +227,14 @@ Budget one carbonize turn per accept — `live-complete.mjs` refuses with
 behavioural, state-machine and single-exact-value changes away from live
 entirely; edit the file.
 
+## Before you ask
+
+**Explore instead of asking**, and **recommend with every question**. Both are in
+`skills/gw-desk/REFERENCE.md`; they are repeated here because this is where they
+get skipped — a prototype session generates questions faster than any other, and
+an ask that could have been a `grep` is the one that costs you the human's
+patience.
+
 ## Rules
 
 - **Never invent a token.** Cite a name the project already has, or surface the

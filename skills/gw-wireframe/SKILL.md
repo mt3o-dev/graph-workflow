@@ -142,8 +142,19 @@ operation, not the HTTP call.
 **e. Constraints honored** — cite the recalled `[node:<id>]` for each UX/a11y/i18n rule the
 screen obeys, and say plainly where you could not obey one.
 
-**f. Open questions** — at most three, the ones that actually block. Ask them; do not
-answer them yourself.
+**f. Open questions** — at most three, the ones that actually block.
+
+**Recommend, but do not decide.** Every question carries your recommended answer
+and the cost of the alternative. "Ask, don't answer" is right about not *ruling*
+and wrong about not *proposing*: a bare question makes the user do the work
+twice, and they are far better at correcting a wrong proposal than at generating
+one from nothing. The desk's ask format already carries `options` with costs —
+say which one you would pick.
+
+**Explore instead of asking.** If the codebase, the deck or the graph can answer
+it, go and find out. The user's attention is the scarcest thing in the session,
+and spending it on something you could have looked up is the fastest way to lose
+it.
 
 Then **stop and wait.** Iterate the same screen until the user is satisfied before moving
 on.

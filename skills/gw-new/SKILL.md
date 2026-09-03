@@ -28,10 +28,20 @@ event.
 
    Do not slice it inline. The breakdown has a human gate and its own capture, and
    a slice boundary chosen in passing is the one that costs a re-plan three slices
-   later. If `/gw-slice` is not installed, do it by hand to the same shape — epic
-   id, outcome sentence, ordered slice list, each a future change-id delivering
-   something **end-to-end verifiable** rather than one layer of many — and say
-   that you did.
+   later.
+
+   If `/gw-slice` is not installed, do it by hand to the same shape — epic id,
+   outcome sentence, ordered slice list — and say that you did. A slice is a
+   **tracer bullet**:
+
+   - it cuts a narrow but **complete** path through every layer (schema, API, UI,
+     tests);
+   - it is **demoable or verifiable on its own** when it lands;
+   - prefer **many thin slices to few thick ones**.
+
+   The anti-pattern is the horizontal slice — "do all the schema", then "do all
+   the API". It looks efficient and produces nothing testable until the last one
+   lands, which is exactly when the feedback stops being useful.
 
    Slices are grouped by the `epic:` line below, not by folders.
 

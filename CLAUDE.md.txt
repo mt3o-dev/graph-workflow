@@ -53,6 +53,15 @@ step because the MCP tools are absent.
   steps before capturing anything.
 - **Capture residue, not narration** — decisions, constraints, issues, concepts,
   invariants; one statement per artifact, readable cold, with edges.
+- **The three-part test decides *whether*.** Capture only when all three hold:
+  (1) **hard to reverse** — changing your mind later has a real cost;
+  (2) **surprising without context** — a future reader will ask "why did they do
+  it this way?"; (3) **the result of a real trade-off** — there were genuine
+  alternatives and one was picked for stated reasons. Any one missing and it is
+  conversation, not knowledge. A graph full of restated obviousness ranks *worse*
+  than a small one, because every recall then serves the obvious thing alongside
+  the load-bearing one, and retrieval is deterministic — nothing downstream
+  rescues a bad capture.
 - **Speak the graph's vocabulary.** List the controlled facet vocabulary before
   the session's first capture (MCP vocabulary read if available, else GUI or the
   committed dump); query recalls with the graph's own terms, not paraphrases.
