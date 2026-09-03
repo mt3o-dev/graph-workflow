@@ -5,6 +5,28 @@ reading the 19 gw skills and the installed Matt Pocock skills at
 `~/.claude/skills/`, and every graph binding against the live
 `agentic-memory` CLI surface.*
 
+
+> ## Status: shipped
+>
+> All five plus the launcher are implemented on branch `design-lane`
+> (`79c30d5`, `5e08fc6`, `e561fb8`, `cc9dbac`). **19 → 21 routable skills**, as
+> designed: `gw-slice`, `gw-grill` and `gw-teach` earned rows; `gw-spec` is a
+> step in `/gw-foundation`, and `gw-wayfind` is `pmview --advise`.
+>
+> Three places the build corrected this document:
+>
+> - **`gw-teach` is a routing row after all**, but `gw-wayfind` is not a script —
+>   §7 said `bin/` + `REFERENCE.md`, and §8 had to overturn it once the shared
+>   ranking forced the question. A script would have reimplemented lifecycle
+>   parsing, desk folding and store reading, then drifted from all three.
+> - **Staleness could not be `change.md`'s mtime.** Dogfooding caught the report
+>   calling this branch ten days cold while it was being edited: a change is
+>   worked by editing *code*. The signal is now the newest of the change folder
+>   and its desks, and a change whose id matches the git branch is never stalled.
+> - **`gw-new`'s by-hand fallback needed the tracer-bullet rules inline.** §9 put
+>   them in the size check; the first pass left only "end-to-end verifiable
+>   rather than one layer of many", which is the idea without enough to act on.
+
 ---
 
 ## 0. The one-line diagnosis
