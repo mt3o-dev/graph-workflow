@@ -58,13 +58,17 @@ recall → attempt → verify → (fail: diagnose, retry ≤ N) → capture+jour
 
 ## Which skills may run headless
 
-`/gw-implement`'s per-phase work compresses into this loop cleanly. Four of the newer
+`/gw-implement`'s per-phase work compresses into this loop cleanly. Six of the newer
 skills do not, and one does conditionally:
 
 - **`/gw-fix`** — headless **only when the reproduction is already a failing test**
   someone else wrote. Reproduction is judgment: an unattended agent that cannot
   reproduce will fix something adjacent and report success. With a red test in hand
   the loop is fully command-verifiable.
+- **`/gw-grill`** and **`/gw-teach`** — never, and not for the usual reason:
+  they *are* the conversation. A headless grill argues with nobody and captures
+  its own opinion; a headless teach has no learner. There is no degraded mode
+  here, only an empty one.
 - **`/gw-domain`**, **`/gw-wireframe`**, **`/gw-prototype`** and **`/gw-slice`** — never.
   The first three are defined by a user in the loop (elicitation, per-screen review);
   running them unattended produces exactly the invented domain and one-shot UI they

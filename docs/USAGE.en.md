@@ -34,7 +34,9 @@ flowchart TD
     WIRE --> PROTO["/gw-prototype<br/>clickable HTML in the project's real tokens,<br/>served by pmview; asks via the desk"]
   PROTO --> PLAN
   WIRE -- "structure is enough" --> PLAN
-    RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
+    RES --> GRILL["/gw-grill<br/>optional: argue it out,<br/>one question at a time"]
+  GRILL --> PLAN
+  RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
     PLAN --> PLANREV["/gw-plan-review<br/>fresh session, independent recall,<br/>plan vs settled constraints"]
     PLANREV -- "request changes" --> PLAN
     PLANREV -- "approve" --> MODE{Bounded and<br/>verifiable by command?}
@@ -571,6 +573,72 @@ roots the sweep can never retire, and because `/gw-new` wires each slice's
 What survives the epic is the reasoning: *"import first, because classification's
 acceptance criteria assume a settled Transaction record."* The slice list itself
 is sequencing, like `plan.md`, and `/gw-archive` marks it off as it goes.
+
+## 4g. Arguing it out first — `/gw-grill`
+
+This workflow is full of gates and short on conversation. `/gw-plan-review` runs
+as a fresh session precisely so it *cannot* be argued with; `/gw-review` issues a
+verdict. Both are right to be gates — and neither is the place to discover that
+an assumption was wrong.
+
+`/gw-grill` is the conversation before the plan, where a wrong assumption is
+still cheap:
+
+```
+ground                   →  recall + domain_model; DISPUTED nodes opened first
+walk                     →  one question per turn, each with a recommended answer
+challenge                →  the model · impact_of on every claim · scenarios · the code
+capture                  →  inline as decisions crystallise; events batched at the end
+contradict               →  capture + CONTRADICTS, then STOP — a human rules
+```
+
+**The mode a glossary cannot do** is the second challenge: a file can tell you a
+term is defined; `impact_of` can tell you that contradicting it breaks four other
+things settled across three previous changes. That is what makes the argument
+land.
+
+**It never issues a verdict.** A grilled plan still faces `/gw-plan-review`, and
+that gate stays a fresh session with a clean context — its independence is the
+whole reason it catches things.
+
+The filter matters here more than anywhere: this skill generates more capture
+candidates per hour than any other, so the three-part test — hard to reverse,
+surprising without context, the result of a real trade-off — is what stops a
+good session from filling the graph with restated obviousness.
+
+## 4h. Learning what the project knows — `/gw-teach`
+
+Every other skill spends the graph on the codebase. This one spends it on a
+person, and it is the only one that pays into ranking without doing any
+implementation work.
+
+It works because three things a teaching tool normally builds from scratch are
+already here and already live: the glossary is `domain_model()`, the learning
+records are the journal, and the mission is the foundation goal. And the thing a
+flat glossary structurally cannot do — **`DEPENDS_ON` is a prerequisite chain**,
+so the teaching order is read rather than guessed.
+
+```
+mission                  →  the foundation goal + the open change
+locate                   →  recall the topic — ABSENT? refuse and route, never invent
+order                    →  walk DEPENDS_ON: prerequisites first
+frontier                 →  the journal says what they have used; teach one hop past it
+teach                    →  every claim cites [node:<id>] or a URL
+render                   →  .gw-scratch/teach/<topic>.html — gitignored on purpose
+journal                  →  USED on everything the lesson drew on
+```
+
+**Refusing is the useful part.** If the topic is not in the graph, teaching it
+means teaching from parametric knowledge — plausible, uncited, and quite possibly
+not how *this* project does it, which is the one thing the learner is there for.
+
+**The explainer is gitignored deliberately.** Committed, it becomes a fourth home
+for knowledge alongside the docs, the graph and the code, and it drifts from the
+nodes it renders with nothing able to detect the drift.
+
+**A quiz emits `NOTED`, never `CONFIRMED`.** `CONFIRMED` means a claim was
+exercised and held — a test ran, a path was traced. A human remembering a fact is
+not that, and inflating it corrupts trust-folding everywhere.
 
 ## 5. How knowledge lives and dies
 

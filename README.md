@@ -19,6 +19,8 @@ worktree    → checkout = change activation = liveness root ON
             → the agreed screens become clickable HTML wearing the project's own
               tokens, served by pmview; questions and pinned instructions run
               through the desk (an append-only log per surface)
+/gw-grill   → optional, before the plan: argue it out against settled knowledge,
+              one question at a time, and capture what the argument settled
 /gw-plan    → recall + trace-impact of anything the plan supersedes; capture decisions
 /gw-plan-review
             → independent plan gate: fresh session recalls the goal's settled
@@ -34,7 +36,8 @@ Around that spine sit the skills that are not change-shaped: `/gw-domain` establ
 project's ubiquitous language as graph entities, `/gw-wireframe` designs UI surfaces with
 the user before a plan exists and `/gw-prototype` makes those screens clickable before
 any of them is built, `/gw-ideate` mines the graph for what to build next, `/gw-slice` turns something
-epic-sized into an ordered list of slices that are each verifiable on their own, and
+epic-sized into an ordered list of slices that are each verifiable on their own,
+`/gw-teach` spends the graph on a person instead of a codebase, and
 `/gw-consolidate` distils recurring knowledge before the sweep sends it dormant.
 
 `/gw-track` runs *along* the spine rather than beside it: where a project uses an issue
@@ -103,11 +106,13 @@ carries knowledge, the tracker carries work state for people outside the session
 | `gw-wireframe` | — (new) | recall UX constraints + `domain_model` before designing; screen inventory then one screen per turn with the user; design-system gaps surfaced as decisions and captured |
 | `gw-prototype` | — (new) | recall + the agreed deck → clickable prototypes in the project's real tokens; refuses any screen with an unruled component gap; asks and pinned instructions via the desk; rulings captured with `per desk` provenance |
 | `gw-desk` (no `SKILL.md`) | — (new) | none — plumbing every phase calls. One append-only `asks.jsonl` per surface is the whole agent↔human channel; an answer is a *request*, never a capture |
+| `gw-grill` | — (new) | recall + `domain_model` + `impact_of` per claim; disputed nodes opened first; rulings captured inline with `CONTRADICTS` where they overturn something, and left for a human to rule |
 | `gw-plan` | `10x-plan` | recall, `impact_of` pre-checks, plan-boundary capture |
 | `gw-plan-review` | `10x-plan-review` | fresh-session independent recall, plan vs settled constraints, dispute-side check |
 | `gw-implement` | `10x-implement` | per-phase recall, phase-boundary capture, batched feedback, `link` CONTRADICTS |
 | `gw-fix` | `10x-implement` (TDD variant) | recall-first reproduction, `impact_of` when the recorded rule is the bug, red→green→refactor, lesson captured as the class of mistake |
 | `gw-goal` | `/goal` / `claude -p` | same discipline compressed for headless runs; rules-path validity, no human gates until PR |
+| `gw-teach` | — (new) | recall + `domain_model`; prerequisites ordered by `DEPENDS_ON`, the frontier computed from the journal's `USED`/`CONFIRMED`; teaching journals `USED`, quizzes journal `NOTED` — never `CONFIRMED` |
 | `gw-review` | `10x-impl-review` | staleness queue, disputed-node checklist, episodic→semantic consolidation, promotion candidates (human gate) |
 | `gw-archive` | `10x-archive` | completeness check, deactivate + sweep, immutable folder move |
 | `gw-resolve` | — (new) | joint human+agent resolution session over the disputed-node queue: evidence + recommendation per item, human rules, applied via the guided GUI API; promotion pass + deferred sweeps |
@@ -330,6 +335,7 @@ you do not control, so the store has to be pinned rather than guessed.
 | Multi-phase, needs judgment or manual gates | `/gw-implement` (interactive) | human checkpoints |
 | A UI surface that has to be seen before it is built | `/gw-prototype` (interactive, **never headless**) | the human answers in pmview or the terminal |
 | Too big for one change | `/gw-slice` first (interactive) — then each slice routes on its own row | the human rules on the breakdown |
+| A plan worth arguing with first | `/gw-grill` (interactive, **never headless**) | the argument itself; the plan gate still follows |
 | A defect or a behaviour-preserving refactor | `/gw-fix` (TDD) | a test that fails before the fix and passes after; full suite between steps |
 | Clear, bounded, plan already exists | `/gw-goal` or `claude -p` (headless) | deterministic rules + evaluator agent; humans only at PR/merge |
 

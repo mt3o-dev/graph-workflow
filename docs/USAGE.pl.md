@@ -36,7 +36,9 @@ flowchart TD
     WIRE --> PROTO["/gw-prototype<br/>klikalny HTML w prawdziwych tokenach projektu,<br/>serwowany przez pmview; pytania przez desk"]
   PROTO --> PLAN
   WIRE -- "sama struktura wystarczy" --> PLAN
-    RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>plan.md, capture decyzji"]
+    RES --> GRILL["/gw-grill<br/>opcjonalnie: spór,<br/>jedno pytanie na turę"]
+  GRILL --> PLAN
+  RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>plan.md, capture decyzji"]
     PLAN --> PLANREV["/gw-plan-review<br/>świeża sesja, niezależny recall,<br/>plan vs ustalone constrainty"]
     PLANREV -- "request changes" --> PLAN
     PLANREV -- "approve" --> MODE{Ograniczone i weryfikowalne<br/>komendą?}
@@ -583,6 +585,71 @@ które jeszcze nie istnieje.
 To, co przeżywa epik, to uzasadnienie: *„najpierw import, bo kryteria akceptacji
 klasyfikacji zakładają ustalony rekord Transaction"*. Sama lista slice'ów to
 sekwencjonowanie, jak `plan.md`, a `/gw-archive` odhacza ją na bieżąco.
+
+## 4g. Najpierw się pospierać — `/gw-grill`
+
+Ten workflow jest pełen bramek i ubogi w rozmowę. `/gw-plan-review` działa jako
+świeża sesja właśnie po to, żeby *nie dało się* z nią dyskutować; `/gw-review`
+wydaje werdykt. Obie słusznie są bramkami — i żadna nie jest miejscem na odkrycie,
+że założenie było błędne.
+
+`/gw-grill` to rozmowa przed planem, gdy błędne założenie jest jeszcze tanie:
+
+```
+grunt                    →  recall + domain_model; węzły DISPUTED otwierane pierwsze
+przejście                →  jedno pytanie na turę, każde z rekomendowaną odpowiedzią
+podważanie               →  model · impact_of na każdą tezę · scenariusze · kod
+capture                  →  na bieżąco, gdy decyzja krystalizuje; eventy w jednej paczce
+sprzeczność              →  capture + CONTRADICTS, potem STOP — rozstrzyga człowiek
+```
+
+**Trybu, którego glosariusz nie potrafi**, dostarcza drugie podważenie: plik
+powie ci, że termin jest zdefiniowany; `impact_of` powie, że zaprzeczenie mu
+psuje cztery inne rzeczy ustalone w trzech poprzednich zmianach. To dopiero
+sprawia, że argument trafia.
+
+**Nigdy nie wydaje werdyktu.** Przegrillowany plan i tak staje przed
+`/gw-plan-review`, a ta bramka pozostaje świeżą sesją z czystym kontekstem — jej
+niezależność jest całym powodem, dla którego cokolwiek wyłapuje.
+
+Filtr ma tu większe znaczenie niż gdziekolwiek: ten skill generuje więcej
+kandydatów do capture na godzinę niż jakikolwiek inny, więc test trzyczęściowy —
+trudne do odwrócenia, zaskakujące bez kontekstu, wynik realnego kompromisu —
+powstrzymuje dobrą sesję przed zapchaniem grafu powtórzeniami oczywistości.
+
+## 4h. Nauka tego, co projekt wie — `/gw-teach`
+
+Każdy inny skill wydaje graf na bazę kodu. Ten wydaje go na człowieka i jako
+jedyny płaci do rankingu, nie wykonując żadnej pracy implementacyjnej.
+
+Działa, bo trzy rzeczy, które narzędzie do nauki normalnie buduje od zera, już tu
+są i są żywe: glosariuszem jest `domain_model()`, zapisem nauki jest journal, a
+misją — cel fundamentu. I to, czego płaski glosariusz strukturalnie nie potrafi:
+**`DEPENDS_ON` to łańcuch wymagań wstępnych**, więc kolejność nauczania się
+odczytuje, a nie zgaduje.
+
+```
+misja                    →  cel fundamentu + otwarta zmiana
+lokalizacja              →  recall tematu — NIE MA GO? odmów i przekieruj, nie wymyślaj
+kolejność                →  przejdź DEPENDS_ON: najpierw wymagania wstępne
+granica                  →  journal mówi, czego używali; ucz jeden krok dalej
+nauczanie                →  każda teza cytuje [node:<id>] albo URL
+render                   →  .gw-scratch/teach/<temat>.html — celowo w .gitignore
+journal                  →  USED na wszystkim, z czego lekcja korzystała
+```
+
+**Odmowa jest tu najbardziej użyteczna.** Jeśli tematu nie ma w grafie, uczenie
+go oznacza uczenie z wiedzy parametrycznej — prawdopodobnej, niecytowanej i całkiem
+możliwe, że niezgodnej z tym, jak robi to *ten* projekt, a właśnie po to uczący
+się przyszedł.
+
+**Explainer jest celowo w .gitignore.** Zacommitowany staje się czwartym domem
+wiedzy — obok dokumentów, grafu i kodu — i rozjeżdża się z węzłami, które
+renderuje, a nic tego rozjazdu nie wykryje.
+
+**Quiz emituje `NOTED`, nigdy `CONFIRMED`.** `CONFIRMED` znaczy, że tezę
+sprawdzono i się obroniła — przeszedł test, prześledzono ścieżkę do gruntu.
+Człowiek pamiętający fakt to nie to, a zawyżanie tego psuje fold trustu wszędzie.
 
 ## 5. Jak wiedza żyje i umiera
 

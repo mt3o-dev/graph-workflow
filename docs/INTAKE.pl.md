@@ -180,7 +180,7 @@ realna tylko wtedy, gdy warunki wstępne headless da się faktycznie spełnić �
 zwykle oznacza pracę nad infrastrukturą testową przed pierwszym przebiegiem
 `/gw-goal`.
 
-0. Które skille w ogóle jesteś gotów uruchamiać bez nadzoru? Pięć z założenia nigdy nie jest headless — `/gw-domain`, `/gw-wireframe` i `/gw-prototype` są zdefiniowane przez użytkownika w pętli, `/gw-slice` kończy się rozstrzygnięciem człowieka o podziale, a `/gw-fix` wymaga osądu na kroku reprodukcji, chyba że ktoś już napisał test, który failuje.
+0. Które skille w ogóle jesteś gotów uruchamiać bez nadzoru? Siedem z założenia nigdy nie jest headless — `/gw-domain`, `/gw-wireframe` i `/gw-prototype` są zdefiniowane przez użytkownika w pętli, `/gw-slice` kończy się rozstrzygnięciem człowieka o podziale, `/gw-grill` i `/gw-teach` *są* rozmową, a `/gw-fix` wymaga osądu na kroku reprodukcji, chyba że ktoś już napisał test, który failuje.
    *Przykład: „Headless: /gw-goal na zmianach z planem oraz /gw-fix tylko wtedy, gdy QA dostarczy test reprodukujący. Nigdy headless: modelowanie domeny, wireframing, zatwierdzanie konsolidacji." Bezobsługowy przebieg greenfield wymyśli domenę, a bezobsługowa poprawka bez reprodukcji naprawi coś obok i zgłosi sukces.*
 
 1. Jaki odsetek twoich typowych zmian jest ograniczony i weryfikowalny komendą — twardy warunek wstępny trybu headless?
