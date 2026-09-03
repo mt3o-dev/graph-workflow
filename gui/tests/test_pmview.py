@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import os
 import sqlite3
 import subprocess
+import time
 import sys
 import tempfile
 import threading
@@ -20,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pmview import advise as advise_mod  # noqa: E402
 from pmview import design as design_mod  # noqa: E402
 from pmview import graph as graph_mod  # noqa: E402
 from pmview import lifecycle  # noqa: E402
@@ -553,6 +556,135 @@ class PrototypeServingTests(unittest.TestCase):
                               memory_url="http://127.0.0.1:9")
         self.addCleanup(server.server_close)
         self.assertFalse(server.RequestHandlerClass.design_enabled)
+
+
+class AdviseTests(unittest.TestCase):
+    """One ranking, two consumers. If the terminal and the board can disagree
+    about what to do next, the orientation tool has failed."""
+
+    def board_for(self, root: Path):
+        store = Project("t", root).store
+        return Board(lifecycle.scan(root / "context"),
+                     graph_mod.load(store) if store else graph_mod.Graph())
+
+    def test_it_produces_one_next_action_not_a_dashboard(self) -> None:
+        advice = advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow")
+        self.assertIsNotNone(advice["next"])
+        self.assertIn(advice["next"]["band"], advise_mod.BANDS)
+        self.assertTrue(advice["next"]["command"].startswith("/gw-"))
+        # the headline must be the top of the ranking, not an arbitrary pick
+        self.assertEqual(advice["next"], advice["actions"][0])
+
+    def test_bands_rank_blocked_before_ready(self) -> None:
+        order = [advise_mod.BANDS.index(a["band"]) for a in
+                 advise_mod.advise(REPO, self.board_for(REPO))["actions"]]
+        self.assertEqual(order, sorted(order), "actions must come out ranked")
+
+    def test_a_checked_out_change_is_never_stalled(self) -> None:
+        """Staleness measured off change.md alone calls a change that has been
+        worked all day ten days cold. One change per worktree is the rule, so a
+        branch named after a change is that change being worked on now."""
+        old = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, old, True)
+        stale_md = old / "change.md"
+        stale_md.write_text("# c", encoding="utf-8")
+        ancient = time.time() - (advise_mod.STALL_DAYS + 20) * 86400
+        os.utime(stale_md, (ancient, ancient))
+
+        change = {"id": "design-lane", "stage": "in-progress", "path": str(old),
+                  "has_change_md": True, "memory_goal": "x", "design_surfaces": []}
+        off = advise_mod.actions_for_change(change, [], old, branch="main")
+        on = advise_mod.actions_for_change(change, [], old, branch="design-lane")
+        self.assertEqual([a["band"] for a in off], [advise_mod.STALLED])
+        self.assertEqual([a["band"] for a in on], [advise_mod.READY])
+
+    def test_desk_activity_counts_as_a_sign_of_life(self) -> None:
+        """A change worked entirely through its desk still has an old change.md."""
+        old = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, old, True)
+        stale_md = old / "change.md"
+        stale_md.write_text("# c", encoding="utf-8")
+        ancient = time.time() - (advise_mod.STALL_DAYS + 20) * 86400
+        os.utime(stale_md, (ancient, ancient))
+
+        change = {"id": "c1", "stage": "in-progress", "path": str(old),
+                  "has_change_md": True, "memory_goal": "x", "design_surfaces": ["s1"]}
+        fresh = {"surface": "s1", "open_asks": 0, "unruled_gaps": 0,
+                 "agent_listening": False, "warnings": [],
+                 "last_activity": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        bands = [a["band"] for a in advise_mod.actions_for_change(change, [fresh], old)]
+        self.assertEqual(bands, [advise_mod.READY], "desk activity is activity")
+
+    def test_an_open_ask_with_no_listener_blocks(self) -> None:
+        change = {"id": "c1", "stage": "in-progress", "path": str(REPO),
+                  "has_change_md": True, "memory_goal": "x",
+                  "design_surfaces": ["s1"]}
+        surface = {"surface": "s1", "open_asks": 2, "unruled_gaps": 0,
+                   "agent_listening": False, "last_activity": "", "warnings": []}
+        blocked = [a for a in advise_mod.actions_for_change(change, [surface], REPO)
+                   if a["band"] == advise_mod.BLOCKED]
+        self.assertTrue(blocked)
+        self.assertIn("--resume s1", blocked[0]["command"])
+        # …and not when one IS listening: it is being worked, leave it alone
+        surface["agent_listening"] = True
+        self.assertFalse([a for a in advise_mod.actions_for_change(change, [surface], REPO)
+                          if a["band"] == advise_mod.BLOCKED])
+
+    def test_the_report_leads_with_the_sentence(self) -> None:
+        text = advise_mod.render_text(
+            advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow"))
+        arrow = [l for l in text.split("\n") if l.strip().startswith("→")]
+        self.assertEqual(len(arrow), 1, "exactly one headline, or it is a dashboard")
+
+    def test_advise_writes_nothing(self) -> None:
+        store = store_path(REPO)
+        before = store.read_bytes()
+        advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow")
+        self.assertEqual(store.read_bytes(), before)
+        source = (REPO / "gui" / "pmview" / "advise.py").read_text()
+        for forbidden in ("open(", "write_text", "mkdir", "Popen", "os.system"):
+            self.assertNotIn(forbidden, source)
+
+
+class RequestQueueTests(unittest.TestCase):
+    """The desk, one scope up. pmview appends a line; nothing is started."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        (self.root / "context").mkdir()
+        (self.root / "skills" / "gw-plan").mkdir(parents=True)
+        (self.root / "skills" / "gw-plan" / "SKILL.md").write_text("x", encoding="utf-8")
+
+    def test_only_an_installed_skill_can_be_requested(self) -> None:
+        known = design_mod.installed_skills(self.root)
+        self.assertIn("/gw-plan", known)
+        design_mod.construct_request("/gw-plan", known, {})
+        for bogus in ("/gw-nope", "/gw-plan; rm -rf /", "bash", "", "/gw-plan --x"):
+            with self.subTest(skill=bogus), self.assertRaises(ValueError):
+                design_mod.construct_request(bogus, known, {})
+
+    def test_the_server_stamps_the_line_and_the_client_cannot(self) -> None:
+        known = design_mod.installed_skills(self.root)
+        line = design_mod.construct_request("/gw-plan", known, {
+            "change": "c1", "note": "n" * 5000,
+            "by": "agent", "src": "cli", "id": "forged", "kind": "ack"})
+        self.assertEqual((line["kind"], line["by"], line["src"]),
+                         ("request", "human", "pmview"))
+        self.assertNotEqual(line["id"], "forged")
+        self.assertEqual(len(line["note"]), design_mod.MAX_NOTE)
+
+    def test_a_request_is_open_until_acked(self) -> None:
+        path = design_mod.requests_path(self.root)
+        known = design_mod.installed_skills(self.root)
+        line = design_mod.construct_request("/gw-plan", known, {"change": "c1"})
+        design_mod.append(path, [line])
+        self.assertEqual(design_mod.read_requests(self.root)["open"], 1)
+        design_mod.append(path, [{"kind": "ack", "id": "k1", "by": "agent",
+                                  "session": "s", "refs": [line["id"]]}])
+        folded = design_mod.read_requests(self.root)
+        self.assertEqual(folded["open"], 0)
+        self.assertEqual(folded["requests"][0]["state"], "landed")
 
 
 class DesignDistillationTests(unittest.TestCase):

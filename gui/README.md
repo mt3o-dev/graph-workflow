@@ -65,6 +65,16 @@ extend this:
 > that bypassed the memory server would break exactly the invariant the workflow
 > is built on.
 
+**pmview never runs anything.** The board offers the two or three skills that
+make sense for a card's state, and a button either copies the command or appends
+a request to `context/requests.jsonl`. A queue is not a launcher: nothing starts
+an agent, and a request waits until one drains. Spawning `claude -p` here would
+turn a read-mostly board into an arbitrary-code-execution surface on a port that
+any page the operator merely visited can already POST to — the `Content-Type`
+guard is enough to stop a cross-origin simple request and nowhere near enough to
+put `subprocess` behind. `skill` is validated against the *installed* skill list,
+so pmview cannot even name a command that does not exist.
+
 **One carve-out, added with the design lane.** `POST /api/design/answers` appends
 to `context/design/<surface>/asks.jsonl` — a file, on disk, in git. It is not a
 second write path to the store: `design.py` imports neither `memory`, `graph` nor
@@ -93,6 +103,8 @@ never silently does something weaker.
 | GET | `/api/memory/status` | is the write path live |
 | POST | `/api/nodes/{id}/body`, `/tier`, `/api/review/{id}/resolve`, `/api/edges`, `/api/nodes` | proxied writes |
 
+| GET | `/api/advise` | what needs a human and what is safe to pick up — the same ranking `pmview --advise` prints |
+| POST | `/api/requests` | queue a skill invocation for whichever agent drains next |
 | GET | `/api/design` | every surface under `context/design/`, folded, plus the design system |
 | GET | `/api/design/deck` | one surface's `deck.json`, parsed forgivingly |
 | GET | `/api/design/asks` | the desk, folded into threads — state is derived, never stored |

@@ -271,6 +271,19 @@ repo ships [`gui/`](gui/README.md): `PYTHONPATH=gui python3 -m pmview <project>`
 forwards every write to the review GUI above, so the safety invariant stays
 enforced in one place.
 
+For orientation without a browser — *where am I, what needs me, what is safe to
+pick up* — the same ranking prints to the terminal and exits:
+
+```sh
+pmview.pyz --advise           # or: PYTHONPATH=gui python3 -m pmview --advise
+```
+
+One module, two consumers: the board's contextual action buttons and this report
+come from the same code, so the terminal and the browser cannot disagree about
+what to do next. See [`skills/gw-wayfind/REFERENCE.md`](skills/gw-wayfind/REFERENCE.md).
+**The board never runs a skill** — a button copies the command, or queues a
+request for whichever agent drains next.
+
 ### 2. Install the skills
 ### Optional: the MCP server
 

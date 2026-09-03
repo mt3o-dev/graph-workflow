@@ -18,6 +18,7 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from . import advise as advise_mod
 from . import design as design_mod
 from . import graph as graph_mod
 from . import lifecycle
@@ -327,7 +328,8 @@ class Handler(BaseHTTPRequestHandler):
         if view is None:
             return self._error("no such project", 404)
 
-        if self.design_enabled and path.startswith("/api/design"):
+        if self.design_enabled and (path.startswith("/api/design")
+                                    or path == "/api/advise"):
             # Outside `_proxy` deliberately: `_proxy` 503s when :8765 is down,
             # and answering a design question has to work exactly then. It also
             # invalidates every project's board on every success, which a poll
@@ -365,6 +367,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.design_enabled and path == "/api/design/answers":
             return self._design_answers()
+        if self.design_enabled and path == "/api/requests":
+            return self._request()
 
         payload = self._payload()
 
@@ -392,6 +396,15 @@ class Handler(BaseHTTPRequestHandler):
     def _design_get(self, path: str, query: dict, view: ProjectView) -> None:
         root = view.project.root
         surface = (query.get("surface") or [""])[0]
+
+        if path == "/api/advise":
+            # The same ranking `pmview --advise` prints. One module, two
+            # consumers — building them apart is how the terminal and the board
+            # end up disagreeing about what to do next.
+            return self._send({
+                **advise_mod.advise(root, view.board(), view.project.name),
+                "requests": design_mod.read_requests(root),
+            })
 
         if path == "/api/design":
             return self._send({
@@ -601,6 +614,48 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_file(target, csp=self._csp([]))
         except OSError:
             self.send_error(404)
+
+    def _request(self) -> None:
+        """Queue a skill invocation for whichever agent drains next.
+
+        **pmview does not run it.** It appends a line to a git-tracked file. A
+        queue is not a launcher: nothing starts an agent, and a request waits
+        until one drains — seconds if an agent is listening, tomorrow morning if
+        it was filed at midnight. Spawning the agent here would turn a
+        read-mostly board into an arbitrary-code-execution surface on a port a
+        visited page can already POST to.
+        """
+        if not self._token_ok():
+            return
+        payload = self._json_body()
+        if payload is None:
+            return
+
+        view = self.views.get(str(payload.get("project") or ""))
+        if view is None:
+            view = next(iter(self.views.values()), None)
+        if view is None:
+            return self._error("no such project", 404)
+
+        root = view.project.root
+        known = design_mod.installed_skills(root)
+        if not known:
+            return self._error(
+                "cannot verify which skills are installed, so no request is "
+                "accepted — copy the command instead", 503, code="skills_unknown")
+
+        try:
+            line = design_mod.construct_request(
+                str(payload.get("skill") or ""), known, payload)
+        except ValueError as exc:
+            return self._error(str(exc), 400, code="bad_skill")
+
+        try:
+            design_mod.append(design_mod.requests_path(root), [line])
+        except (OSError, ValueError) as exc:
+            return self._error(f"could not queue the request: {exc}", 500,
+                               code="append_failed")
+        self._send({"queued": line["id"], "line": line})
 
     # --- static -------------------------------------------------------------
 

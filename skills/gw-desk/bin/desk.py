@@ -374,6 +374,40 @@ def cmd_handoff(args, root: Path, directory: Path) -> int:
     return EXIT_LINES
 
 
+def cmd_requests(args, root: Path, directory: Path) -> int:
+    """Skill invocations the human queued from the board.
+
+    The desk one scope up: per project rather than per surface. Same
+    append-only file, same derived state — a request is open until an ack
+    references it. pmview appended it; nothing started anything.
+    """
+    path = root / "context" / "requests.jsonl"
+    lines = read_lines(path)
+    session = session_id(args, root)
+    acked: set[str] = set()
+    for line in lines:
+        if line.get("kind") == "ack" and (line.get("session") or "") == session:
+            acked.update(x for x in (line.get("refs") or []) if isinstance(x, str))
+    pending = [l for l in lines
+               if l.get("kind") == "request" and l.get("id") not in acked]
+    if not pending:
+        print(json.dumps([]))
+        return EXIT_NOTHING
+    print(json.dumps(pending, indent=2))
+    return EXIT_LINES
+
+
+def cmd_ack_request(args, root: Path, directory: Path) -> int:
+    refs = [r.strip() for r in (args.refs or "").split(",") if r.strip()]
+    if not refs:
+        die("ack-request needs --refs")
+    line = stamp("ack", session_id(args, root), refs=refs,
+                 disposition=args.disposition, text=args.text)
+    append(root / "context" / "requests.jsonl", [line])
+    print(json.dumps({"acked": refs, "id": line["id"]}))
+    return EXIT_LINES
+
+
 def cmd_status(args, root: Path, directory: Path) -> int:
     lines = read_lines(directory / "asks.jsonl")
     listening, beat_blob = fresh(root, args.surface, "waiting", LISTEN_FRESH_S)
@@ -397,7 +431,8 @@ def cmd_status(args, root: Path, directory: Path) -> int:
 
 COMMANDS = {"post": cmd_post, "drain": cmd_drain, "wait": cmd_wait, "ack": cmd_ack,
             "retire": cmd_retire, "note": cmd_note, "handoff": cmd_handoff,
-            "status": cmd_status}
+            "status": cmd_status, "requests": cmd_requests,
+            "ack-request": cmd_ack_request}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -405,7 +440,9 @@ def main(argv: list[str] | None = None) -> int:
         prog="desk.py", description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=sorted(COMMANDS))
-    parser.add_argument("--surface", required=True)
+    parser.add_argument("--surface", default="",
+                        help="required for every command except `requests` and "
+                             "`ack-request`, which are project-scoped")
     parser.add_argument("--root", help="project root (default: walk up from cwd)")
     parser.add_argument("--session", help="default: $GW_SESSION, else a stable hash")
     parser.add_argument("--change")
@@ -423,6 +460,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8766)
     args = parser.parse_args(argv)
 
+    if args.command not in ("requests", "ack-request") and not args.surface:
+        parser.error(f"{args.command} needs --surface")
     root, directory = resolve(args)
     return COMMANDS[args.command](args, root, directory)
 

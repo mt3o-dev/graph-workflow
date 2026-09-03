@@ -42,6 +42,12 @@ SLUG_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 HUMAN_KINDS = frozenset({"answer", "instruction", "decline"})
 AGENT_KINDS = frozenset({"ask", "note", "ack", "retire", "handoff"})
 
+#: The request queue is the desk one scope up: per project rather than per
+#: surface. Same append-only file, same construct-don't-copy rule, same derived
+#: state — because those were right the first time.
+REQUESTS = "requests.jsonl"
+MAX_NOTE = 2000
+
 MAX_LINE = 16 * 1024
 MAX_TEXT = 4000
 MAX_REASON = 500
@@ -509,6 +515,77 @@ def design_system(root: Path) -> dict:
         "donts": donts,
         "stale_rules": 0,
     }
+
+
+# ------------------------------------------------------------- the request queue
+
+def requests_path(root: Path) -> Path:
+    return root / "context" / REQUESTS
+
+
+def read_requests(root: Path, session: str | None = None) -> dict:
+    """Fold the request log. A request is `open` until an ack references it."""
+    lines, warnings = read_lines(requests_path(root))
+    acked: set[str] = set()
+    for line in lines:
+        if line.get("kind") == "ack":
+            acked.update(x for x in (line.get("refs") or []) if isinstance(x, str))
+    items = [
+        {**line, "state": "landed" if line.get("id") in acked else "open"}
+        for line in lines if line.get("kind") == "request"
+    ]
+    return {
+        "lines": len(lines),
+        "requests": items,
+        "open": sum(1 for i in items if i["state"] == "open"),
+        "warnings": warnings,
+    }
+
+
+def construct_request(skill: str, known_skills: set[str], fields: dict) -> dict:
+    """Build one request line from an allowlist.
+
+    `skill` is validated against the **installed** skill list, so pmview cannot
+    emit a request for a skill that does not exist — and, as on the desk, it
+    cannot emit any other kind or forge `by: "agent"`, because there is no code
+    path that merges a request body into a line.
+    """
+    if skill not in known_skills:
+        raise ValueError(f"no such skill: {skill!r}")
+    line = {
+        "ts": now_iso(),
+        "kind": "request",
+        "id": new_id(),
+        "by": "human",
+        "src": "pmview",
+        "skill": skill,
+    }
+    for key, cap in (("change", 128), ("surface", 128), ("args", 256)):
+        value = fields.get(key)
+        if isinstance(value, str) and value:
+            line[key] = value[:cap]
+    note = fields.get("note")
+    if isinstance(note, str) and note.strip():
+        line["note"] = note.strip()[:MAX_NOTE]
+    return line
+
+
+def installed_skills(root: Path) -> set[str]:
+    """Every `/gw-*` a runtime could actually route, from whichever skills
+    directory this project has. An empty result means we cannot verify, and the
+    caller falls back to a conservative built-in list rather than accepting
+    anything."""
+    found: set[str] = set()
+    for base in (root / ".claude" / "skills", Path.home() / ".claude" / "skills",
+                 root / "skills"):
+        try:
+            for entry in base.iterdir():
+                if entry.is_dir() and entry.name.startswith("gw-") \
+                        and (entry / "SKILL.md").is_file():
+                    found.add("/" + entry.name)
+        except OSError:
+            continue
+    return found
 
 
 # ---------------------------------------------------------------- serving
