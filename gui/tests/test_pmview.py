@@ -7,14 +7,15 @@ the real dump format rather than a hand-made fixture.
 from __future__ import annotations
 
 import json
-import shutil
 import os
+import shutil
+import socket
 import sqlite3
 import subprocess
-import time
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -556,6 +557,159 @@ class PrototypeServingTests(unittest.TestCase):
                               memory_url="http://127.0.0.1:9")
         self.addCleanup(server.server_close)
         self.assertFalse(server.RequestHandlerClass.design_enabled)
+
+
+class HardeningTests(unittest.TestCase):
+    """Regressions for an independent pre-merge review. Each of these was a
+    confirmed crash, a bypass, or a silent misfile before it was a test."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.server = build_server([Project("graph-workflow", REPO)], "127.0.0.1", 0,
+                                  memory_url="http://127.0.0.1:9")
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.server.shutdown(); cls.server.server_close(); cls.thread.join(timeout=5)
+
+    def raw(self, request: bytes, timeout: float = 3) -> str:
+        """Speak HTTP by hand — urllib will not send a malformed header."""
+        sock = socket.create_connection(("127.0.0.1", self.port), timeout=timeout)
+        try:
+            sock.sendall(request)
+            return sock.recv(120).decode(errors="replace").split("\r\n")[0]
+        finally:
+            sock.close()
+
+    def test_a_hostile_header_never_reaches_a_traceback(self) -> None:
+        """`handle_error` is not overridden, so an uncaught exception prints into
+        the terminal the operator is watching and drops the connection."""
+        for label, request in (
+            ("non-numeric Content-Length",
+             b"POST /api/nodes HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             b"Content-Type: application/json\r\nContent-Length: abc\r\n\r\n"),
+            ("negative Content-Length",
+             b"POST /api/nodes HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             b"Content-Type: application/json\r\nContent-Length: -1\r\n\r\n"),
+            ("non-ASCII token",
+             "POST /api/design/answers HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             "Content-Type: application/json\r\nX-GW-Token: \u00e9\r\n"
+             "Content-Length: 2\r\n\r\n{}".encode("latin-1")),
+            ("non-ASCII token on the pulse GET",
+             "GET /api/design/pulse?project=graph-workflow&surface=x&visible=1 HTTP/1.1\r\n"
+             "Host: 127.0.0.1\r\nX-GW-Token: \u00e9\r\n\r\n".encode("latin-1")),
+        ):
+            with self.subTest(label=label):
+                status = self.raw(request)
+                self.assertTrue(status.startswith("HTTP/1.0 4"),
+                                f"{label} did not get a 4xx: {status!r}")
+
+    def test_a_client_that_hangs_up_does_not_print_a_traceback(self) -> None:
+        """The root of the whole class: `handle_error` lives on the SERVER, and
+        its default prints a stack trace for every closed tab and every
+        `curl | head` — into the terminal the operator is watching."""
+        import io, contextlib
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            sock = socket.create_connection(("127.0.0.1", self.port), timeout=3)
+            sock.sendall(b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+                         b"Host: 127.0.0.1\r\n\r\n")
+            sock.recv(20)          # read a sliver, then hang up mid-response
+            sock.close()
+            time.sleep(0.4)
+        self.assertNotIn("Traceback", captured.getvalue())
+        self.assertNotIn("BrokenPipe", captured.getvalue())
+
+    def test_a_write_to_an_unknown_project_is_refused(self) -> None:
+        """Falling back to the first project is fine for a read and wrong for a
+        write: with several roots mounted, a ruling misfiles permanently."""
+        for path, payload in (
+            ("/api/design/answers", {"project": "NO-SUCH", "surface": "x",
+                                     "batch": [{"kind": "instruction", "text": "t"}]}),
+            ("/api/requests", {"project": "NO-SUCH", "skill": "/gw-plan"}),
+        ):
+            with self.subTest(path=path):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.port}{path}", method="POST",
+                    data=json.dumps(payload).encode(),
+                    headers={"Content-Type": "application/json",
+                             "X-GW-Token": self.server.RequestHandlerClass.session_token})
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(request, timeout=10)
+                self.assertEqual(caught.exception.code, 404)
+
+    def test_an_unexpected_host_is_refused(self) -> None:
+        """DNS rebinding: a page on attacker.com re-resolving to 127.0.0.1 reads
+        same-origin, with no CORS and no preflight — including the token."""
+        self.assertTrue(self.raw(
+            b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+            b"Host: attacker.example\r\n\r\n").startswith("HTTP/1.0 421"))
+        self.assertTrue(self.raw(
+            b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+            b"Host: 127.0.0.1:9999\r\n\r\n").startswith("HTTP/1.0 200"))
+
+    def test_a_raw_prototype_tab_is_sandboxed(self) -> None:
+        """Framed, the iframe supplies the sandbox. Opened as a top-level tab it
+        would otherwise share pmview's origin with index.html, which carries the
+        session token and has no CSP of its own."""
+        base = "/proto/graph-workflow/gui-pmview-static-index-html/screens/design-tab-empty.html"
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{base}", timeout=10) as r:
+            self.assertIn("sandbox allow-scripts", r.headers["Content-Security-Policy"])
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{base}?pin=1", timeout=10) as r:
+            self.assertNotIn("sandbox", r.headers["Content-Security-Policy"])
+
+    def test_a_malformed_deck_does_not_hide_every_other_surface(self) -> None:
+        """deck.json is agent-authored, so it is the file most likely to be
+        malformed — and surfaces() folds them all in one loop."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        for name, deck in (
+            ("bad", '{"target":"a/b.html","screens":[{"id":"s","agreed_by":"nope",'
+                    '"components":["also-wrong"]}]}'),
+            ("good", '{"target":"c/d.html","screens":[{"id":"s2"}]}'),
+        ):
+            d = root / "context" / "design" / name
+            d.mkdir(parents=True)
+            (d / "deck.json").write_text(deck, encoding="utf-8")
+        names = [s["surface"] for s in design_mod.surfaces(root)]
+        self.assertEqual(sorted(names), ["bad", "good"])
+
+    def test_an_oversized_batch_appends_nothing_at_all(self) -> None:
+        """Field caps are in characters and the line cap is in bytes, so a
+        cap-compliant batch can still be oversized. Raising mid-loop would leave
+        half a batch in an append-only log and duplicate it on the retry."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        log = root / "asks.jsonl"
+        fine = design_mod.construct("instruction", "s", "b", {"text": "ok"})
+        # Cap-compliant in characters, oversized in bytes: 4-byte astral chars
+        # in both the capped fields cross 16 KB while every field passes.
+        huge = design_mod.construct("answer", "s", "b", {
+            "ask": "a1",
+            "text": "\U0001F600" * design_mod.MAX_TEXT,
+            "reason": "\U0001F600" * design_mod.MAX_REASON,
+        })
+        with self.assertRaises(ValueError):
+            design_mod.append(log, [fine, huge])
+        self.assertFalse(log.exists(), "a rejected batch must leave no partial write")
+
+    def test_live_setup_refuses_a_screen_that_escapes_the_surface(self) -> None:
+        """The script's whole purpose is pinning live away from the real app."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context" / "design" / "surf" / "screens").mkdir(parents=True)
+        (root / "src").mkdir()
+        (root / "src" / "index.html").write_text("<html></html>", encoding="utf-8")
+        script = REPO / "skills" / "gw-prototype" / "bin" / "live_setup.py"
+        done = subprocess.run(
+            [sys.executable, str(script), "arm", "--surface", "surf",
+             "--screen", "../../../../src/index", "--root", str(root)],
+            capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(done.returncode, 0, done.stdout)
+        self.assertFalse((root / "context" / "design" / "surf" / ".impeccable").exists())
 
 
 class AdviseTests(unittest.TestCase):

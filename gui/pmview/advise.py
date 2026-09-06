@@ -227,7 +227,26 @@ def advise(root: Path, board, project_name: str = "") -> dict:
     }
 
 
+#: git state, cached per root. `/api/advise` is polled; spawning two processes
+#: per request means any page the operator visited can make this server fork
+#: `git status` at will — and `git status` honours repo-local config, which can
+#: name a command to run. A short TTL keeps the number an operator sees honest
+#: without making the endpoint a process factory.
+_GIT_TTL_S = 15
+_git_cache: dict[str, tuple[float, dict]] = {}
+
+
 def _git(root: Path) -> dict:
+    key = str(root)
+    hit = _git_cache.get(key)
+    if hit and (time.time() - hit[0]) < _GIT_TTL_S:
+        return hit[1]
+    value = _git_uncached(root)
+    _git_cache[key] = (time.time(), value)
+    return value
+
+
+def _git_uncached(root: Path) -> dict:
     def run(*args):
         try:
             done = subprocess.run(["git", "-C", str(root), *args],

@@ -53,6 +53,14 @@ transfers and a future surface swap needs no skill edits:
 | `3` | nothing waiting / timed out |
 | `4` | nobody is listening — presence went stale, or a `handoff` is already the last agent line |
 
+## One footgun worth knowing
+
+The default session id hashes the **change and the surface**, so passing
+`--change` on `post` but omitting it on `ack` produces a *different* session: the
+ack lands under a session that asked nothing, and the original ask never reaches
+`landed`. Set `$GW_SESSION` once per session, or pass `--change` consistently to
+every call.
+
 ## The eight kinds
 
 | kind | writer | meaning |

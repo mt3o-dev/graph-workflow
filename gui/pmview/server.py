@@ -9,9 +9,10 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import secrets
 import re
+import secrets
 import subprocess
+import sys
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -197,6 +198,25 @@ class Handler(BaseHTTPRequestHandler):
         if self.server.verbose:  # type: ignore[attr-defined]
             super().log_message(fmt, *args)
 
+
+    def _host_ok(self) -> bool:
+        """Reject a Host this server does not answer to.
+
+        Without it, DNS rebinding turns any website into a same-origin reader of
+        this board: a page on attacker.com that re-resolves to 127.0.0.1 needs no
+        CORS and no preflight, and can read the token out of index.html. Only
+        enforced on a loopback bind, where the legitimate Host names are exactly
+        the loopback spellings — a `--host 0.0.0.0` deployment is reached by
+        whatever name the operator typed, and we cannot know it.
+        """
+        if not self.design_enabled:
+            return True
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
+        if host in ("127.0.0.1", "localhost", "::1"):
+            return True
+        self._error("unexpected Host", 421, code="bad_host")
+        return False
+
     def _send(self, payload, status: int = 200) -> None:
         body = json.dumps(payload).encode()
         self.send_response(status)
@@ -219,7 +239,7 @@ class Handler(BaseHTTPRequestHandler):
     MAX_BODY = 1 << 20
 
     def _payload(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
+        length = self._length() or 0
         if not length:
             return {}
         try:
@@ -234,13 +254,11 @@ class Handler(BaseHTTPRequestHandler):
         which for a batch of answers would mean a cheerful `200 {"appended": 0}`
         and five rulings gone with no hole in the log to notice later.
         """
-        raw = self.headers.get("Content-Length")
-        if raw is None:
+        if self.headers.get("Content-Length") is None:
             self._error("Content-Length required", 411, code="length_required")
             return None
-        try:
-            length = int(raw)
-        except ValueError:
+        length = self._length()
+        if length is None:
             self._error("bad Content-Length", 400, code="bad_length")
             return None
         if length > self.MAX_BODY:
@@ -257,10 +275,36 @@ class Handler(BaseHTTPRequestHandler):
         return payload
 
     def _token_ok(self) -> bool:
-        if secrets.compare_digest(self.headers.get("X-GW-Token") or "", self.session_token):
+        if self._token_matches():
             return True
         self._error("bad or missing session token", 403, code="bad_token")
         return False
+
+    def _length(self) -> int | None:
+        """Content-Length as a non-negative int, or None if the client lied.
+
+        `int()` on a header is a traceback into the operator's terminal —
+        `handle_error` is not overridden — and a negative length reaches
+        `rfile.read(-1)`, which blocks until the client disconnects and pins one
+        thread of an unbounded pool.
+        """
+        raw = self.headers.get("Content-Length")
+        if raw is None:
+            return 0
+        try:
+            length = int(raw)
+        except (TypeError, ValueError):
+            return None
+        return length if length >= 0 else None
+
+    def _token_matches(self) -> bool:
+        """Constant-time compare that survives a hostile header.
+
+        Headers decode as latin-1, so any byte >= 0x80 makes
+        `secrets.compare_digest` raise `TypeError` on str inputs. Compare bytes.
+        """
+        sent = (self.headers.get("X-GW-Token") or "").encode("latin-1", "replace")
+        return secrets.compare_digest(sent, self.session_token.encode())
 
     def _write_allowed(self) -> bool:
         """Guard the write proxy against a page the operator merely *visited*.
@@ -278,7 +322,10 @@ class Handler(BaseHTTPRequestHandler):
             self._error("writes must be application/json", 415, code="unsupported_media_type")
             return False
 
-        length = int(self.headers.get("Content-Length") or 0)
+        length = self._length()
+        if length is None:
+            self._error("bad Content-Length", 400, code="bad_length")
+            return False
         if length > self.MAX_BODY:
             self._error("request body too large", 413, code="body_too_large")
             return False
@@ -304,6 +351,8 @@ class Handler(BaseHTTPRequestHandler):
     # --- routing ------------------------------------------------------------
 
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+        if not self._host_ok():
+            return
         parsed = urlparse(self.path)
         path, query = parsed.path, parse_qs(parsed.query)
 
@@ -362,6 +411,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._error("unknown endpoint", 404)
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib naming
+        if not self._host_ok():
+            return
         path = urlparse(self.path).path
         if not self._write_allowed():
             return
@@ -435,8 +486,7 @@ class Handler(BaseHTTPRequestHandler):
             # gated on the token so a page the operator merely visited cannot
             # forge it. The whole consequence of a forged stamp is one agent
             # entering `wait` with nobody there, and timing out.
-            stamp = visible and secrets.compare_digest(
-                self.headers.get("X-GW-Token") or "", self.session_token)
+            stamp = visible and self._token_matches()
             live = design_mod.presence(root, surface, stamp=stamp)
             desk = design_mod.read_asks(directory / "asks.jsonl")
             return self._send({
@@ -463,11 +513,13 @@ class Handler(BaseHTTPRequestHandler):
         if payload is None:
             return
 
-        view = self.views.get(str(payload.get("project") or ""))
+        # Named-but-missing must 404. Falling back to "the first project" is fine
+        # for a read and wrong for a write: with several roots mounted and a
+        # same-named surface, a ruling lands permanently in the wrong log.
+        named = str(payload.get("project") or "")
+        view = self.views.get(named) if named else next(iter(self.views.values()), None)
         if view is None:
-            view = next(iter(self.views.values()), None)
-        if view is None:
-            return self._error("no such project", 404)
+            return self._error("no such project", 404, code="no_project")
 
         surface = str(payload.get("surface") or "")
         directory = design_mod.surface_dir(view.project.root, surface)
@@ -537,7 +589,7 @@ class Handler(BaseHTTPRequestHandler):
         ))
 
     def _serve_file(self, target: Path, body: bytes | None = None,
-                    csp: str | None = None) -> None:
+                    csp: str | None = None, sandbox: bool = False) -> None:
         data = target.read_bytes() if body is None else body
         self.send_response(200)
         self.send_header("Content-Type",
@@ -546,7 +598,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
         if csp:
-            self.send_header("Content-Security-Policy", csp)
+            # `sandbox` puts a TOP-LEVEL prototype at an opaque origin too. The
+            # framed path is already sandboxed by the iframe attribute; without
+            # this, "open in a new tab" hands agent-authored HTML a same-origin
+            # handle to index.html — which carries the session token in a <meta>
+            # and is served with no CSP of its own.
+            self.send_header("Content-Security-Policy",
+                             ("sandbox allow-scripts; " + csp) if sandbox else csp)
         self.end_headers()
         self.wfile.write(data)
 
@@ -578,14 +636,22 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(404)
 
         body = None
-        if (query.get("pin") or [""])[0] == "1" and target.suffix.lower() in (".html", ".htm"):
-            # Additive only. There is no parameter that subtracts a header, and
-            # every other consumer gets the file's bytes verbatim — which is what
-            # keeps impeccable live's own on-disk injection byte-exact.
-            body = design_mod.splice_pin(target.read_bytes(), surface, target.stem)
         try:
-            self._serve_file(target, body,
-                             csp=self._csp(design_mod.helper_origins(view.project.root, surface)))
+            if (query.get("pin") or [""])[0] == "1" and target.suffix.lower() in (".html", ".htm"):
+                body = design_mod.splice_pin(target.read_bytes(), surface, target.stem)
+        except OSError:
+            return self.send_error(404)
+        # `?pin=1` is additive only. No parameter subtracts a header, and every
+        # other consumer gets the file's bytes verbatim — which is what keeps
+        # impeccable live's own on-disk injection byte-exact.
+        try:
+            self._serve_file(
+                target, body,
+                csp=self._csp(design_mod.helper_origins(view.project.root, surface)),
+                # Only the framed request is exempt: the iframe already supplies
+                # the sandbox, and re-sandboxing there would break the pin
+                # channel's postMessage back to the parent.
+                sandbox=body is None and target.suffix.lower() in (".html", ".htm"))
         except OSError:
             self.send_error(404)
 
@@ -631,11 +697,13 @@ class Handler(BaseHTTPRequestHandler):
         if payload is None:
             return
 
-        view = self.views.get(str(payload.get("project") or ""))
+        # Named-but-missing must 404. Falling back to "the first project" is fine
+        # for a read and wrong for a write: with several roots mounted and a
+        # same-named surface, a ruling lands permanently in the wrong log.
+        named = str(payload.get("project") or "")
+        view = self.views.get(named) if named else next(iter(self.views.values()), None)
         if view is None:
-            view = next(iter(self.views.values()), None)
-        if view is None:
-            return self._error("no such project", 404)
+            return self._error("no such project", 404, code="no_project")
 
         root = view.project.root
         known = design_mod.installed_skills(root)
@@ -665,7 +733,10 @@ class Handler(BaseHTTPRequestHandler):
         # where the static files live inside the archive and have no real path.
         rel = "index.html" if path in ("/", "") else path.lstrip("/")
         parts = [p for p in rel.split("/") if p not in ("", ".")]
-        if not parts or any(p == ".." for p in parts):  # no traversal out of static/
+        # `\\` is a separator on Windows, so a raw `GET /..\\..\\secret` escapes
+        # `static/` when running from source or a wheel. The zipapp reader is
+        # immune and browsers normalise, but neither is a reason to allow it.
+        if not parts or any(p == ".." or "\\" in p or ":" in p for p in parts):
             self.send_error(404)
             return
         try:
@@ -689,7 +760,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _is_loopback(host: str) -> bool:
-    return host in ("", "127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1")
+    # NOT "": an empty host binds 0.0.0.0, which is exactly the case the design
+    # routes must stay off for.
+    return host in ("127.0.0.1", "localhost", "::1", "::ffff:127.0.0.1")
 
 
 def _origins(host: str, port: int) -> frozenset[str]:
@@ -700,13 +773,35 @@ def _origins(host: str, port: int) -> frozenset[str]:
     return frozenset(f"http://{h}:{port}" for h in hosts if h)
 
 
+class _Server(ThreadingHTTPServer):
+    """`ThreadingHTTPServer` that does not shout when a client hangs up.
+
+    `handle_error` lives on the *server*, not the handler — `socketserver` calls
+    it for any exception escaping a request, and its default prints a full
+    traceback into the terminal the operator is watching. A browser tab closed
+    mid-response raises `BrokenPipeError`/`ConnectionResetError` there, and so
+    does every `curl | head`. Those get one quiet line; a genuine bug still gets
+    its traceback, which is wanted and harmless on a local single-user server.
+    """
+
+    verbose = False
+
+    def handle_error(self, request, client_address) -> None:
+        exc = sys.exc_info()[1]
+        if isinstance(exc, (BrokenPipeError, ConnectionResetError, TimeoutError)):
+            if self.verbose:
+                print(f"  {client_address[0]} went away: {type(exc).__name__}")
+            return
+        super().handle_error(request, client_address)
+
+
 def build_server(projects: list[Project], host: str, port: int,
                  memory_url: str, verbose: bool = False) -> ThreadingHTTPServer:
     handler = type("BoundHandler", (Handler,), {
         "views": {p.name: ProjectView(p) for p in projects},
         "memory": MemoryAPI(memory_url),
     })
-    server = ThreadingHTTPServer((host, port), handler)
+    server = _Server((host, port), handler)
     # After the bind, not before: `port` may be 0 (ephemeral), and the origin a
     # browser sends carries the port it actually connected to.
     handler.allowed_origins = _origins(host, server.server_address[1])

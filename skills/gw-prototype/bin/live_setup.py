@@ -60,6 +60,18 @@ def surface_dir(root: Path, surface: str) -> Path:
     return root / "context" / "design" / surface
 
 
+def check_screen(screen: str) -> str:
+    """A screen id is one slug, never a path.
+
+    Without this, `--screen ../../../../src/index` writes a live config naming
+    a file outside the surface — pointing impeccable's injector at the real
+    application, which is the single thing this script exists to prevent.
+    """
+    if not SLUG_RE.fullmatch(screen or ""):
+        sys.exit(f"not a screen id: {screen!r} (one slug, no path separators)")
+    return screen
+
+
 def preflight(root: Path, directory: Path, screen: str | None) -> dict:
     problems: list[str] = []
     if not directory.is_dir():
@@ -167,11 +179,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "arm":
         if not args.screen:
             sys.exit("arm needs --screen")
-        result = arm(root, directory, args.screen)
+        result = arm(root, directory, check_screen(args.screen))
     elif args.command == "teardown":
         result = teardown(root, directory)
     else:
-        result = preflight(root, directory, args.screen)
+        result = preflight(root, directory,
+                           check_screen(args.screen) if args.screen else None)
 
     print(json.dumps(result, indent=2))
     return 0 if result.get("ok", True) else 1

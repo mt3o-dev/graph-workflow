@@ -6,3 +6,4 @@
 {"ts":"2026-08-24T10:37:21Z","kind":"answer","id":"26b29def","by":"human","src":"pmview","batch":"09aaf1e6","ask":"f758f0de","text":"A — pinning from the schematic is how you flag a region before it exists.","choice":"A"}
 {"ts":"2026-08-24T10:37:21Z","kind":"instruction","id":"cffe7684","by":"human","src":"pmview","batch":"09aaf1e6","surface":"gui-pmview-static-index-html","text":"the rail should show the open-ask count even when the surface is not selected","screen":"design-tab","region":"surface rail","rect":{"x":0.0,"y":0.2,"w":0.25,"h":0.8}}
 {"ts":"2026-08-24T10:37:32Z","kind":"ack","id":"b35f4bfd","by":"agent","session":"s-fa98dc0e","refs":["26b29def","cffe7684"],"disposition":"acted","text":"verification round trip; the rail count is a real follow-up"}
+{"ts":"2026-09-06T11:56:25Z","kind":"instruction","id":"23c0bc31","by":"human","src":"pmview","batch":"95faa2f1","surface":"gui-pmview-static-index-html","text":"misfiled probe","screen":"x"}

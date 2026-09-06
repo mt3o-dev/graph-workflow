@@ -153,18 +153,29 @@ def read_deck(path: Path) -> tuple[dict, list[str]]:
 
 
 def _deck_counts(deck: dict) -> dict:
-    screens = deck.get("screens") or []
+    """Count a deck without trusting its shape.
+
+    `deck.json` is agent-authored, which makes it the file most likely to be
+    malformed — and `surfaces()` folds every deck in one loop, so an
+    `AttributeError` here hides *all* surfaces, not the broken one. That is
+    exactly the failure `read_deck`'s contract rules out, so every field is
+    type-checked rather than assumed.
+    """
+    screens = [s for s in (deck.get("screens") or []) if isinstance(s, dict)]
     changes: list[str] = []
     for screen in screens:
-        for stamp in screen.get("agreed_by") or []:
-            change = (stamp or {}).get("change")
+        stamps = screen.get("agreed_by")
+        for stamp in stamps if isinstance(stamps, list) else []:
+            change = stamp.get("change") if isinstance(stamp, dict) else None
             if isinstance(change, str) and change not in changes:
                 changes.append(change)
-    gaps = sum(
-        1 for s in screens
-        for v in (s.get("components") or {}).values()
-        if isinstance(v, str) and v.startswith("GAP:unruled")
-    )
+    gaps = 0
+    for screen in screens:
+        components = screen.get("components")
+        if not isinstance(components, dict):
+            continue
+        gaps += sum(1 for v in components.values()
+                    if isinstance(v, str) and v.startswith("GAP:unruled"))
     return {
         "screens": len(screens),
         "agreed": sum(1 for s in screens if s.get("status") == "agreed"),
@@ -367,17 +378,25 @@ def append(path: Path, lines: list[dict]) -> int:
     had one, inside a cross-platform stdlib zipapp, buys nothing the append does
     not already give: order is line order, identity is `id`.
     """
+    # Serialize and size-check EVERYTHING first. Raising mid-loop would leave
+    # part of a batch on disk in an append-only, git-tracked log: the client
+    # keeps the whole batch staged, the human retries, and the first lines land
+    # twice as duplicate rulings. Field caps are in characters and this limit is
+    # in bytes, so a batch of astral-plane text can be cap-compliant and still
+    # oversized — which is precisely how the partial write happens.
+    blobs = []
+    for line in lines:
+        blob = json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n"
+        if len(blob.encode("utf-8")) > MAX_LINE:
+            raise ValueError(f"line would exceed {MAX_LINE} bytes once encoded")
+        blobs.append(blob)
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    written = 0
     with path.open("a", encoding="utf-8") as handle:
-        for line in lines:
-            blob = json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n"
-            if len(blob.encode("utf-8")) > MAX_LINE:
-                raise ValueError("line exceeds 16 KB")
+        for blob in blobs:
             handle.write(blob)
             handle.flush()
-            written += 1
-    return written
+    return len(blobs)
 
 
 def construct(kind: str, surface: str, batch: str, fields: dict) -> dict:
