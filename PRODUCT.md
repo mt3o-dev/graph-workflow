@@ -22,10 +22,12 @@ A unified board that sits directly on the graph-workflow's own artifacts: the ch
 
 - Launched locally: `python -m pmview [root ...]` → serves `http://127.0.0.1:8766` (`--open` opens a browser).
 - Reads change folders and the memory store directly; optional writes are proxied to the agentic-memory GUI API (default `http://127.0.0.1:8765`, overridable with `--memory-url`).
-- Three top-level views plus a detail drawer:
+- Four top-level views plus a detail drawer:
   - **Board** — changes grouped by lifecycle stage, with stat tiles.
   - **Issues** — issue queue and flagged backlog, filterable via pills.
   - **Search** — debounced substring search over nodes.
+  - **Design** — surfaces under `context/design/`, each screen's wireframe or
+    clickable prototype, and the ask stack the human answers in.
   - **Detail drawer** — change detail (body, warnings, plan phases, contradiction pairs) and node detail (editable body, facet pills, edges, journal events, resolve and tier actions).
 - Can take multiple project roots and switch between them via a project selector.
 
@@ -34,7 +36,9 @@ A unified board that sits directly on the graph-workflow's own artifacts: the ch
 - **Capabilities:** lifecycle-grouped board; issue queue + flagged backlog with filter pills; debounced node search; detail drawer with editable node body, facets, edges, journal, and resolve/tier actions; multi-root project selector; light/dark rendering via `prefers-color-scheme`.
 - **Stack (from existing codebase):** backend is Python **standard library only** (`http.server` / `ThreadingHTTPServer`) — no Flask/FastAPI/Django. Frontend is **vanilla JS + hand-written CSS** — no framework, bundler, or build step. `gui/README.md` records zero-dependency as an architectural invariant; class names are the styling contract between `app.js` and `static/style.css`.
 - **Local-only (user-confirmed binding constraint):** runs on `127.0.0.1`; future work must keep it local-first and must not introduce external network dependencies or telemetry.
-- **Graceful degradation:** viewing requires no memory server; write actions are proxied to the agentic-memory server and degrade cleanly when it is absent.
+- **Graceful degradation:** viewing requires no memory server; write actions are proxied to the agentic-memory server and degrade cleanly when it is absent. The design lane is deliberately on the *reads always work* side of that line: answering a design question must work when the memory server is down, which is when a human is most likely to be looking at the board.
+- **Advisory, never executive:** the board ranks what needs a human and offers the skills that fit a card's state, but it does not run them. A button copies a command or queues a request for the next agent to drain; pmview spawns no process, ever. The same ranking is available headless as `pmview --advise`.
+- **One file-write route, zero graph writes outside the proxy:** `POST /api/design/answers` appends to a surface's `asks.jsonl`. It cannot reach the store (`design.py` imports no store module; a test asserts byte-identity), and it is physically incapable of writing an agent line. Design routes are enabled **only on a loopback bind**.
 
 ## Brand Commitments
 
@@ -42,7 +46,7 @@ Name: **pmview**. No further brand, voice, or identity commitments have been est
 
 ## Evidence on Hand
 
-- Real dogfooded data: tests exercise the HTTP surface against a **committed Coffer memory store** in real dump format (`gui/tests/test_pmview.py`, 41 tests).
+- Real dogfooded data: tests exercise the HTTP surface against a **committed Coffer memory store** in real dump format (`gui/tests/test_pmview.py`, 83 tests).
 - No testimonials, customers, pricing, benchmarks, or press exist — future work must not fabricate any of these.
 
 ## Product Principles

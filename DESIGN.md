@@ -231,6 +231,27 @@ When drilling change → node → node, a `crumbs` nav sits at the top of the dr
 ### Rendered Markdown
 Node bodies and change sections render Markdown (`.md`): flow layout, headings pulled back onto the body size (no small-caps), lists, links in accent, `--font-mono` code on a subtle `--ink 8%` tint, and blockquotes as a tonal `--ink 5%` block (no side bar — see the flat-tonal doctrine). Editable bodies are **read-first**: Markdown by default with an Edit ⇄ Preview toggle to the raw textarea. Everything is HTML-escaped before render, and only `http(s)`/`mailto`/relative/anchor links survive.
 
+### Layout Schematic (`.wire`, `.wire-region`)
+
+- **Shape:** a ratio-locked field (`aspect-ratio` from the deck's `cols`/`rows`), 10px (`md`), Page fill, 1px Line border.
+- **Regions:** absolutely positioned at percentage geometry, 8px (`sm`), Panel fill, **1px dashed** Line border, Ink Muted label. Dashed is the whole signal that this is a proposal, not a rendering.
+- **Accent region:** border and label go to accent — the region under discussion, so The Accent-Is-A-Verb Rule holds (it marks what you are being asked about).
+- **Hover:** border goes solid accent. Clicking pins an instruction to that region.
+- **Cap:** 12 regions. A screen needing more is two screens.
+
+### Prototype Frame (`.protoframe`)
+
+- **Shape:** the same ratio lock as the schematic it replaces, so toggling does not reflow the pane. 10px (`md`), 1px Line, Panel fill.
+- **Sandbox:** `allow-scripts` and deliberately **not** `allow-same-origin`. The prototype runs at an opaque origin and cannot reach `/api/*`.
+- **Never** carries chrome of its own: the toggle and the "open in a new tab" control live in the pane around it.
+
+### Ask Card (`.ask`)
+
+- **Shape:** 10px (`md`), Panel fill, uniform 1px border — **no side bar**. Depth and emphasis stay tonal, per the Don't below.
+- **State:** open / answered / landed / declined map onto Warn / Signal Blue / Ok / muted, carried by a `color-mix` tint of the same hue in **both** the border and a 5% background wash, plus a drawn 12px icon in the `.kind` idiom. Four hues and a shape — never a fifth hue (The One-Hue-Per-Category Rule).
+- **Options:** stacked `.opt` buttons, Page fill, 8px (`sm`); the picked one takes an accent border and an 8% accent wash.
+- **Composer:** one sticky `Send N` per pane, not per card. A human ruling on three asks about one screen is one thought, not three.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -248,19 +269,5 @@ Node bodies and change sections render Markdown (`.md`): flow layout, headings p
 - **Don't** use monospace as decoration; reserve it for identifiers and data.
 - **Don't** render user text as HTML without escaping it first, or allow non-`http(s)`/`mailto` link schemes.
 - **Don't** invent a new hue for a category — map edge types and status onto the existing semantic tokens (accent/ok/warn/danger) and differentiate with drawn icons.
-- **Don't** rename or drop the component class names — they are the API between `style.css` and `app.js`.
-- **Don't** ship a hover/focus state without a resting counterpart, or motion without honoring `prefers-reduced-motion`.
-
-### Do:
-- **Do** reach for a spacing, radius, type, or color **token** for every value; the CSS custom properties on `:root` are the source of truth and this frontmatter mirrors them.
-- **Do** keep the accent for interactive and selected states only (The Accent-Is-A-Verb Rule).
-- **Do** let hover lift signal actionability — 1px translate + `shadow-raised`, on `ease-out` 120–180ms.
-- **Do** tint secondary text on any colored surface from that hue or Ink Muted — never a flat gray drop-in.
-- **Do** keep light and dark identical except for the nine color primitives.
-
-### Don't:
-- **Don't** introduce a build step, framework, CSS-in-JS, or npm dependency — the styling contract is plain CSS + class names shared with `app.js` (a hard project invariant).
-- **Don't** add a colored `border-left`/`border-right` above 1px, gradient text, or zero-blur block shadows.
-- **Don't** use monospace as decoration; reserve it for identifiers and data.
 - **Don't** rename or drop the component class names — they are the API between `style.css` and `app.js`.
 - **Don't** ship a hover/focus state without a resting counterpart, or motion without honoring `prefers-reduced-motion`.

@@ -17,8 +17,21 @@ carrying the acceptance criteria in; that is the point, not an inconvenience.
 
 ## Steps
 
+0. **Drain the desk** — only when `change.md` carries a `design_surface:`. For
+   each one:
+
+   ```sh
+   desk.py drain --surface <slug>        # resolve per skills/gw-desk/REFERENCE.md
+   ```
+
+   Exit 0 means human lines are waiting: read them in order, act, then `ack`.
+   Exit 3 means nothing waiting. Before capturing in response to a redelivered
+   line, recall by its thread id — the dedup rule in the desk reference.
+
 1. **Load the scope.** `memory_goal` from `context/changes/<change-id>/change.md`;
-   read `plan.md` (and `research.md` if present). No `memory_goal` → stop, run
+   read `plan.md` (and `research.md` if present), plus every deck the change's
+   `design_surface:` lines name — a plan that contradicts an agreed screen is
+   exactly what this gate exists to catch. No `memory_goal` → stop, run
    /gw-new's scope steps first. No `plan.md` → there is nothing to review; route
    to /gw-plan.
 

@@ -130,8 +130,16 @@ speculative decision node ranks in future recalls with the same authority as a r
 Report: the ranked list with evidence, the cut list with reasons, what was captured, and
 what you propose adding to the roadmap. Then stop.
 
-Turning an idea into work is `/gw-new` — the user's call, one idea at a time, with the
-size check that skill applies (most ideas here are epic-sized and get sliced).
+Turning an idea into work is the user's call, one idea at a time:
+
+- **change-sized** → `/gw-new` directly.
+- **epic-sized**, which most ideas here are → `/gw-slice` first. It breaks the
+  idea into tracer-bullet slices, gets the human to rule on granularity and order,
+  and writes the registry entry `/gw-new` then reads.
+
+Do not slice here. Ideation ranks *what* is worth building; slicing decides *in
+what order it becomes verifiable*, and conflating them means the ranking argument
+and the sequencing argument happen in one conversation and neither gets settled.
 
 ## Rules
 

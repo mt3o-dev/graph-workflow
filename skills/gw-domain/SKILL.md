@@ -233,6 +233,16 @@ plainly what the impact trace showed.
 - Hand off with: the entity list and ids, what stayed proposed, the drift findings, and
   what you deliberately did not model.
 
+## Before you ask
+
+**Explore instead of asking.** If the code, the schema or the graph can answer a
+question about what a term means or how two things relate, go and find out. An
+elicitation session spends the user's attention, and spending it on something
+already written down is how a domain session stops being worth an hour.
+
+**Recommend, but do not decide.** Bring your reading of the model and let the
+human correct it. Ratification is theirs; the first draft is yours.
+
 ## Rules
 
 - **Names, not claims.** If you can disagree with it, it is a `capture_artifact`, not an

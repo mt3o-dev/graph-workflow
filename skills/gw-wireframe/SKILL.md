@@ -142,8 +142,19 @@ operation, not the HTTP call.
 **e. Constraints honored** — cite the recalled `[node:<id>]` for each UX/a11y/i18n rule the
 screen obeys, and say plainly where you could not obey one.
 
-**f. Open questions** — at most three, the ones that actually block. Ask them; do not
-answer them yourself.
+**f. Open questions** — at most three, the ones that actually block.
+
+**Recommend, but do not decide.** Every question carries your recommended answer
+and the cost of the alternative. "Ask, don't answer" is right about not *ruling*
+and wrong about not *proposing*: a bare question makes the user do the work
+twice, and they are far better at correcting a wrong proposal than at generating
+one from nothing. The desk's ask format already carries `options` with costs —
+say which one you would pick.
+
+**Explore instead of asking.** If the codebase, the deck or the graph can answer
+it, go and find out. The user's attention is the scarcest thing in the session,
+and spending it on something you could have looked up is the fastest way to lose
+it.
 
 Then **stop and wait.** Iterate the same screen until the user is satisfied before moving
 on.
@@ -167,11 +178,58 @@ Capture: the **structural** decisions and why, the **design-system gaps** the us
 any **new UI constraint** the session settled. Attach `ABOUT` edges to the entities each
 screen shows.
 
-Do **not** capture the wireframes themselves — they are sequencing, like plan.md. Write
-them to `context/changes/<change-id>/wireframes.md` and let them die with the change; the
-decisions are what outlive it.
+Do **not** capture the wireframes themselves — they are sequencing, like plan.md. But they
+do not die with the change either, because a **screen** outlives the change that agreed it.
 
-## Step 6 — Hand off to `/gw-plan`
+Write the inventory and each screen's geometry to `context/design/<surface>/deck.json`,
+keyed by surface (`gui/pmview/static/index.html` → `gui-pmview-static-index-html`):
+
+```json
+{"v": 1, "surface": "…", "target": "gui/pmview/static/index.html",
+ "binding": "system-bound", "screens": [{
+   "id": "review", "status": "agreed",
+   "agreed_by": [{"change": "<change-id>", "on": "<date>"}],
+   "implements": "src/routes/review/+page.svelte",
+   "wireframe": {"cols": 12, "rows": 10, "regions": [
+     {"label": "table", "x": 0, "y": 2, "w": 12, "h": 7, "accent": true}]},
+   "components": {"table": "existing:Table",
+                  "bulk actions": "GAP:unruled — Table has no selection API"},
+   "states": {"empty": "…", "loading": "…", "error": "…"},
+   "behavior": ["…"], "cites": ["node:…"], "prototype": null}]}
+```
+
+**The JSON is canonical; the ASCII box you showed the user is rendered from it**, one
+direction only. Two representations that can disagree will.
+
+`status` is `draft | agreed | superseded`, and `components` values are
+`existing:<selector>` | `library:<Name>` | `GAP:unruled — <why>` |
+`GAP:ruled:<node-id> — <the ruling>` | `oneoff:<node-id> — <markup summary>`. The gap
+markers are load-bearing: `/gw-prototype` **refuses** any screen still carrying
+`GAP:unruled`, and `/gw-review` Part 1b treats a `oneoff:` as an accepted inconsistency
+rather than a contract.
+
+## Step 6 — Hand off
+
+**Three-way routing, not one.**
+
+- **The screens need to be *seen* before they are built** → `/gw-prototype`. It
+  renders this deck into clickable HTML wearing the project's real tokens, served
+  by pmview, and runs its questions through the desk. Route here whenever the
+  human has been reacting to your ASCII with "I can't picture it", whenever the
+  screen's value is visual (density, hierarchy, a table that has to feel
+  scannable), or whenever a stakeholder who is not in this terminal has to
+  approve it.
+- **Structure is enough** → `/gw-plan` directly. A settings form with three
+  fields does not need a prototype.
+- **The design system itself has to change first** → the gap ruling is a
+  `/gw-foundation` or design-system conversation, not a screen.
+
+Write the deck before you hand off either way: `context/design/<surface>/deck.json`
+is what both downstream skills read, and it is canonical from here on. Record the
+surface in `change.md` as `design_surface: <slug>` — that is what makes
+`/gw-review` Part 1b fire.
+
+## Handing off to `/gw-plan`
 
 Report: the screen inventory as agreed, the file with the wireframes, the captured
 `[node:<id>]` decisions, the design-system gaps and how the user ruled on each, and any

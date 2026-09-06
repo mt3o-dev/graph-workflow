@@ -7,11 +7,15 @@ the real dump format rather than a hand-made fixture.
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import socket
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -19,6 +23,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from pmview import advise as advise_mod  # noqa: E402
+from pmview import design as design_mod  # noqa: E402
 from pmview import graph as graph_mod  # noqa: E402
 from pmview import lifecycle  # noqa: E402
 from pmview import server as server_mod  # noqa: E402
@@ -29,13 +35,27 @@ REPO = Path(__file__).resolve().parents[2]
 COFFER = REPO / "dogfood" / "coffer"
 
 
+def store_path(root: Path = COFFER) -> Path:
+    """The store as a fresh clone actually finds it.
+
+    `context/memory-graph.db` is gitignored — it is a local build artifact the
+    store rebuilds from the committed text dump. Tests that named the `.db`
+    literally passed only on a machine that had already opened the project.
+    """
+    for name in server_mod.STORE_NAMES:
+        candidate = root / "context" / name
+        if candidate.is_file():
+            return candidate
+    raise AssertionError(f"no store under {root / 'context'} (looked for {server_mod.STORE_NAMES})")
+
+
 def load_board(root: Path = COFFER) -> Board:
-    return Board(lifecycle.scan(root / "context"), graph_mod.load(root / "context" / "memory-graph.db"))
+    return Board(lifecycle.scan(root / "context"), graph_mod.load(store_path(root)))
 
 
 class DumpParsingTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.graph = graph_mod.load(COFFER / "context" / "memory-graph.db")
+        self.graph = graph_mod.load(store_path())
 
     def test_reads_nodes_edges_and_events(self) -> None:
         self.assertGreater(len(self.graph.nodes), 100)
@@ -307,6 +327,645 @@ class SqliteStoreTests(unittest.TestCase):
         self.assertIsNot(view.board(), first)
 
 
+class DesignLaneTests(unittest.TestCase):
+    """The desk: a file, folded into state that is never stored."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        self.dir = self.root / "context" / "design" / "s1"
+        self.dir.mkdir(parents=True)
+        self.log = self.dir / "asks.jsonl"
+
+    def test_the_surface_slug_cannot_collide(self) -> None:
+        """impeccable's own slug keeps the *tail* at 50 chars, so two different
+        deep paths collapse to one key — merging two surfaces' decks and, fatally,
+        their append-only desks."""
+        a = "web/src/components/dashboard/widgets/revenue/chart/index.html"
+        b = "mobile/src/components/dashboard/widgets/revenue/chart/index.html"
+        self.assertNotEqual(design_mod.gw_slug(a), design_mod.gw_slug(b))
+        # …while still agreeing with impeccable on the short paths that matter.
+        self.assertEqual(design_mod.gw_slug("gui/pmview/static/index.html"),
+                         "gui-pmview-static-index-html")
+
+    def test_ask_state_is_folded_not_stored(self) -> None:
+        design_mod.append(self.log, [
+            {"kind": "ask", "id": "a1", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a2", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a3", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a4", "session": "s", "by": "agent"},
+            {"kind": "ask", "id": "a5", "session": "s", "by": "agent"},
+            {"kind": "answer", "id": "h1", "ask": "a2", "by": "human"},
+            {"kind": "ack", "id": "k1", "session": "s", "refs": ["a3"], "by": "agent"},
+            {"kind": "decline", "id": "h2", "ask": "a4", "by": "human"},
+            {"kind": "retire", "id": "r1", "refs": ["a5"], "by": "agent"},
+        ])
+        states = {t["id"]: t["state"] for t in design_mod.read_asks(self.log)["threads"]}
+        self.assertEqual(states, {"a1": "open", "a2": "answered", "a3": "landed",
+                                  "a4": "declined", "a5": "retired"})
+
+    def test_the_delivery_cursor_is_per_session(self) -> None:
+        """A global cursor means agent B acking an answer to agent A's ask makes
+        that answer invisible to A — so A times out having never seen the reply."""
+        design_mod.append(self.log, [
+            {"kind": "ask", "id": "a1", "session": "A", "by": "agent"},
+            {"kind": "answer", "id": "h1", "ask": "a1", "by": "human"},
+            {"kind": "ack", "id": "k1", "session": "B", "refs": ["h1"], "by": "agent"},
+        ])
+        to_a = [l["id"] for l in design_mod.read_asks(self.log, session="A")["undelivered"]]
+        to_b = [l["id"] for l in design_mod.read_asks(self.log, session="B")["undelivered"]]
+        self.assertEqual(to_a, ["h1"], "A must still be delivered its own answer")
+        self.assertEqual(to_b, [], "B acked it")
+
+    def test_one_malformed_line_never_takes_down_the_desk(self) -> None:
+        self.log.write_text(
+            '{"kind":"ask","id":"a1","session":"s"}\n'
+            'not json at all\n'
+            '{"kind":"answer","id":"h1","ask":"a1"}\n', encoding="utf-8")
+        desk = design_mod.read_asks(self.log)
+        self.assertEqual(desk["lines"], 2)
+        self.assertEqual(len(desk["warnings"]), 1)
+        self.assertEqual(desk["threads"][0]["state"], "answered")
+
+    def test_a_broken_deck_degrades_to_a_warning(self) -> None:
+        (self.dir / "deck.json").write_text("{ not json", encoding="utf-8")
+        deck, warnings = design_mod.read_deck(self.dir / "deck.json")
+        self.assertEqual(deck, {})
+        self.assertTrue(warnings and "not valid JSON" in warnings[0])
+        self.assertEqual(design_mod.surfaces(self.root)[0]["surface"], "s1")
+
+    def test_a_deck_whose_target_keys_elsewhere_is_flagged(self) -> None:
+        (self.dir / "deck.json").write_text(
+            json.dumps({"target": "some/other/path.html", "screens": []}), encoding="utf-8")
+        warnings = design_mod.surfaces(self.root)[0]["warnings"]
+        self.assertTrue(any("sharing one desk" in w for w in warnings), warnings)
+
+    def test_pmview_cannot_construct_an_agent_line(self) -> None:
+        for kind in sorted(design_mod.AGENT_KINDS):
+            with self.subTest(kind=kind), self.assertRaises(ValueError):
+                design_mod.construct(kind, "s1", "b1", {"text": "x"})
+
+    def test_a_constructed_line_is_stamped_by_the_server(self) -> None:
+        line = design_mod.construct("answer", "s1", "b1",
+                                    {"ask": "a1", "choice": "A", "text": "x" * 9000,
+                                     "by": "agent", "id": "forged", "src": "cli"})
+        self.assertEqual((line["by"], line["src"], line["batch"]), ("human", "pmview", "b1"))
+        self.assertNotEqual(line["id"], "forged")
+        self.assertEqual(len(line["text"]), design_mod.MAX_TEXT)
+
+    def test_a_surface_name_that_is_not_a_slug_resolves_to_nothing(self) -> None:
+        for name in ("../../etc", "a/b", "", "x" * 200, "has space"):
+            with self.subTest(name=name):
+                self.assertIsNone(design_mod.surface_dir(self.root, name))
+
+
+class PrototypeServingTests(unittest.TestCase):
+    """`/proto/` and `/assets/` read real files off a project's disk, which is a
+    different threat surface from `_static` reading package resources."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.server = build_server(
+            [Project("graph-workflow", REPO)], "127.0.0.1", 0,
+            memory_url="http://127.0.0.1:9")
+        cls.base = "http://127.0.0.1:%d" % cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        cls.proto = "/proto/graph-workflow/gui-pmview-static-index-html"
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=5)
+
+    def fetch(self, path: str):
+        try:
+            with urllib.request.urlopen(self.base + path, timeout=10) as response:
+                return response.status, dict(response.headers), response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, dict(exc.headers), b""
+
+    def test_a_prototype_is_served_with_a_fully_templated_csp(self) -> None:
+        status, headers, body = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        self.assertEqual(status, 200)
+        self.assertIn(b"data-gw-region", body)
+        csp = headers["Content-Security-Policy"]
+        port = self.server.server_address[1]
+        # No origin in a header is ever a literal: the port is a CLI flag, and
+        # pmview answers on three spellings of the same socket. Listing one — or
+        # hardcoding 8766 — blanks the prototype for whoever typed the other.
+        for spelling in (f"http://127.0.0.1:{port}", f"http://localhost:{port}"):
+            self.assertIn(spelling, csp)
+        self.assertNotIn("8766", csp)
+        self.assertIn("default-src 'none'", csp)
+        self.assertIn("frame-ancestors", csp)
+        # script-src must NOT carry 'unsafe-inline' — that is what makes the
+        # rung-2 ban on inline <script> enforceable rather than advisory.
+        script_src = [d for d in csp.split("; ") if d.startswith("script-src")][0]
+        self.assertNotIn("unsafe-inline", script_src)
+        self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+
+    def test_pin_is_additive_and_everything_else_is_verbatim(self) -> None:
+        _, _, plain = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        _, _, pinned = self.fetch(self.proto + "/screens/design-tab-empty.html?pin=1")
+        self.assertNotIn(b"_gw/pin.js", plain,
+                         "verbatim bytes are what keep impeccable live's own injection exact")
+        self.assertEqual(pinned.count(b"_gw/pin.js"), 1)
+        self.assertLess(pinned.rfind(b"pin.js"), pinned.rfind(b"</body>"))
+
+    def test_the_proto_route_is_bounded_to_its_surface(self) -> None:
+        for label, path in (
+            ("traversal", "/../../../../etc/passwd"),
+            ("encoded", "/%2e%2e/%2e%2e/etc/passwd"),
+            ("the store", "/../memory-graph.dump"),
+            ("a non-servable extension", "/asks.jsonl"),
+            ("an unknown surface", "/screens/nope.html"),
+        ):
+            with self.subTest(label=label):
+                self.assertEqual(self.fetch(self.proto + path)[0], 404)
+        self.assertEqual(
+            self.fetch("/proto/nope/gui-pmview-static-index-html/screens/x.html")[0], 404)
+
+    def test_assets_serves_only_the_exact_allowlist(self) -> None:
+        status, _, body = self.fetch("/assets/graph-workflow/gui/pmview/static/style.css")
+        self.assertEqual(status, 200)
+        self.assertIn(b"--accent", body)
+        for path in ("/assets/graph-workflow/gui/pmview/server.py",
+                     "/assets/graph-workflow/../../../etc/passwd",
+                     "/assets/graph-workflow/context/memory-graph.dump",
+                     "/assets/nope/gui/pmview/static/style.css"):
+            with self.subTest(path=path):
+                self.assertEqual(self.fetch(path)[0], 404)
+
+    def test_the_picker_ships_and_serves_without_its_own_route(self) -> None:
+        """pin.js sits in static/, so `_static` serves it — already traversal-
+        guarded, already inside the zipapp. Declaring a route for it AND putting
+        it in static/ would have 404'd through the fallthrough."""
+        status, _, body = self.fetch("/_gw/pin.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"gw-pin", body)
+        self.assertIn(b"data-gw-region", body)
+        # It renders no input and holds no text: the parent owns every field.
+        for forbidden in (b"<input", b"<textarea", b"fetch(", b"localStorage"):
+            self.assertNotIn(forbidden, body)
+        self.assertEqual(self.fetch("/_gw/../server.py")[0], 404)
+
+    def test_a_prototype_cannot_carry_an_inline_script(self) -> None:
+        """The rung-2 ban is enforced by the CSP, not by review: script-src omits
+        'unsafe-inline', so an inline script in a prototype simply does not run."""
+        _, headers, _ = self.fetch(self.proto + "/screens/design-tab-empty.html")
+        directives = dict(
+            (d.split(" ", 1)[0], d) for d in headers["Content-Security-Policy"].split("; "))
+        self.assertNotIn("unsafe-inline", directives["script-src"])
+        self.assertIn("unsafe-inline", directives["style-src"])
+        self.assertEqual(directives["connect-src"], "connect-src 'none'")
+
+    def test_the_desk_never_touches_the_store(self) -> None:
+        """The one file-write route in pmview. It must not be a second write path
+        to the graph — `gui/README.md` says the store is byte-identical after a
+        desk exercise, so prove it rather than assert it."""
+        surface = "gui-pmview-static-index-html"
+        log = REPO / "context" / "design" / surface / "asks.jsonl"
+        store = store_path(REPO)
+        before_store = store.read_bytes()
+        before_log = log.read_bytes() if log.is_file() else b""
+        self.addCleanup(lambda: log.write_bytes(before_log))
+
+        token = self.server.RequestHandlerClass.session_token
+        request = urllib.request.Request(
+            self.base + "/api/design/answers", method="POST",
+            data=json.dumps({"project": "graph-workflow", "surface": surface,
+                             "batch": [{"kind": "instruction", "screen": "design-tab",
+                                        "region": "ask stack", "text": "a test line"}]}).encode(),
+            headers={"Content-Type": "application/json", "X-GW-Token": token})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            self.assertEqual(json.loads(response.read())["appended"], 1)
+
+        self.assertGreater(len(log.read_bytes()), len(before_log), "the desk did not grow")
+        self.assertEqual(store.read_bytes(), before_store,
+                         "the desk must never write to the memory store")
+
+    def test_design_py_imports_nothing_that_can_reach_the_graph(self) -> None:
+        source = (REPO / "gui" / "pmview" / "design.py").read_text()
+        for forbidden in ("from .memory", "from .graph", "from .board",
+                          "import memory", "import graph", "import board", "sqlite3"):
+            self.assertNotIn(forbidden, source)
+
+    def test_design_routes_are_off_when_the_bind_is_not_loopback(self) -> None:
+        server = build_server([Project("graph-workflow", REPO)], "0.0.0.0", 0,
+                              memory_url="http://127.0.0.1:9")
+        self.addCleanup(server.server_close)
+        self.assertFalse(server.RequestHandlerClass.design_enabled)
+
+
+class HardeningTests(unittest.TestCase):
+    """Regressions for an independent pre-merge review. Each of these was a
+    confirmed crash, a bypass, or a silent misfile before it was a test."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.server = build_server([Project("graph-workflow", REPO)], "127.0.0.1", 0,
+                                  memory_url="http://127.0.0.1:9")
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.server.shutdown(); cls.server.server_close(); cls.thread.join(timeout=5)
+
+    def raw(self, request: bytes, timeout: float = 3) -> str:
+        """Speak HTTP by hand — urllib will not send a malformed header."""
+        sock = socket.create_connection(("127.0.0.1", self.port), timeout=timeout)
+        try:
+            sock.sendall(request)
+            return sock.recv(120).decode(errors="replace").split("\r\n")[0]
+        finally:
+            sock.close()
+
+    def test_a_hostile_header_never_reaches_a_traceback(self) -> None:
+        """`handle_error` is not overridden, so an uncaught exception prints into
+        the terminal the operator is watching and drops the connection."""
+        for label, request in (
+            ("non-numeric Content-Length",
+             b"POST /api/nodes HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             b"Content-Type: application/json\r\nContent-Length: abc\r\n\r\n"),
+            ("negative Content-Length",
+             b"POST /api/nodes HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             b"Content-Type: application/json\r\nContent-Length: -1\r\n\r\n"),
+            ("non-ASCII token",
+             "POST /api/design/answers HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             "Content-Type: application/json\r\nX-GW-Token: \u00e9\r\n"
+             "Content-Length: 2\r\n\r\n{}".encode("latin-1")),
+            ("non-ASCII token on the pulse GET",
+             "GET /api/design/pulse?project=graph-workflow&surface=x&visible=1 HTTP/1.1\r\n"
+             "Host: 127.0.0.1\r\nX-GW-Token: \u00e9\r\n\r\n".encode("latin-1")),
+        ):
+            with self.subTest(label=label):
+                status = self.raw(request)
+                self.assertTrue(status.startswith("HTTP/1.0 4"),
+                                f"{label} did not get a 4xx: {status!r}")
+
+    def test_a_client_that_hangs_up_does_not_print_a_traceback(self) -> None:
+        """The root of the whole class: `handle_error` lives on the SERVER, and
+        its default prints a stack trace for every closed tab and every
+        `curl | head` — into the terminal the operator is watching."""
+        import io, contextlib
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            sock = socket.create_connection(("127.0.0.1", self.port), timeout=3)
+            sock.sendall(b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+                         b"Host: 127.0.0.1\r\n\r\n")
+            sock.recv(20)          # read a sliver, then hang up mid-response
+            sock.close()
+            time.sleep(0.4)
+        self.assertNotIn("Traceback", captured.getvalue())
+        self.assertNotIn("BrokenPipe", captured.getvalue())
+
+    def test_a_write_to_an_unknown_project_is_refused(self) -> None:
+        """Falling back to the first project is fine for a read and wrong for a
+        write: with several roots mounted, a ruling misfiles permanently."""
+        for path, payload in (
+            ("/api/design/answers", {"project": "NO-SUCH", "surface": "x",
+                                     "batch": [{"kind": "instruction", "text": "t"}]}),
+            ("/api/requests", {"project": "NO-SUCH", "skill": "/gw-plan"}),
+        ):
+            with self.subTest(path=path):
+                request = urllib.request.Request(
+                    f"http://127.0.0.1:{self.port}{path}", method="POST",
+                    data=json.dumps(payload).encode(),
+                    headers={"Content-Type": "application/json",
+                             "X-GW-Token": self.server.RequestHandlerClass.session_token})
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(request, timeout=10)
+                self.assertEqual(caught.exception.code, 404)
+
+    def test_an_unexpected_host_is_refused(self) -> None:
+        """DNS rebinding: a page on attacker.com re-resolving to 127.0.0.1 reads
+        same-origin, with no CORS and no preflight — including the token."""
+        self.assertTrue(self.raw(
+            b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+            b"Host: attacker.example\r\n\r\n").startswith("HTTP/1.0 421"))
+        self.assertTrue(self.raw(
+            b"GET /api/board?project=graph-workflow HTTP/1.1\r\n"
+            b"Host: 127.0.0.1:9999\r\n\r\n").startswith("HTTP/1.0 200"))
+
+    def test_a_raw_prototype_tab_is_sandboxed(self) -> None:
+        """Framed, the iframe supplies the sandbox. Opened as a top-level tab it
+        would otherwise share pmview's origin with index.html, which carries the
+        session token and has no CSP of its own."""
+        base = "/proto/graph-workflow/gui-pmview-static-index-html/screens/design-tab-empty.html"
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{base}", timeout=10) as r:
+            self.assertIn("sandbox allow-scripts", r.headers["Content-Security-Policy"])
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{base}?pin=1", timeout=10) as r:
+            self.assertNotIn("sandbox", r.headers["Content-Security-Policy"])
+
+    def test_a_malformed_deck_does_not_hide_every_other_surface(self) -> None:
+        """deck.json is agent-authored, so it is the file most likely to be
+        malformed — and surfaces() folds them all in one loop."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        for name, deck in (
+            ("bad", '{"target":"a/b.html","screens":[{"id":"s","agreed_by":"nope",'
+                    '"components":["also-wrong"]}]}'),
+            ("good", '{"target":"c/d.html","screens":[{"id":"s2"}]}'),
+        ):
+            d = root / "context" / "design" / name
+            d.mkdir(parents=True)
+            (d / "deck.json").write_text(deck, encoding="utf-8")
+        names = [s["surface"] for s in design_mod.surfaces(root)]
+        self.assertEqual(sorted(names), ["bad", "good"])
+
+    def test_an_oversized_batch_appends_nothing_at_all(self) -> None:
+        """Field caps are in characters and the line cap is in bytes, so a
+        cap-compliant batch can still be oversized. Raising mid-loop would leave
+        half a batch in an append-only log and duplicate it on the retry."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        log = root / "asks.jsonl"
+        fine = design_mod.construct("instruction", "s", "b", {"text": "ok"})
+        # Cap-compliant in characters, oversized in bytes: 4-byte astral chars
+        # in both the capped fields cross 16 KB while every field passes.
+        huge = design_mod.construct("answer", "s", "b", {
+            "ask": "a1",
+            "text": "\U0001F600" * design_mod.MAX_TEXT,
+            "reason": "\U0001F600" * design_mod.MAX_REASON,
+        })
+        with self.assertRaises(ValueError):
+            design_mod.append(log, [fine, huge])
+        self.assertFalse(log.exists(), "a rejected batch must leave no partial write")
+
+    def test_live_setup_refuses_a_screen_that_escapes_the_surface(self) -> None:
+        """The script's whole purpose is pinning live away from the real app."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context" / "design" / "surf" / "screens").mkdir(parents=True)
+        (root / "src").mkdir()
+        (root / "src" / "index.html").write_text("<html></html>", encoding="utf-8")
+        script = REPO / "skills" / "gw-prototype" / "bin" / "live_setup.py"
+        done = subprocess.run(
+            [sys.executable, str(script), "arm", "--surface", "surf",
+             "--screen", "../../../../src/index", "--root", str(root)],
+            capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(done.returncode, 0, done.stdout)
+        self.assertFalse((root / "context" / "design" / "surf" / ".impeccable").exists())
+
+
+class AdviseTests(unittest.TestCase):
+    """One ranking, two consumers. If the terminal and the board can disagree
+    about what to do next, the orientation tool has failed."""
+
+    def board_for(self, root: Path):
+        store = Project("t", root).store
+        return Board(lifecycle.scan(root / "context"),
+                     graph_mod.load(store) if store else graph_mod.Graph())
+
+    def test_it_produces_one_next_action_not_a_dashboard(self) -> None:
+        advice = advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow")
+        self.assertIsNotNone(advice["next"])
+        self.assertIn(advice["next"]["band"], advise_mod.BANDS)
+        self.assertTrue(advice["next"]["command"].startswith("/gw-"))
+        # the headline must be the top of the ranking, not an arbitrary pick
+        self.assertEqual(advice["next"], advice["actions"][0])
+
+    def test_bands_rank_blocked_before_ready(self) -> None:
+        order = [advise_mod.BANDS.index(a["band"]) for a in
+                 advise_mod.advise(REPO, self.board_for(REPO))["actions"]]
+        self.assertEqual(order, sorted(order), "actions must come out ranked")
+
+    def test_a_checked_out_change_is_never_stalled(self) -> None:
+        """Staleness measured off change.md alone calls a change that has been
+        worked all day ten days cold. One change per worktree is the rule, so a
+        branch named after a change is that change being worked on now."""
+        old = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, old, True)
+        stale_md = old / "change.md"
+        stale_md.write_text("# c", encoding="utf-8")
+        ancient = time.time() - (advise_mod.STALL_DAYS + 20) * 86400
+        os.utime(stale_md, (ancient, ancient))
+
+        change = {"id": "design-lane", "stage": "in-progress", "path": str(old),
+                  "has_change_md": True, "memory_goal": "x", "design_surfaces": []}
+        off = advise_mod.actions_for_change(change, [], old, branch="main")
+        on = advise_mod.actions_for_change(change, [], old, branch="design-lane")
+        self.assertEqual([a["band"] for a in off], [advise_mod.STALLED])
+        self.assertEqual([a["band"] for a in on], [advise_mod.READY])
+
+    def test_desk_activity_counts_as_a_sign_of_life(self) -> None:
+        """A change worked entirely through its desk still has an old change.md."""
+        old = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, old, True)
+        stale_md = old / "change.md"
+        stale_md.write_text("# c", encoding="utf-8")
+        ancient = time.time() - (advise_mod.STALL_DAYS + 20) * 86400
+        os.utime(stale_md, (ancient, ancient))
+
+        change = {"id": "c1", "stage": "in-progress", "path": str(old),
+                  "has_change_md": True, "memory_goal": "x", "design_surfaces": ["s1"]}
+        fresh = {"surface": "s1", "open_asks": 0, "unruled_gaps": 0,
+                 "agent_listening": False, "warnings": [],
+                 "last_activity": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        bands = [a["band"] for a in advise_mod.actions_for_change(change, [fresh], old)]
+        self.assertEqual(bands, [advise_mod.READY], "desk activity is activity")
+
+    def test_an_open_ask_with_no_listener_blocks(self) -> None:
+        change = {"id": "c1", "stage": "in-progress", "path": str(REPO),
+                  "has_change_md": True, "memory_goal": "x",
+                  "design_surfaces": ["s1"]}
+        surface = {"surface": "s1", "open_asks": 2, "unruled_gaps": 0,
+                   "agent_listening": False, "last_activity": "", "warnings": []}
+        blocked = [a for a in advise_mod.actions_for_change(change, [surface], REPO)
+                   if a["band"] == advise_mod.BLOCKED]
+        self.assertTrue(blocked)
+        self.assertIn("--resume s1", blocked[0]["command"])
+        # …and not when one IS listening: it is being worked, leave it alone
+        surface["agent_listening"] = True
+        self.assertFalse([a for a in advise_mod.actions_for_change(change, [surface], REPO)
+                          if a["band"] == advise_mod.BLOCKED])
+
+    def test_the_report_leads_with_the_sentence(self) -> None:
+        text = advise_mod.render_text(
+            advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow"))
+        arrow = [l for l in text.split("\n") if l.strip().startswith("→")]
+        self.assertEqual(len(arrow), 1, "exactly one headline, or it is a dashboard")
+
+    def test_advise_writes_nothing(self) -> None:
+        store = store_path(REPO)
+        before = store.read_bytes()
+        advise_mod.advise(REPO, self.board_for(REPO), "graph-workflow")
+        self.assertEqual(store.read_bytes(), before)
+        source = (REPO / "gui" / "pmview" / "advise.py").read_text()
+        for forbidden in ("open(", "write_text", "mkdir", "Popen", "os.system"):
+            self.assertNotIn(forbidden, source)
+
+
+class RequestQueueTests(unittest.TestCase):
+    """The desk, one scope up. pmview appends a line; nothing is started."""
+
+    def setUp(self) -> None:
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, True)
+        (self.root / "context").mkdir()
+        (self.root / "skills" / "gw-plan").mkdir(parents=True)
+        (self.root / "skills" / "gw-plan" / "SKILL.md").write_text("x", encoding="utf-8")
+
+    def test_only_an_installed_skill_can_be_requested(self) -> None:
+        known = design_mod.installed_skills(self.root)
+        self.assertIn("/gw-plan", known)
+        design_mod.construct_request("/gw-plan", known, {})
+        for bogus in ("/gw-nope", "/gw-plan; rm -rf /", "bash", "", "/gw-plan --x"):
+            with self.subTest(skill=bogus), self.assertRaises(ValueError):
+                design_mod.construct_request(bogus, known, {})
+
+    def test_the_server_stamps_the_line_and_the_client_cannot(self) -> None:
+        known = design_mod.installed_skills(self.root)
+        line = design_mod.construct_request("/gw-plan", known, {
+            "change": "c1", "note": "n" * 5000,
+            "by": "agent", "src": "cli", "id": "forged", "kind": "ack"})
+        self.assertEqual((line["kind"], line["by"], line["src"]),
+                         ("request", "human", "pmview"))
+        self.assertNotEqual(line["id"], "forged")
+        self.assertEqual(len(line["note"]), design_mod.MAX_NOTE)
+
+    def test_a_request_is_open_until_acked(self) -> None:
+        path = design_mod.requests_path(self.root)
+        known = design_mod.installed_skills(self.root)
+        line = design_mod.construct_request("/gw-plan", known, {"change": "c1"})
+        design_mod.append(path, [line])
+        self.assertEqual(design_mod.read_requests(self.root)["open"], 1)
+        design_mod.append(path, [{"kind": "ack", "id": "k1", "by": "agent",
+                                  "session": "s", "refs": [line["id"]]}])
+        folded = design_mod.read_requests(self.root)
+        self.assertEqual(folded["open"], 0)
+        self.assertEqual(folded["requests"][0]["state"], "landed")
+
+
+class DesignDistillationTests(unittest.TestCase):
+    """Gap 2: the design system's rules must become recallable, and the
+    fingerprint that detects drift must agree across the two readers."""
+
+    @staticmethod
+    def distil(*args):
+        script = REPO / "skills" / "gw-foundation" / "bin" / "design_distill.py"
+        done = subprocess.run([sys.executable, str(script), "--root", str(REPO), *args],
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout, done.stderr
+
+    def test_it_distils_rules_donts_and_a_visual_world(self) -> None:
+        code, out, err = self.distil("--json")
+        self.assertEqual(code, 0, err)
+        rows = json.loads(out)
+        kinds = {"rules": 0, "donts": 0, "concept": 0}
+        for row in rows:
+            if row["type"] == "concept":
+                kinds["concept"] += 1
+            elif row["section"] == "donts":
+                kinds["donts"] += 1
+            else:
+                kinds["rules"] += 1
+        self.assertEqual(kinds, {"rules": 7, "donts": 5, "concept": 1})
+
+    def test_donts_are_strings_and_survive_as_content(self) -> None:
+        """`narrative.donts` are plain strings. Reading them as objects yields a
+        list of empty rules and silently drops the whole category."""
+        rows = [r for r in json.loads(self.distil("--json")[1]) if r["section"] == "donts"]
+        self.assertTrue(rows)
+        for row in rows:
+            self.assertTrue(row["content"].strip())
+            self.assertTrue(row["content"].lower().startswith("don"))
+
+    def test_it_captures_names_never_values(self) -> None:
+        """A node holding #2f6fdb goes silently wrong the day someone repaints."""
+        for row in json.loads(self.distil("--json")[1]):
+            self.assertNotRegex(row["content"], r"#[0-9a-fA-F]{6}\b")
+
+    def test_the_fingerprint_agrees_with_pmviews_reader(self) -> None:
+        """Two readers, one recorded table. If they hash different inputs, every
+        rule reports stale forever and the drift check is worthless."""
+        live = {r["name"]: r["fp"] for r in design_mod.design_system(REPO)["rules"]}
+        for row in json.loads(self.distil("--json")[1]):
+            if row["type"] == "constraint" and row["section"] != "donts":
+                with self.subTest(rule=row["label"]):
+                    self.assertEqual(live.get(row["label"]), row["fp"])
+
+    def test_the_script_never_touches_the_graph(self) -> None:
+        source = (REPO / "skills" / "gw-foundation" / "bin" / "design_distill.py").read_text()
+        for forbidden in ("sqlite3", "capture_artifact(", "memory-graph", "urllib"):
+            self.assertNotIn(forbidden, source.replace('"capture_artifact(', '"'))
+
+
+class LivePinTests(unittest.TestCase):
+    """Pinning impeccable live to one prototype. Getting this wrong does not fail
+    loudly — it edits the real application."""
+
+    @staticmethod
+    def run_setup(*args):
+        script = REPO / "skills" / "gw-prototype" / "bin" / "live_setup.py"
+        done = subprocess.run([sys.executable, str(script), *args, "--root", str(REPO)],
+                              capture_output=True, text=True, timeout=60)
+        return done.returncode, json.loads(done.stdout or "{}")
+
+    def test_arm_then_teardown_leaves_nothing_behind(self) -> None:
+        surface = "gui-pmview-static-index-html"
+        config = (REPO / "context" / "design" / surface / ".impeccable" / "live" / "config.json")
+        self.addCleanup(lambda: self.run_setup("teardown", "--surface", surface))
+
+        code, armed = self.run_setup("arm", "--surface", surface, "--screen", "design-tab-empty")
+        self.assertEqual(code, 0, armed)
+        self.assertTrue(config.is_file())
+        # One screen, not a glob: a repo-wide glob dirties every prototype in the
+        # repo with a session token on every session start.
+        self.assertEqual(json.loads(config.read_text())["files"],
+                         ["screens/design-tab-empty.html"])
+        # The app root must become the surface directory — that confinement is
+        # the only thing keeping live-wrap's first-match walk out of the real app.
+        self.assertEqual(config.parent.parent.parent.name, surface)
+
+        code, torn = self.run_setup("teardown", "--surface", surface)
+        self.assertEqual(code, 0, torn)
+        self.assertFalse(config.exists())
+        self.assertEqual(torn["residue"], [], "a tracked prototype kept session residue")
+
+    def test_preflight_rejects_a_prototype_live_cannot_write_into(self) -> None:
+        surface = "gui-pmview-static-index-html"
+        code, result = self.run_setup("preflight", "--surface", surface, "--screen", "nope")
+        self.assertEqual(code, 1)
+        self.assertTrue(any("no prototype" in p for p in result["problems"]))
+
+
+class StoreResolutionTests(unittest.TestCase):
+    """A fresh clone has the committed dump and no `.db` — the board must work
+    from what git actually carries."""
+
+    def test_the_committed_dump_is_a_store(self) -> None:
+        self.assertEqual(store_path(COFFER).name, "memory-graph.dump")
+        self.assertFalse((COFFER / "context" / "memory-graph.db").exists(),
+                         "precondition: the .db is gitignored, so it is absent here")
+        self.assertGreater(len(graph_mod.load(store_path(COFFER)).nodes), 100)
+
+    def test_the_live_sqlite_store_wins_when_both_are_present(self) -> None:
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context").mkdir()
+        make_sqlite_store(root / "context" / "memory-graph.db").close()
+        (root / "context" / "memory-graph.dump").write_text(
+            "# agentic-memory-system dump\n# format_version: 1\n", encoding="utf-8")
+        self.assertEqual(Project("t", root).store.name, "memory-graph.db")
+
+    def test_a_file_that_vanishes_mid_scan_does_not_crash_the_fingerprint(self) -> None:
+        """`rglob` yields a path, then the file goes away before `stat()`. The
+        handler does not override `handle_error`, so an unguarded stat prints a
+        traceback into the terminal the operator is watching."""
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "context" / "changes" / "c1").mkdir(parents=True)
+        (root / "context" / "changes" / "c1" / "change.md").write_text("# c1", encoding="utf-8")
+        view = server_mod.ProjectView(Project("t", root))
+        self.assertIsNone(server_mod.ProjectView._file_stamp(root / "nope" / "gone.md"))
+        self.assertTrue(view.board().board()["stages"] is not None)
+
+
 class DiscoveryTests(unittest.TestCase):
     def test_parent_directory_expands_to_each_project(self) -> None:
         names = {p.name for p in discover([REPO / "dogfood"])}
@@ -315,7 +974,7 @@ class DiscoveryTests(unittest.TestCase):
     def test_project_directory_is_used_directly(self) -> None:
         projects = discover([COFFER])
         self.assertEqual([p.name for p in projects], ["coffer"])
-        self.assertEqual(projects[0].store, COFFER / "context" / "memory-graph.db")
+        self.assertEqual(projects[0].store, store_path())
 
 
 class ServerTests(unittest.TestCase):
@@ -352,6 +1011,56 @@ class ServerTests(unittest.TestCase):
         except urllib.error.HTTPError as exc:
             return exc.code, json.loads(exc.read())
 
+    def raw_post(self, path: str, body: bytes, **headers):
+        request = urllib.request.Request(
+            self.base + path, data=body, method="POST", headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            return exc.code, json.loads(exc.read())
+
+    # --- the write guard ----------------------------------------------------
+    # pmview binds to loopback, but loopback is not a boundary a browser
+    # respects. These three cover the shapes a page the operator merely visited
+    # could actually send.
+
+    def test_a_write_that_is_not_json_is_refused(self) -> None:
+        """A cross-origin form or `sendBeacon` can only send a simple content
+        type, and a simple request needs no preflight — so this is the one that
+        would otherwise get through."""
+        status, body = self.raw_post(
+            "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+            **{"Content-Type": "text/plain;charset=UTF-8"})
+        self.assertEqual(status, 415)
+        self.assertEqual(body["code"], "unsupported_media_type")
+
+    def test_a_write_from_a_foreign_origin_is_refused(self) -> None:
+        status, body = self.raw_post(
+            "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+            **{"Content-Type": "application/json", "Origin": "http://evil.example"})
+        self.assertEqual(status, 403)
+        self.assertEqual(body["code"], "forbidden_origin")
+
+    def test_a_write_from_this_servers_own_origin_is_allowed_through(self) -> None:
+        """Reaching `memory_unavailable` means the guard passed it: the request
+        got as far as the proxy, which is dead in this fixture."""
+        for origin in (self.base, "http://localhost:%d" % self.server.server_address[1]):
+            with self.subTest(origin=origin):
+                status, body = self.raw_post(
+                    "/api/nodes/x/tier", b'{"tier":"lifetime"}',
+                    **{"Content-Type": "application/json", "Origin": origin})
+                self.assertEqual(status, 503)
+                self.assertEqual(body["code"], "memory_unavailable")
+
+    def test_a_write_with_no_origin_is_allowed_through(self) -> None:
+        """No `Origin` means no browser — curl, a script, a test. The operator
+        already has their own shell; refusing here buys nothing and breaks
+        scripting."""
+        status, body = self.post("/api/nodes/x/tier", {"tier": "lifetime"})
+        self.assertEqual(status, 503)
+        self.assertEqual(body["code"], "memory_unavailable")
+
     def test_projects_and_board(self) -> None:
         status, projects = self.get("/api/projects")
         self.assertEqual(status, 200)
@@ -386,7 +1095,7 @@ class ServerTests(unittest.TestCase):
         self.assertIn("reason", payload)
 
     def test_writes_report_memory_unavailable_and_change_nothing(self) -> None:
-        before = (COFFER / "context" / "memory-graph.db").read_bytes()
+        before = store_path().read_bytes()
         for path, payload in (
             ("/api/nodes/66cd3d85-2920-4768-8953-4fd191446b5c/body", {"body": "rewritten"}),
             ("/api/nodes/66cd3d85-2920-4768-8953-4fd191446b5c/tier", {"tier": "lifetime"}),
@@ -397,7 +1106,7 @@ class ServerTests(unittest.TestCase):
                 status, body = self.post(path, payload)
                 self.assertEqual(status, 503)
                 self.assertEqual(body["code"], "memory_unavailable")
-        self.assertEqual((COFFER / "context" / "memory-graph.db").read_bytes(), before,
+        self.assertEqual(store_path().read_bytes(), before,
                          "the board must never write to the store itself")
 
     def test_empty_body_is_rejected_before_it_reaches_the_memory_api(self) -> None:

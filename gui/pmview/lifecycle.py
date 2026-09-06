@@ -58,6 +58,7 @@ class Change:
     goal: str = ""
     sections: dict[str, str] = field(default_factory=dict)
     node_refs: list[str] = field(default_factory=list)
+    design_surfaces: list[str] = field(default_factory=list)
     has_change_md: bool = False
     has_plan_md: bool = False
     plan_stub: bool = False
@@ -108,6 +109,28 @@ def _leading_fields(text: str) -> dict[str, str]:
     return fields
 
 
+def _repeated_field(text: str, key: str) -> list[str]:
+    """Every value of a preamble key that may legitimately repeat.
+
+    `_leading_fields` keeps the last value of a duplicated key, which is right
+    for `status:` and wrong for `design_surface:` — a change may touch more than
+    one UI surface, and silently keeping only the last would hide the others
+    from the review gate.
+    """
+    values: list[str] = []
+    for line in text.splitlines():
+        m = _HEADING_RE.match(line)
+        if m and len(m.group(1)) == 2:
+            break
+        f = _FIELD_RE.match(line)
+        if f and f.group(1).strip().lower() == key:
+            for part in f.group(2).split(","):
+                part = part.strip()
+                if part and part not in values:
+                    values.append(part)
+    return values
+
+
 def _plan_phases(plan_text: str) -> list[str]:
     """Bullet titles under a `## Phases...` heading, bolded-prefix first."""
     _, sections = _split_sections(plan_text)
@@ -156,6 +179,7 @@ def read_change(directory: Path, archived: bool) -> Change:
             if not line.lower().startswith("memory_goal:")
         ).strip()
         change.node_refs = sorted({m.group(1) for m in _NODE_REF_RE.finditer(text)})
+        change.design_surfaces = _repeated_field(text, "design_surface")
         if not change.memory_goal:
             change.warnings.append("no memory_goal — cannot join this change to the graph")
         if not archived:

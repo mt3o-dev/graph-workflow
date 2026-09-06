@@ -5,16 +5,19 @@ description: Keep a change and its issue-tracker item in sync — GitHub Issues,
 
 # gw-track
 
-Three surfaces, three jobs. Confusing them is how this integration usually goes wrong:
+Four surfaces, four jobs. Confusing them is how this integration usually goes wrong:
 
 | Surface | Holds | Read by |
 |---|---|---|
 | `context/changes/<id>/` | **lifecycle state** — how to pick this work up | the agent and whoever takes over |
 | the memory graph | **knowledge** — what any future change must not repeat or contradict | future recalls |
+| `context/design/<surface>/` | **what a screen is supposed to look like** — the deck, the prototypes, the ask log | `/gw-prototype`, `/gw-review` Part 1b, and the human in pmview |
 | the **tracker** | **work state** — what is happening, to whom, and when | people who are not in the session |
 
-This skill owns only the third. A decision recorded in an issue comment is a decision no
-future recall will ever serve — knowledge goes in the graph, always. The tracker is how
+This skill owns only the tracker. A decision recorded in an issue comment is a decision no
+future recall will ever serve — knowledge goes in the graph, always. The same rule binds
+the desk: an answer in `asks.jsonl` is a *request* being resolved, not a capture, and the
+ruling still reaches the graph with a `goal_ref` at the phase boundary. The tracker is how
 the work becomes visible to people outside it, and nothing more.
 
 **The problem this skill actually solves is authority, not transport.** Both sides have

@@ -35,3 +35,13 @@ Thumbs.db
 .idea/
 .vscode/
 .gw-scratch/
+
+# impeccable live session state. `inject-journal.json` records the helper port and
+# pid of a running session; the per-surface `.impeccable/live/` subtree under
+# context/design/ is armed by /gw-prototype and deleted at teardown. Neither is
+# knowledge and neither should ship — but the PROTOTYPES beside them are tracked
+# on purpose: impeccable treats a gitignored file as generated and refuses to
+# write into one, and a gitignored prototype is invisible in the PR diff.
+.impeccable/live/inject-journal.json
+.impeccable/live/roots.json
+context/design/*/.impeccable/

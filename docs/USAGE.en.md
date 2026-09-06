@@ -21,15 +21,22 @@ in order to not repeat or contradict this one).
 flowchart TD
     INIT["/gw-init<br/>(once per project)"] --> FOUND["/gw-foundation<br/>distill PRD / ADRs / tech-stack<br/>into lifetime candidates"]
     FOUND --> DOM["/gw-domain<br/>the project's nouns as entities<br/>greenfield: user names them<br/>brownfield: you extract, user reviews"]
-    DOM --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
+    DOM --> SIZE{Change<br/>or epic?}
+  SIZE -- "epic" --> SLICE["/gw-slice<br/>tracer-bullet slices, ordered;<br/>the human rules on granularity"]
+  SLICE --> NEW
+  SIZE -- "change" --> NEW["/gw-new<br/>change folder + Goal node + seed recall"]
     NEW --> KIND{What kind<br/>of work?}
     KIND -- "defect / refactor" --> FIX["/gw-fix<br/>TDD: red → green → refactor<br/>(no source edit before a red test)"]
     KIND -- "UI surface" --> WIRE["/gw-wireframe<br/>screen inventory, then<br/>one screen per turn with the user"]
     KIND -- "feature" --> Q{Territory<br/>known?}
     Q -- "no" --> RES["/gw-research<br/>recall first, explore only the gap,<br/>capture findings"]
     Q -- "yes" --> PLAN
-    WIRE --> PLAN
-    RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
+    WIRE --> PROTO["/gw-prototype<br/>clickable HTML in the project's real tokens,<br/>served by pmview; asks via the desk"]
+  PROTO --> PLAN
+  WIRE -- "structure is enough" --> PLAN
+    RES --> GRILL["/gw-grill<br/>optional: argue it out,<br/>one question at a time"]
+  GRILL --> PLAN
+  RES --> PLAN["/gw-plan<br/>recall + impact_of,<br/>write plan.md, capture decisions"]
     PLAN --> PLANREV["/gw-plan-review<br/>fresh session, independent recall,<br/>plan vs settled constraints"]
     PLANREV -- "request changes" --> PLAN
     PLANREV -- "approve" --> MODE{Bounded and<br/>verifiable by command?}
@@ -85,6 +92,7 @@ context/
   changes/     # active changes: <change-id>/{change.md, plan.md, research.md}
   archive/     # immutable — nothing ever writes here
   foundation/  # PRD, roadmap, tech-stack (human source of truth)
+  design/      # per-SURFACE design record: deck, prototypes, the ask log
 context/memory-graph.dump # the store as tracked text (the .db is a gitignored build artifact)
 ```
 
@@ -395,6 +403,16 @@ Headless (`/gw-goal`) only when someone else already wrote the failing test:
 reproduction is judgment, and an unattended agent that cannot reproduce will fix
 something adjacent and report success.
 
+`/gw-foundation` also **writes** the PRD when the project has none and the
+conversation already contains one. It synthesises — it does not interview. A
+project that has converged on what to build, in a conversation, with nothing on
+disk, is the commonest way a foundation never gets loaded at all.
+
+The one place it stops and asks is the **test seams**: which boundaries this
+feature will be tested at, preferring existing seams and the highest one
+available. A PRD built on the wrong seams produces a plan that tests the wrong
+things, and that is expensive to discover later.
+
 ## 4b. Designing a UI — `/gw-wireframe`
 
 UI work fails the usual way: an agent generates plausible screens in one shot, the
@@ -428,7 +446,53 @@ has not made, and saying so beats guessing.
 Empty and error states are wireframed explicitly or explicitly ruled out of scope.
 They are where UI rework concentrates.
 
-## 4c. Finding what to build next — `/gw-ideate`
+## 4c. Making it clickable — `/gw-prototype`
+
+`/gw-wireframe` stops at structure by rule: no hex, no font stacks, no spacing
+values. That rule is right, and it leaves a hole — an ASCII box cannot be looked
+at or clicked, so the first time anyone *sees* a screen is after it is built.
+
+`/gw-prototype` fills that gap. It renders the agreed deck into self-contained
+HTML that wears the project's **own** stylesheet, served over real HTTP by pmview:
+
+```
+drain the desk           →  answers and instructions the human left while you were away
+read the deck            →  context/design/<surface>/deck.json — canonical, never re-derived
+refuse the unruled       →  a screen with a GAP:unruled component is not prototyped
+write                    →  context/design/<surface>/screens/<id>.html, committed
+show and ask             →  a deep link + at most three blocking asks per screen
+capture                  →  the rulings, with `per desk <surface>#<id>` provenance
+```
+
+**It invents nothing.** A prototype that introduces a colour, a font or a spacing
+value the project has not chosen is a bug, not a draft — it would be committed to
+git, framed as though it were agreed, and hardened into a contract by `/gw-review`.
+That is also why a screen carrying an unruled component gap is **refused** rather
+than rendered: filling the hole means inventing the component, which is how a
+design system dies.
+
+### The desk
+
+One file per surface, `context/design/<surface>/asks.jsonl`, append-only and
+git-tracked. The agent posts a question and **ends its turn**; you answer in
+pmview's Design tab, or click a region of the prototype and type an instruction
+about it; a watcher the agent launched wakes it.
+
+Nothing lives in a process, so nothing is lost when a session dies — and because
+the log is in git, every ruling shows up in the PR diff beside the code it
+explains.
+
+**pmview cannot start or wake a process.** It writes a file and nothing else. What
+resumes the agent is a watcher *it* launched inside its own turn, and that only
+runs when you were at the tab when the question was posted. When you were not, the
+terminal is where you pick the thread back up — the Design tab shows the command,
+with a copy button.
+
+With pmview closed the loop still works: the terminal prints the deep link and the
+ask titles, you answer in chat, and the skill writes the answer line so the log has
+no hole.
+
+## 4d. Finding what to build next — `/gw-ideate`
 
 Generic ideation produces what the team could have written themselves. This produces
 the ideas **the project has already earned and not noticed** — because a
@@ -452,7 +516,7 @@ that survived nothing is a list nobody screened. Ideas go to
 `context/foundation/roadmap.md`; only the *findings* (new gaps, blind spots, expired
 deferrals) go into the graph.
 
-## 4d. Consolidating — `/gw-consolidate`
+## 4e. Consolidating — `/gw-consolidate`
 
 When three changes independently discover the same thing, dormancy loses a real
 pattern. Consolidation is how a pattern outlives its episodes.
@@ -475,6 +539,106 @@ is a different finding — it means recall is not serving what capture already w
 
 Do not consolidate domain entities. An entity is a referent, not an abstraction over
 episodes; several entities that look like one is a *merge*, and that is `/gw-domain`.
+
+## 4f. Slicing an epic — `/gw-slice`
+
+Some goals are too big for one change: they span subsystems, imply more than
+about five phases, or read like a product. `/gw-new`'s size check catches them
+and sends them here.
+
+```
+recall                   →  sequencing constraints that reorder the list
+draft                    →  tracer bullets: thin vertical paths, each verifiable alone
+classify                 →  headless | interactive | TDD, per slice
+quiz                     →  the human rules on granularity, order and mode
+registry                 →  the epic entry lands in context/foundation/roadmap.md
+capture                  →  WHY the order is what it is — never the slice list
+```
+
+**Tracer bullets, not layers.** Each slice cuts a narrow path through every layer
+— schema, API, UI, tests — and is demoable on its own. "Do all the schema, then
+all the API" looks efficient and produces nothing testable until the end.
+
+**A slice needing a never-headless skill is interactive, mechanically.**
+`/gw-domain`, `/gw-wireframe` and `/gw-prototype` are never headless, so a slice
+that touches a UI surface cannot be marked headless. That is a check, not a
+judgment call — which is the point, because it is exactly what gets waved through
+late in the day.
+
+**It opens only the first slice.** Not because eight change folders would be
+untidy, but because `create_change` mints eight Goal nodes and eight liveness
+roots the sweep can never retire, and because `/gw-new` wires each slice's
+`parent_refs` from its *archived* siblings — which do not exist yet.
+
+What survives the epic is the reasoning: *"import first, because classification's
+acceptance criteria assume a settled Transaction record."* The slice list itself
+is sequencing, like `plan.md`, and `/gw-archive` marks it off as it goes.
+
+## 4g. Arguing it out first — `/gw-grill`
+
+This workflow is full of gates and short on conversation. `/gw-plan-review` runs
+as a fresh session precisely so it *cannot* be argued with; `/gw-review` issues a
+verdict. Both are right to be gates — and neither is the place to discover that
+an assumption was wrong.
+
+`/gw-grill` is the conversation before the plan, where a wrong assumption is
+still cheap:
+
+```
+ground                   →  recall + domain_model; DISPUTED nodes opened first
+walk                     →  one question per turn, each with a recommended answer
+challenge                →  the model · impact_of on every claim · scenarios · the code
+capture                  →  inline as decisions crystallise; events batched at the end
+contradict               →  capture + CONTRADICTS, then STOP — a human rules
+```
+
+**The mode a glossary cannot do** is the second challenge: a file can tell you a
+term is defined; `impact_of` can tell you that contradicting it breaks four other
+things settled across three previous changes. That is what makes the argument
+land.
+
+**It never issues a verdict.** A grilled plan still faces `/gw-plan-review`, and
+that gate stays a fresh session with a clean context — its independence is the
+whole reason it catches things.
+
+The filter matters here more than anywhere: this skill generates more capture
+candidates per hour than any other, so the three-part test — hard to reverse,
+surprising without context, the result of a real trade-off — is what stops a
+good session from filling the graph with restated obviousness.
+
+## 4h. Learning what the project knows — `/gw-teach`
+
+Every other skill spends the graph on the codebase. This one spends it on a
+person, and it is the only one that pays into ranking without doing any
+implementation work.
+
+It works because three things a teaching tool normally builds from scratch are
+already here and already live: the glossary is `domain_model()`, the learning
+records are the journal, and the mission is the foundation goal. And the thing a
+flat glossary structurally cannot do — **`DEPENDS_ON` is a prerequisite chain**,
+so the teaching order is read rather than guessed.
+
+```
+mission                  →  the foundation goal + the open change
+locate                   →  recall the topic — ABSENT? refuse and route, never invent
+order                    →  walk DEPENDS_ON: prerequisites first
+frontier                 →  the journal says what they have used; teach one hop past it
+teach                    →  every claim cites [node:<id>] or a URL
+render                   →  .gw-scratch/teach/<topic>.html — gitignored on purpose
+journal                  →  USED on everything the lesson drew on
+```
+
+**Refusing is the useful part.** If the topic is not in the graph, teaching it
+means teaching from parametric knowledge — plausible, uncited, and quite possibly
+not how *this* project does it, which is the one thing the learner is there for.
+
+**The explainer is gitignored deliberately.** Committed, it becomes a fourth home
+for knowledge alongside the docs, the graph and the code, and it drifts from the
+nodes it renders with nothing able to detect the drift.
+
+**A quiz emits `NOTED`, never `CONFIRMED`.** `CONFIRMED` means a claim was
+exercised and held — a test ran, a path was traced. A human remembering a fact is
+not that, and inflating it corrupts trust-folding everywhere.
 
 ## 5. How knowledge lives and dies
 
@@ -680,7 +844,14 @@ surface, as it always was, just without a filter to register.
    by the collision detector — not a free-text tag cloud.
 9. **plan.md is sequencing, not knowledge.** It may die with the change; the
    decisions it embodied were captured at the plan boundary and live on. The same
-   holds for `research.md` and `wireframes.md`.
+   holds for `research.md`.
+
+   **`context/design/` is the deliberate exception, and it is not change-keyed.**
+   A deck, its prototypes and its ask log are keyed by *surface*, because a screen
+   outlives the changes that touch it: the next change to that screen needs to
+   know what was already agreed and why. It is still not knowledge — the rulings
+   are captured to the graph like everything else — but it is not sequencing
+   either, so `/gw-archive` reports it and never moves it.
 10. **Domain modelling needs a human in the loop, in both modes.** Greenfield is an
     interview; brownfield is a review. Neither runs unattended — an unattended
     greenfield pass invents the domain, and an unattended brownfield pass ratifies

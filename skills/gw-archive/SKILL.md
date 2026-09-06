@@ -22,6 +22,20 @@ dormant while promoted knowledge survives. Neither half is optional.
    session's usage journaled with one `append_events` batch. This is the last
    moment the knowledge is cheap to save.
 
+   **Design residue — last call.** For every surface this change touched
+   (`design_surface:` in change.md): capture the token deviations accepted, the
+   components the design system gained, the gap rulings, and any
+   answered-but-uncaptured desk decision. Then hang **every node id cited by a
+   live deck for that surface** onto the change-summary concept with
+   `DEPENDS_ON` — the same trick this workflow already uses so recalling a
+   summary pulls the specifics within reach even when they are dormant.
+
+   **`DEPENDS_ON`, never `CONSOLIDATES`.** The retrieval walker gives
+   `CONSOLIDATES` policy weight 0, so a design decision hung there goes dormant
+   at the sweep and a recall silently misses it months later — the failure shows
+   up as "we decided this once, why does nobody know" long after it is cheap to
+   fix.
+
    Confirm the /gw-review consolidation happened: a change-summary artifact exists
    and the promotion candidates were ruled on. If the summary was never promoted,
    flag it to the human before sweeping — a dormant summary defeats its purpose
@@ -36,6 +50,10 @@ dormant while promoted knowledge survives. Neither half is optional.
    this — if the memory system's mark-sweep provably keeps nodes reachable from
    other active liveness roots, note that and move on; if you cannot confirm it,
    the check stands.
+
+   **A citation from a live `context/design/**/deck.json` counts as an active
+   dependent.** A deck outlives the change that wrote it, so a node it cites is
+   load-bearing for a surface even when no open change references it.
 
 4. **Deactivate and sweep** — privileged lifecycle operation, deliberately NOT on
    the MCP agent surface; it runs through the memory repo's lifecycle script:
@@ -62,6 +80,16 @@ dormant while promoted knowledge survives. Neither half is optional.
    Stamp change.md: `status: archived`, `archived: <YYYY-MM-DD>`. From this moment
    the folder is immutable — no skill or tool writes under `context/archive/`,
    ever.
+
+6b. **Design residue report.** `context/design/` is a **sibling** of
+   `context/changes/`, keyed by surface, and is **not moved** — a screen's design
+   outlives the change that agreed it, and freezing it into an immutable archive
+   would strand the next change that touches the same screen.
+
+   Report: how many surfaces this change touched, screens and prototypes under
+   each, the byte size, and the path. Deleting a superseded surface directory is
+   the human's call and the human's command — agents cannot `rm`, and nothing
+   here should try to.
 
 7. **One commit for one event.** Commit the folder move and note the memory
    deactivation (and the sweep's node count) in the message — future readers should

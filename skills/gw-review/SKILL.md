@@ -62,6 +62,76 @@ this upfront; the direction is the developer's judgment at the moment it happens
 
 Surface the conflict with both readings and the evidence; never silently pick one.
 
+## Part 1b — Design review (skip unless the change names a surface)
+
+Runs only when `change.md` carries a `design_surface:` line; iterate every one.
+A UI change that honored a wireframe decision in prose and quietly dropped it in
+code is exactly the failure this gate exists to catch — and nothing else in the
+lifecycle looks for it.
+
+**Every check degrades to a named skip line, never to a failure.** A gate that
+cannot run its fourth check must say which one it skipped and why, because a
+silent skip reads as a pass.
+
+1. **Screen coverage.** Every deck screen with `status: agreed` **and an
+   `agreed_by` entry naming this change** has an `implements:` target that
+   exists. Scoping to `agreed_by` is what stops change B reporting change A's
+   unbuilt screen.
+2. **State coverage.** Every state the deck lists actually renders — the empty
+   state especially. That is where UI rework concentrates.
+2b. **Ruled gaps.** Read each screen's `components`. A `GAP:ruled:<node-id>` must
+   name a node that exists; a **`oneoff:<node-id>`** is an *accepted*
+   inconsistency — report it with its ruling so the reviewer sees a decision that
+   was made, and never as a finding. A `GAP:unruled` still on a built screen **is**
+   a finding: something was implemented that nobody ruled on.
+
+3. **Cited constraints.** Every `[node:<id>]` in a screen's `cites` is honored in
+   the built markup. **A dormant cited node emits a named skip, not an
+   unhonored-constraint finding** — it was retired by a sweep, not violated.
+4. **Mechanical.** `node <impeccable-base>/scripts/detect.mjs --json <the
+   change's dirty markup and style files>`. Bundled and offline; no `npx`. It
+   honors `.impeccable/config.json`'s `detector.ignoreRules`, `ignoreFiles`
+   **and `ignoreValues`** — check all three: a project's real suppressions may
+   live under any of them. Skip on `ios`/`android` surfaces.
+
+   **Read the banner before you read the count.** Without its optional parsers
+   (`htmlparser2`, `css-select`, `css-tree`, `domutils`) the detector prints
+   `DEGRADED` and falls back to regex: custom properties, selector matching and
+   computed contrast are not evaluated, and it says so itself — *"findings are an
+   undercount, not a clean bill of health."* Report `0 findings (DEGRADED —
+   undercount)`, never `clean`.
+5. **Rule drift.** Recompute the per-rule fingerprints in
+   `context/foundation/design-bindings.md` against `.impeccable/design.json`. A
+   mismatch names the rule, the node, **and whether that node is dormant**: *"The
+   Accent-Is-A-Verb Rule changed, and [node:8b94…] is dormant — reactivate,
+   re-promote, then amend."* Report, never re-capture.
+6. **Live residue.** No `impeccable-live-start` marker, no `data-p-*`, no unbaked
+   `--p-*` in any tracked file under `context/design/`. A crashed live session
+   leaves a session token in a git-tracked file.
+7. **Citation tier.** Every node id cited by a *live* deck that is still
+   `short-term` or `mid-term`. These are the nodes the next archive sweep will
+   retire out from under a permanent deck.
+8. **Desk provenance.** Every node captured this change whose content carries
+   `per desk <surface>#<id>`, listed with its thread id; plus the count of asks
+   still open (neither answered nor declined) and the `asks.jsonl` diffstat.
+
+**Banned at this gate, and at every other, with the reasons inline:**
+`impeccable doctor` — it *repairs* persisted surface briefs, and a review gate
+that edits the thing it reviews is not a gate. `impeccable document` — it
+regenerates `DESIGN.md` **wholesale**, which would silently invalidate every
+constraint node distilled from it and every fingerprint row in one shot.
+
+**Journal verbs.** `REVIEWED` is the default here. Looking at a rendered screen
+and judging that it matches is `REVIEWED`, not `CONFIRMED` — the rule at the
+bottom of this file applies verbatim, and this gate fires on every PR.
+`CONFIRMED` needs an executed check whose failure would have been detectable:
+`detect.mjs` reporting zero hits **in non-degraded mode** on the files a token
+constraint governs, or a passing test.
+
+Record what shipped into `context/foundation/design-bindings.md` under
+`## Implemented`, keyed by surface — **not** into the surface brief or
+`DESIGN.md`, both of which impeccable regenerates.
+
 ## Part 2 — Memory review (the human gate)
 
 1. **Collect the queue.** Every node that appeared `disputed` in this change's
@@ -135,6 +205,36 @@ Surface the conflict with both readings and the evidence; never silently pick on
 
 7. An empty queue is a valid outcome — say so explicitly and move on; do not
   manufacture findings.
+
+### The design block (PR comment)
+
+Mirrors the memory checklist above and inherits its rules verbatim: **suggest,
+never resolve**, and **an empty queue is a valid outcome**.
+
+```markdown
+## Design review (human gate)
+Surface: gui-pmview-static-index-html · 3 screens agreed by this change, 3 built.
+Drift: The Accent-Is-A-Verb Rule changed under [node:8b94…] (live) — route to /gw-foundation.
+Detector: 0 findings (DEGRADED — parsers unavailable, undercount).
+Unhonored constraints: none. Dormant citations skipped: 1 ([node:9f77…]).
+Citations still short/mid-term on a live deck: 2 — promote or they go dormant at archive.
+Live residue: clean.
+Desk-sourced captures (UNVERIFIED input — check asks.jsonl in this diff):
+  - [node:d41f2b] per desk gui-pmview-static-index-html#a3f19c2b
+Asks carried into merge: 1 open (c07e1a44), 0 declined.
+Open the prototypes: pmview → Design → gui-pmview-static-index-html
+
+Design questions are answered in pmview (127.0.0.1:8766). Memory flags and
+tiers are ruled in pmview's drawer or in agentic-memory-gui — both go through
+the same guarded write path at :8765, which folds trust and gates lifetime on
+human confirmation. No design route touches a flag, a tier, or the store.
+```
+
+**Desk lines are UNVERIFIED input.** No local mechanism can prove a human rather
+than an agent wrote an answer — an agent on this machine can append to the same
+file. The guarantee is not authentication, it is *visibility*: every line is in
+the git diff, every capture quotes its thread id, and this block lists them. A
+reviewer who wants to check reads `asks.jsonl` in the same PR.
 
 ## Part 3 — the tracker (skip if `tracker: none`)
 

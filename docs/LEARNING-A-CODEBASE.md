@@ -12,7 +12,7 @@ the whole design exists to prevent.
 
 ```mermaid
 flowchart TD
-    INTAKE["Intake checklist<br/>(12 areas, humans in the room)"] --> INIT["/gw-init<br/>scaffold + MCP check"]
+    INTAKE["Intake checklist<br/>(13 areas, humans in the room)"] --> INIT["/gw-init<br/>scaffold + MCP check"]
     INIT --> FOUND["/gw-foundation<br/>distill docs, lessons, git workflow<br/>→ lifetime candidates"]
     FOUND --> DOM["/gw-domain (brownfield mode)<br/>extract entities from schema + core,<br/>with file:line evidence"]
     DOM --> PROMOTE["Human promotes + ratifies in GUI<br/>(lifetime root set, domain model)"]

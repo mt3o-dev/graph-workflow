@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design tab — no surfaces yet</title>
+<!-- The project's real shipping stylesheet, served by pmview from the exact
+     allowlist in context/foundation/design-bindings.md. Not a copy: copying it
+     would duplicate token values into git, and there is no build step here. -->
+<link rel="stylesheet" href="/assets/graph-workflow/gui/pmview/static/style.css">
+</head>
+<body>
+
+<header class="topbar" data-gw-region="topbar">
+  <h1>Graph&nbsp;Workflow</h1>
+  <nav class="tabs" data-gw-region="tabs">
+    <button type="button">Board</button>
+    <button type="button">Issues</button>
+    <button type="button">Search</button>
+    <button type="button" class="active">Design</button>
+  </nav>
+  <span class="pill warn">memory: read-only</span>
+</header>
+
+<main>
+  <section class="view">
+    <div class="empty" data-gw-region="empty state">
+      <p>No design surfaces yet.</p>
+      <!-- Names the path literally, so the human can see whether they are in the
+           project they think they are. That is the whole job of this screen. -->
+      <p class="mono">looked in /mnt/vol1/mt3o/Documents/graph-workflow/context/design/</p>
+      <p>A surface appears once <code>/gw-wireframe</code> agrees a screen inventory for it.</p>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

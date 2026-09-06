@@ -1,0 +1,36 @@
+# The suite is stdlib-only and reads the committed Coffer dump, so it needs no
+# install step and no services. It had been erroring unnoticed: `release.yml`
+# fires on `tags: ["v*"]` and was the only workflow in the repo.
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run the pmview suite
+        run: python -m unittest discover -s gui/tests -v
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the installable assets
+        run: python scripts/build.py all
+      - name: The zipapp must run from the archive
+        run: python dist/pmview.pyz --help

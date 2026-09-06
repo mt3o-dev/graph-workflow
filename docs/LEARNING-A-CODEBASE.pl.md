@@ -12,7 +12,7 @@ awarii, przed którym cały projekt ma chronić.
 
 ```mermaid
 flowchart TD
-    INTAKE["Checklist intake<br/>(12 obszarów, ludzie przy stole)"] --> INIT["/gw-init<br/>scaffold + weryfikacja MCP"]
+    INTAKE["Checklist intake<br/>(13 obszarów, ludzie przy stole)"] --> INIT["/gw-init<br/>scaffold + weryfikacja MCP"]
     INIT --> FOUND["/gw-foundation<br/>destylacja dokumentów, lessons, git workflow<br/>→ kandydaci lifetime"]
     FOUND --> DOM["/gw-domain (tryb brownfield)<br/>ekstrakcja encji ze schematu i core,<br/>z dowodem plik:linia"]
     DOM --> PROMOTE["Człowiek promuje i ratyfikuje w GUI<br/>(lifetime root set, model domeny)"]

@@ -2,7 +2,7 @@
 
 *(Polska wersja: [INTAKE.pl.md](INTAKE.pl.md))*
 
-Thirteen areas to think through **before** running `/gw-init` on a project. Each
+Thirteen numbered areas to think through **before** running `/gw-init` on a project (§2b is a sub-area of §2, not a fourteenth). Each
 area asks 4–6 questions, and every question carries an example — either a usable
 answer or what goes wrong without one. Questions that could not be grounded
 confidently in the workflow's actual mechanics were dropped rather than padded.
@@ -176,7 +176,7 @@ verification, humans only at PR). The routing decision is only real if the
 headless preconditions can actually be met — which usually means test
 infrastructure work before the first `/gw-goal` run.
 
-0. Which skills are you willing to run unattended at all? Three are never headless by design — `/gw-domain` and `/gw-wireframe` are defined by a user in the loop, and `/gw-fix` needs judgment for the reproduction step unless someone else already wrote the failing test.
+0. Which skills are you willing to run unattended at all? Seven are never headless by design — `/gw-domain`, `/gw-wireframe` and `/gw-prototype` are defined by a user in the loop, `/gw-slice` ends at a human ruling on the breakdown, `/gw-grill` and `/gw-teach` *are* the conversation, and `/gw-fix` needs judgment for the reproduction step unless someone else already wrote the failing test.
    *Example: "Headless: /gw-goal on plan-backed changes, and /gw-fix only when QA files a reproducing test. Never headless: domain modelling, wireframing, consolidation commits." An unattended greenfield domain pass invents the domain, and an unattended fix without a reproduction fixes something adjacent and reports success.*
 
 1. What share of your typical changes is bounded and verifiable by a command — the hard precondition for headless mode?
@@ -330,3 +330,28 @@ decision to continue is evidence, not sunk cost.
 
 5. What is the minimum viable retreat, short of full abandonment?
    *Example: drop to plain 10x (files only) but keep `/gw-foundation`, `/gw-domain`, and the review-gate consolidation — the three highest-value capture points — rather than an all-or-nothing exit. The domain model is the cheapest of the three to maintain and the slowest to rot, since entities change far less often than decisions.*
+
+## 13. Design binding & the design lane
+
+Skip this whole area if the project has no UI. If it does, these are the settings
+`/gw-wireframe` and `/gw-prototype` read on every run.
+
+1. Does the project have a design system? A token file, a component library, or
+   neither? That answer picks the binding — **system-bound**, **library-bound** or
+   **unstyled** — and the lane says which one it chose out loud before designing
+   anything. With no design system the lane stops at wireframes: there is nothing
+   to render a prototype *in*, and inventing a look is not the agent's call.
+2. Which stylesheet may a prototype load? Prototypes wear the project's **real**
+   shipping CSS, served from an exact allowlist in
+   `context/foundation/design-bindings.md`. Nothing outside that list has any
+   transport, so a prototype naming it renders unstyled.
+3. Who answers design questions, and where? pmview's Design tab if someone is at
+   the machine; the terminal otherwise. Both work; the log is the same file.
+4. What happens when a screen needs a component the design system lacks? The lane
+   **refuses to prototype it** and asks you to rule: extend the component, accept
+   a one-off, or change the interaction. Decide now whether you want that rigour,
+   because the alternative is a quiet one-off in every screen.
+5. Are design rules distilled into the graph? `/gw-foundation` can turn
+   `.impeccable/design.json` into recallable constraints, which is what makes
+   `impact_of` fire when a later change contradicts one. Bounded — one node per
+   rule — and every promotion is yours.
