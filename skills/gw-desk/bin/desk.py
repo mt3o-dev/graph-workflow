@@ -196,12 +196,22 @@ def scratch(root: Path) -> Path:
     return root / ".gw-scratch" / "design"
 
 
-def fresh(root: Path, surface: str, name: str, window: float) -> tuple[bool, dict]:
+def fresh(root: Path, surface: str, name: str, window: float) -> tuple[bool | None, dict]:
+    """(fresh?, blob). `None` means **cannot tell** — the file is unreadable or
+    malformed, which is not the same as absent.
+
+    Callers treat unknown as present: a spurious watcher costs one timed-out
+    background task, while a spurious absence strands a human at an open tab
+    waiting for an agent that never armed.
+    """
+    path = scratch(root) / f"{surface}.{name}.json"
+    if not path.exists():
+        return False, {}
     try:
-        blob = json.loads((scratch(root) / f"{surface}.{name}.json").read_text(encoding="utf-8"))
+        blob = json.loads(path.read_text(encoding="utf-8"))
         return (time.time() - float(blob.get("ts", 0))) < window, blob
     except (OSError, ValueError, TypeError):
-        return False, {}
+        return None, {}
 
 
 def beat(root: Path, surface: str) -> None:
@@ -302,7 +312,8 @@ def cmd_wait(args, root: Path, directory: Path) -> int:
         print(json.dumps(pending, indent=2))
         return EXIT_LINES
 
-    present_at_start, _ = fresh(root, args.surface, "presence", PRESENT_FRESH_S)
+    # `None` (cannot tell) counts as present — see fresh().
+    present_at_start = fresh(root, args.surface, "presence", PRESENT_FRESH_S)[0] is not False
     deadline = time.time() + args.timeout
     try:
         stat = path.stat().st_mtime_ns if path.is_file() else 0
@@ -318,7 +329,7 @@ def cmd_wait(args, root: Path, directory: Path) -> int:
                     return EXIT_LINES
             if present_at_start:
                 still, _ = fresh(root, args.surface, "presence", PRESENT_FRESH_S)
-                if not still:
+                if still is False:      # not None: unknown is not a departure
                     die("the human closed the tab — nobody is listening", EXIT_NOBODY)
         print(json.dumps([]))
         return EXIT_NOTHING
@@ -412,6 +423,7 @@ def cmd_status(args, root: Path, directory: Path) -> int:
     lines = read_lines(directory / "asks.jsonl")
     listening, beat_blob = fresh(root, args.surface, "waiting", LISTEN_FRESH_S)
     present, _ = fresh(root, args.surface, "presence", PRESENT_FRESH_S)
+    beat_blob = beat_blob or {}
     still_open = open_asks(lines)
     print(json.dumps({
         "surface": args.surface,

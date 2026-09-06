@@ -12,8 +12,33 @@ goes in the file.
 
 ## Steps
 
+0. **Drain the desk** — only when `change.md` carries a `design_surface:`. For
+   each one:
+
+   ```sh
+   desk.py drain --surface <slug>        # resolve per skills/gw-desk/REFERENCE.md
+   ```
+
+   Exit 0 means human lines are waiting: read them in order, act, then `ack`.
+   Exit 3 means nothing waiting. Before capturing in response to a redelivered
+   line, recall by its thread id — the dedup rule in the desk reference.
+
+   **An open ask is a refusal, not a warning.** If any surface still has an
+   unanswered ask, stop and report it: planning around a question the human has
+   not answered produces a plan built on your guess, and the guess is invisible
+   by the time anyone reviews it. Report the surface, the ask, and the command
+   that resumes it.
+
 1. **Load the scope.** `memory_goal` from `context/changes/<change-id>/change.md`;
-   read `research.md` and `wireframes.md` if present. Then:
+   read `research.md` if present, and **every deck named by a `design_surface:`
+   line** — `context/design/<surface>/deck.json`. The deck is canonical: its
+   agreed screens, their states and their component bindings are inputs to the
+   plan, not things to re-derive.
+
+   (`wireframes.md` is gone. `/gw-wireframe` writes the deck now; a plan reading
+   for that file will find nothing and silently plan without the screens.)
+
+   Then:
 
    ```
    recall_context(query="<what the plan must accomplish>", goal_ref=<goal_node_id>)

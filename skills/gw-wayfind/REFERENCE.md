@@ -44,8 +44,11 @@ Three consequences worth knowing:
 | `context/archive/*` | what is finished |
 | the store (`graph.py`) | flagged nodes, contradictions, whether a domain model exists |
 | `context/design/*/asks.jsonl` | open asks, unruled gaps, whether an agent is listening |
-| `context/requests.jsonl` | skill invocations queued from the board |
 | `git` | branch and uncommitted count |
+
+`GET /api/advise` additionally returns the request queue from
+`context/requests.jsonl`; `--advise` does not print it, because a queued request
+is something an agent drains rather than something you act on at the keyboard.
 
 ## How it ranks
 
@@ -54,10 +57,10 @@ has waited longest is what is most likely to have been forgotten.
 
 | band | means |
 |---|---|
-| `blocked` | something is waiting on a human right now: open asks with no agent listening, unruled component gaps, contradictions, a change with no `memory_goal` |
+| `blocked` | something is waiting on a human right now: open asks with no agent listening, unruled component gaps, contradictions, nodes flagged for review, a change with no `memory_goal` |
 | `stalled` | nothing has moved in ≥5 days, and the change is not checked out |
-| `ready` | safe to pick up: a plan exists, nothing is contested |
-| `hygiene` | no foundation, no domain model, consolidation waiting |
+| `ready` | the next step for a change nothing is blocking — including opening one the roadmap sketched, or planning one that has no plan yet |
+| `hygiene` | no foundation in the graph, no domain model |
 
 **Staleness is not `change.md`'s mtime.** A change is worked by editing *code*,
 and its lifecycle file may not be touched for the whole of it — measuring off

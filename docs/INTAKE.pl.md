@@ -2,7 +2,7 @@
 
 *(English version: [INTAKE.en.md](INTAKE.en.md))*
 
-Trzynaście obszarów do przemyślenia **zanim** uruchomisz `/gw-init` na projekcie.
+Trzynaście numerowanych obszarów do przemyślenia **zanim** uruchomisz `/gw-init` na projekcie (§2b to podobszar §2, nie czternasty).
 Każdy obszar zadaje 4–6 pytań, a każde pytanie ma przykład — albo użyteczną
 odpowiedź, albo to, co pójdzie nie tak bez niej. Pytania, których nie dało się
 pewnie osadzić w faktycznej mechanice workflow, zostały usunięte zamiast dopchane.

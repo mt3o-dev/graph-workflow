@@ -2,7 +2,7 @@
 
 *(Polska wersja: [INTAKE.pl.md](INTAKE.pl.md))*
 
-Thirteen areas to think through **before** running `/gw-init` on a project. Each
+Thirteen numbered areas to think through **before** running `/gw-init` on a project (§2b is a sub-area of §2, not a fourteenth). Each
 area asks 4–6 questions, and every question carries an example — either a usable
 answer or what goes wrong without one. Questions that could not be grounded
 confidently in the workflow's actual mechanics were dropped rather than padded.

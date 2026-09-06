@@ -9,8 +9,8 @@ reading the 19 gw skills and the installed Matt Pocock skills at
 > ## Status: shipped
 >
 > All five plus the launcher are implemented on branch `design-lane`
-> (`79c30d5`, `5e08fc6`, `e561fb8`, `cc9dbac`). **19 → 21 routable skills**, as
-> designed: `gw-slice`, `gw-grill` and `gw-teach` earned rows; `gw-spec` is a
+> (`79c30d5`, `5e08fc6`, `e561fb8`, `cc9dbac`). **19 → 22 routable skills** —
+> three new rows, not two, which is what §10's own table said: `gw-slice`, `gw-grill` and `gw-teach` earned rows; `gw-spec` is a
 > step in `/gw-foundation`, and `gw-wayfind` is `pmview --advise`.
 >
 > Three places the build corrected this document:

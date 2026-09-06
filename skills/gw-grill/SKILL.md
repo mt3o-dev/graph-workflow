@@ -5,13 +5,16 @@ description: Interrogate a plan or a design against settled knowledge — one qu
 
 # gw-grill
 
-This workflow has exactly one interactive-dialogue skill — `/gw-wireframe`, and
-only for UI screens. Everything else is a gate: `/gw-plan-review` runs as a fresh
-session with a clean context precisely so it *cannot* be argued with, and
-`/gw-review` issues a verdict. Both are right to be gates.
+Several skills here talk to a human — `/gw-wireframe` about screens, `/gw-domain`
+about nouns, `/gw-slice` about a breakdown, `/gw-resolve` about a queue. Every one
+of them is a conversation *about a specific artifact*, held once that artifact
+exists.
 
-What is missing is the conversation **before** the plan, where a wrong assumption
-is still cheap. That is this skill.
+None of them argues with the reasoning **before** the artifact does. That is what
+the gates are for, and gates are the wrong shape for it: `/gw-plan-review` runs as
+a fresh session with a clean context precisely so it *cannot* be argued with, and
+`/gw-review` issues a verdict. Both are right to be gates — and neither is where
+a wrong assumption is still cheap. That is this skill.
 
 Two things make it more than a generic interrogation prompt:
 
@@ -25,10 +28,17 @@ Two things make it more than a generic interrogation prompt:
 
 ## Preconditions
 
-- A change is open with `memory_goal` in `change.md`. Ideas worth grilling are
-  worth capturing, and a goal-less capture is rejected.
+- A goal to capture against. Normally that is a change's `memory_goal`; **before
+  a change exists** — grilling a PRD, an idea, a shape — use the foundation
+  scope's `memory_goal` from `context/foundation/foundation.md`, exactly as
+  `/gw-ask` and `/gw-ideate` do. A goal-less capture is rejected, so one of the
+  two must be present.
 - There is something to grill: a plan, a design, a shape, or a firm intention.
-  Grilling a vague idea produces vague answers — route to `/gw-research` first.
+  Grilling a genuinely empty idea produces vague answers — route to
+  `/gw-research` first. But *thin* is not empty: a conversation that has
+  converged on a direction without settling its edges is exactly what this skill
+  is for, and it is where `/gw-foundation` sends work it cannot synthesise a PRD
+  from.
 
 ## What this is not
 
@@ -161,9 +171,10 @@ Then route: `/gw-plan` if there was no plan, `/gw-plan-review` if there was.
 
 ## Degradation
 
-An empty or near-empty graph makes three of the four challenge modes unavailable
-— there are no settled constraints to test against and no ratified entities to
-check terms against. **Say so.** The session is then opinion against opinion,
+An empty or near-empty graph makes **two** of the four challenge modes
+unavailable — there are no settled constraints to run `impact_of` against, and no
+ratified entities to check terms against. Concrete scenarios and cross-referencing
+the code still work, and are still worth the session. **Say which two you lost.** The session is then opinion against opinion,
 which is still useful and is not what this skill claims to be. Offer
 `/gw-foundation` or `/gw-domain` first if the project is old enough to have
 knowledge worth loading.

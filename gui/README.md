@@ -44,6 +44,14 @@ what a human owes it:
 
 **Search** — substring over node bodies, paths and id prefixes.
 
+**Design** — one row per surface under `context/design/`, each screen as a layout
+schematic drawn from its deck or as the clickable prototype itself in a sandboxed
+frame, and the ask stack beside it. This is where a human answers the questions an
+agent left: pick an option or write an instruction, pin one to a region by
+clicking it in the prototype, and send the batch. A banner names the resume
+command when asks are open and no agent is listening. Answers append to the
+surface's `asks.jsonl`; nothing here writes to the store.
+
 Selecting any node opens a detail panel: full body, facets, the change that scoped
 it, both edge directions, and the complete journal with each event's source,
 polarity and reason — the mechanism the agent read path hides on purpose.
@@ -95,34 +103,30 @@ never silently does something weaker.
 | method | path | |
 |---|---|---|
 | GET | `/api/projects` | discovered projects |
+| GET | `/api/project` | one project's identity, size, totals and git origin |
 | GET | `/api/board` | the board, joined and counted |
 | GET | `/api/changes/{id}` | one change: nodes, contradictions, sections |
 | GET | `/api/issues` | issue nodes + the flagged backlog (`?flagged=0` for issues only) |
 | GET | `/api/nodes/{id}` | body, facets, edges, journal |
 | GET | `/api/search?q=` | substring search |
+| GET | `/api/recall?goal=&q=` | a recall bundle, proxied to the memory server |
+| GET | `/api/review/{id}/guidance` | the guided-resolution options for a flagged node |
 | GET | `/api/memory/status` | is the write path live |
-| POST | `/api/nodes/{id}/body`, `/tier`, `/api/review/{id}/resolve`, `/api/edges`, `/api/nodes` | proxied writes |
-
 | GET | `/api/advise` | what needs a human and what is safe to pick up — the same ranking `pmview --advise` prints |
-| POST | `/api/requests` | queue a skill invocation for whichever agent drains next |
 | GET | `/api/design` | every surface under `context/design/`, folded, plus the design system |
 | GET | `/api/design/deck` | one surface's `deck.json`, parsed forgivingly |
 | GET | `/api/design/asks` | the desk, folded into threads — state is derived, never stored |
 | GET | `/api/design/pulse` | a bounded 64 KB tail read; stamps presence when `visible=1` and the token matches |
-| POST | `/api/design/answers` | append a batch of human lines to one surface's desk |
 | GET | `/proto/<project>/<surface>/<path…>` | a prototype's own files, with a templated CSP |
 | GET | `/assets/<project>/<path…>` | an allowlisted project file (the real stylesheet a prototype wears) |
+| POST | `/api/nodes/{id}/body`, `/tier`, `/api/review/{id}/resolve`, `/api/edges`, `/api/nodes` | proxied writes — every one goes to the memory server |
+| POST | `/api/design/answers` | append a batch of human lines to one surface's desk |
+| POST | `/api/requests` | queue a skill invocation for whichever agent drains next |
 
 Read endpoints under `/api/` take `?project=<name>`, defaulting to the first
 discovered. `/proto/` and `/assets/` take the project as a **path segment**
 instead, because the browser resolves relative URLs inside a prototype against
 its own path.
-
-The design routes are enabled **only on a loopback bind**, sit outside `_proxy`
-(answering a design question has to work when `:8765` is down), and never call
-`view.invalidate()` — a poll running twelve times a minute must not drop every
-project's read model. `/proto/` and `/assets/` take the project as a **path segment** instead,
-because the browser resolves relative URLs inside a prototype against its own path.
 
 ## Conventions it relies on
 

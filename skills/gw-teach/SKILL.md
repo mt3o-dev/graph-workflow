@@ -6,8 +6,8 @@ description: Teach the human something this project knows, using the graph as th
 # gw-teach
 
 Every other skill here spends the graph on the codebase. This one spends it on
-the person — and it is the only skill that pays *into* ranking without doing any
-implementation work.
+the person — and it is the only one whose *whole output* is a human's
+understanding rather than an artifact.
 
 The reason it belongs in this workflow rather than being a generic tutor: **the
 graph is already a curriculum, and three of the things a teaching tool normally
@@ -115,10 +115,11 @@ append_events([
 ])
 ```
 
-**Nothing else in this workflow generates `USED` events outside implementation
-work.** A project where people learn from the graph gets a graph that ranks what
-people actually need to understand, not just what got built — which is a
-compounding return on every capture anyone ever made.
+`/gw-ask`, `/gw-ideate` and `/gw-plan-review` also journal `USED` outside
+implementation work — this is not the only payer. What is particular here is the
+*shape* of the usage: a lesson touches a whole dependency chain at once, so a
+project where people learn from the graph gets a graph that ranks what people
+need to **understand**, not only what got built.
 
 ## Step 8 — Quizzing, and the verb that is correct
 

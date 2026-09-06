@@ -35,6 +35,20 @@ State which mode you are in before doing anything.
 
 ---
 
+## Step 0 — Drain the desk
+
+Only when `change.md` carries a `design_surface:`. For each one:
+
+```sh
+desk.py drain --surface <slug>        # resolve per skills/gw-desk/REFERENCE.md
+```
+
+Exit 0 means human lines are waiting: read them in order, act, then `ack`. Exit 3
+means nothing waiting. Before capturing in response to a redelivered line, recall
+by its thread id — the dedup rule in the desk reference.
+
+A fix that touches a UI surface can be answering a question nobody told it about.
+
 ## Step 1 — Open the change
 
 ```

@@ -79,6 +79,12 @@ silent skip reads as a pass.
    unbuilt screen.
 2. **State coverage.** Every state the deck lists actually renders — the empty
    state especially. That is where UI rework concentrates.
+2b. **Ruled gaps.** Read each screen's `components`. A `GAP:ruled:<node-id>` must
+   name a node that exists; a **`oneoff:<node-id>`** is an *accepted*
+   inconsistency — report it with its ruling so the reviewer sees a decision that
+   was made, and never as a finding. A `GAP:unruled` still on a built screen **is**
+   a finding: something was implemented that nobody ruled on.
+
 3. **Cited constraints.** Every `[node:<id>]` in a screen's `cites` is honored in
    the built markup. **A dormant cited node emits a named skip, not an
    unhonored-constraint finding** — it was retired by a sweep, not violated.

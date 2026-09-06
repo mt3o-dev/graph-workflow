@@ -71,7 +71,7 @@ carries knowledge, the tracker carries work state for people outside the session
 - **Graph replaces folders.** Per-change knowledge lives in one shared store; the
   change-id is a **facet** on nodes, not a directory. `context/changes/<id>/` keeps
   only the thin lifecycle files: `change.md` and `plan.md`, plus the ephemeral
-  `research.md` and `wireframes.md` that die with the change. What a screen is
+  `research.md` that dies with the change. What a screen is
   supposed to *look* like lives in `context/design/<surface>/` instead — keyed by
   surface, so it outlives the changes that touch it.
 - **Foundation lives twice, deliberately.** Foundation docs (PRD, tech-stack,

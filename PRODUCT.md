@@ -46,7 +46,7 @@ Name: **pmview**. No further brand, voice, or identity commitments have been est
 
 ## Evidence on Hand
 
-- Real dogfooded data: tests exercise the HTTP surface against a **committed Coffer memory store** in real dump format (`gui/tests/test_pmview.py`, 41 tests).
+- Real dogfooded data: tests exercise the HTTP surface against a **committed Coffer memory store** in real dump format (`gui/tests/test_pmview.py`, 83 tests).
 - No testimonials, customers, pricing, benchmarks, or press exist — future work must not fabricate any of these.
 
 ## Product Principles

@@ -32,7 +32,16 @@ desk.py retire  --surface S --refs a --reason "…"
 desk.py note    --surface S --screen X --text "…"
 desk.py handoff --surface S [--open a,b] --resume "…" --text "…"
 desk.py status  --surface S
+
+desk.py requests                              # project-scoped: no --surface
+desk.py ack-request --refs a,b --text "…"
 ```
+
+The last two are the **request queue** — skill invocations a human queued from
+pmview's board. The same file discipline one scope up: `context/requests.jsonl`,
+append-only, per project rather than per surface, a request `open` until an `ack`
+references it. Drain it at the same gates you drain a desk. pmview appended the
+line and started nothing; a queue is not a launcher.
 
 Exit codes are copied from impeccable's `serve-question.mjs`, so the mental model
 transfers and a future surface swap needs no skill edits:
@@ -70,7 +79,9 @@ stopped, on another machine, in another harness. This is the only mode a
 non-Claude-Code harness needs.
 
 **Mode 2 — presence-gated background wake (the default when the human is there).**
-`post` reports `human_present`. If true — **or if presence is unreadable** —
+`post` reports `human_present`. If true — and `post` reports `human_present: null` when it cannot tell, which
+counts as true, since a spurious watcher costs one timed-out task while a
+spurious absence strands a human at an open tab —
 launch `desk.py wait --surface S --timeout 900` as a **background** task and
 **end the turn immediately**. When the watcher exits, the harness re-invokes you
 with the answers in hand.
@@ -125,7 +136,9 @@ before a human could answer a design question — breaking "reads always work,
 writes layer on top" at exactly the moment the lane is most useful.
 
 The **ruling** still becomes knowledge, through the one guarded write path, with
-a `goal_ref`, at the phase boundary — like every other capture in this workflow.
+a `goal_ref`. Desk-sourced captures land at the phase boundary; that is a
+desk rule, not a universal one — `/gw-grill` captures artifacts inline as
+decisions crystallise and batches only its events, and it is right to.
 
 ## Failure modes, each with a defined behaviour
 

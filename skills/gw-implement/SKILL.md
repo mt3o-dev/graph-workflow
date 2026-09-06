@@ -15,6 +15,17 @@ graphs rot.
 For each phase of `context/changes/<change-id>/plan.md` (with `memory_goal` from
 change.md):
 
+0. **Drain the desk, at every phase boundary** — only when `change.md` carries a `design_surface:`. For
+   each one:
+
+   ```sh
+   desk.py drain --surface <slug>        # resolve per skills/gw-desk/REFERENCE.md
+   ```
+
+   Exit 0 means human lines are waiting: read them in order, act, then `ack`.
+   Exit 3 means nothing waiting. Before capturing in response to a redelivered
+   line, recall by its thread id — the dedup rule in the desk reference.
+
 1. **Recall for the phase:**
 
    ```

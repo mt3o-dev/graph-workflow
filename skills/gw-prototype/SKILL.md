@@ -24,8 +24,8 @@ hardened into a contract by `/gw-review` Part 1b.
 - A change is open with `memory_goal` in `change.md`.
 - `/gw-wireframe` has agreed a screen inventory: `context/design/<surface>/deck.json`
   exists and `change.md` names the surface with `design_surface: <slug>`.
-- The project has a design system. **With `binding: none`, stop at rung 1 and say
-  so** — there is nothing to render a prototype *in*, and inventing a look is
+- The project has a design system. **With `binding: "unstyled"` — the value
+  `/gw-wireframe` writes when it found none — stop at rung 1 and say so** — there is nothing to render a prototype *in*, and inventing a look is
   exactly the decision this lane refuses to make on the user's behalf.
 
 ## Step 0 — Drain the desk (every phase, no exceptions)
@@ -36,7 +36,7 @@ desk.py drain --surface <slug>
 
 Resolve `desk.py` per `skills/gw-desk/REFERENCE.md`. Exit 0 means human lines are
 waiting: read them in order, act, then `ack`. Exit 3 means nothing waiting.
-Exit 4 means nobody is listening.
+(Exit 4 — nobody is listening — comes from `wait`, not from `drain`.)
 
 **Before capturing anything in response to a redelivered line**, recall by its
 thread id — see the dedup rule in the desk reference. A crash between capture and
@@ -132,7 +132,9 @@ and *honest costs*:
 desk.py post --surface <slug> --change <id> --goal <memory_goal> --file ask.json
 ```
 
-`post` reports `human_present`. If true — **or if presence is unreadable** —
+`post` reports `human_present`. If true — and `post` reports `human_present: null` when it cannot tell, which
+counts as true, since a spurious watcher costs one timed-out task while a
+spurious absence strands a human at an open tab —
 launch the watcher as a **background** task and **end your turn immediately**:
 
 ```sh

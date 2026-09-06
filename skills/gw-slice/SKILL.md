@@ -77,13 +77,15 @@ has:
 | `/gw-implement` (**interactive**) | multi-phase, needs judgment or manual gates | human checkpoints |
 | `/gw-fix` (**TDD**) | a defect or a behaviour-preserving refactor | a test that fails before and passes after |
 
-**A slice that needs a never-headless skill cannot be headless.** `/gw-domain`,
-`/gw-wireframe` and `/gw-prototype` are never headless by design, and `/gw-fix`
-only is when someone else already wrote the failing test. So:
+**A slice that needs a never-headless skill cannot be headless.** The list is
+`/gw-goal`'s, not one to re-derive here: `/gw-domain`, `/gw-wireframe`,
+`/gw-prototype`, `/gw-slice`, `/gw-grill` and `/gw-teach` are never headless, and
+`/gw-fix` only is when someone else already wrote the failing test. So:
 
-> A slice touching a UI surface is **interactive**, mechanically. Not a judgment
-> call — check it rather than deciding it, because this is exactly what gets
-> waved through at 4pm.
+> A slice touching a UI surface is **interactive**, mechanically — and so is one
+> that will need an argument (`/gw-grill`) or a domain pass. Not a judgment call:
+> check the slice against `/gw-goal`'s list rather than deciding, because this is
+> exactly what gets waved through at 4pm.
 
 Prefer headless where it is genuinely true. Do not manufacture it: a slice marked
 headless that turns out to need a human wastes a whole unattended run and lands
@@ -180,8 +182,9 @@ holds no decisions.
 - **One registry entry, one first change.** Never open slice 2 "while you're
   here".
 - **Never capture the slice list**, only the reasoning behind its order.
-- **The never-headless list is a check, not an opinion.** A slice needing
-  `/gw-domain`, `/gw-wireframe` or `/gw-prototype` is interactive, full stop.
+- **The never-headless list is a check, not an opinion**, and it is the one in
+  `/gw-goal` — do not inline a subset here, because a subset silently passes a
+  slice `/gw-goal` will then refuse to run.
 - **Recommend, then let the human rule.** Every question in step 4 carries your
   answer.
 - **An epic that overlaps an in-flight one is a conversation**, not a second
